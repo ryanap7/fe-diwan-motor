@@ -379,15 +379,15 @@ const ProductManagement = () => {
                   <div className="space-y-2 mb-3 border-t pt-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Retail:</span>
-                      <span className="font-semibold">Rp {product.retail_price?.toLocaleString('id-ID')}</span>
+                      <span className="font-semibold">Rp {product.price_levels?.retail?.toLocaleString('id-ID') || '0'}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Grosir:</span>
-                      <span>Rp {product.wholesale_price?.toLocaleString('id-ID')}</span>
+                      <span>Rp {product.price_levels?.wholesale?.toLocaleString('id-ID') || '0'}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Member:</span>
-                      <span>Rp {product.member_price?.toLocaleString('id-ID')}</span>
+                      <span>Rp {product.price_levels?.member?.toLocaleString('id-ID') || '0'}</span>
                     </div>
                     <div className="flex justify-between text-xs pt-2 border-t">
                       <span className="text-muted-foreground">Margin:</span>
