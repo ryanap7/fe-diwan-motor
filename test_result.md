@@ -266,15 +266,18 @@ backend:
 
   - task: "Volume Discount Rules (FR-PRD-010)"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented volume discount rules with minimum quantity thresholds and percentage/fixed discount options."
+        - working: true
+        - agent: "testing"
+        - comment: "Volume discount rules working perfectly. POST /api/products/{id}/volume-discount successfully creates volume discounts with minimum quantity, discount type (percentage/fixed), discount value, and active status. Multiple volume discount rules can be added to a single product."
 
   - task: "Margin Analysis (FR-PRD-011)"
     implemented: true
