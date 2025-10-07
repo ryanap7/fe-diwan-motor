@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the Configuration Module backend APIs for the Motorbike POS system with JWT authentication, system initialization, and multi-branch management functionality."
+user_problem_statement: "Test the Product Management Module backend APIs for the Motorbike POS system including comprehensive CRUD operations, margin analysis, promotional pricing, volume discounts, and stock management features."
 
 backend:
   - task: "System Initialization API"
