@@ -369,7 +369,7 @@ const UserManagement = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="branch">Branch</Label>
+              <Label htmlFor="branch">Branch Assignment</Label>
               <Select
                 value={formData.branch_id || 'none'}
                 onValueChange={(value) => handleChange('branch_id', value === 'none' ? '' : value)}
@@ -378,17 +378,27 @@ const UserManagement = () => {
                   <SelectValue placeholder="Select branch (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No branch</SelectItem>
+                  <SelectItem value="none">
+                    <div className="flex items-center gap-2">
+                      <span>No Branch Assignment</span>
+                    </div>
+                  </SelectItem>
                   {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name} ({branch.code})
+                      <div className="flex items-center gap-2">
+                        <Store className="w-3 h-3" />
+                        <span>{branch.name}</span>
+                        <span className="text-xs text-muted-foreground">({branch.code})</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Assign user to a specific branch (Branch Managers and Cashiers)
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                <p className="text-xs text-blue-900">
+                  <strong>💡 Tip:</strong> Assign Branch Managers and Cashiers to specific branches. Admins typically don't need branch assignment.
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
