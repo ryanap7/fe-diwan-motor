@@ -461,46 +461,15 @@ const BranchManagement = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="manager_name">Manager Name</Label>
-                <Input
-                  id="manager_name"
-                  value={formData.manager_name}
-                  onChange={(e) => handleChange('manager_name', e.target.value)}
-                  placeholder="Enter manager name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manager_phone">Manager Phone</Label>
-                <Input
-                  id="manager_phone"
-                  value={formData.manager_phone}
-                  onChange={(e) => handleChange('manager_phone', e.target.value)}
-                  placeholder="Enter manager phone"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="operating_hours">Operating Hours</Label>
-                <Input
-                  id="operating_hours"
-                  value={formData.operating_hours}
-                  onChange={(e) => handleChange('operating_hours', e.target.value)}
-                  placeholder="e.g., 08:00 - 20:00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock_capacity">Stock Capacity</Label>
-                <Input
-                  id="stock_capacity"
-                  value={formData.stock_capacity}
-                  onChange={(e) => handleChange('stock_capacity', e.target.value)}
-                  placeholder="e.g., 1000 items"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="operating_hours">Jam Operasional</Label>
+              <Input
+                id="operating_hours"
+                value={formData.operating_hours}
+                onChange={(e) => handleChange('operating_hours', e.target.value)}
+                placeholder="contoh: 08:00 - 20:00"
+              />
+              <p className="text-xs text-muted-foreground">Manager dan staff akan di-assign setelah cabang dibuat</p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
