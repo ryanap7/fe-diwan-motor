@@ -262,6 +262,8 @@ const App = () => {
                         setSettingsOpen(!settingsOpen);
                       } else if (isProductsMenu) {
                         setProductsOpen(!productsOpen);
+                      } else if (isInventoryMenu) {
+                        setInventoryOpen(!inventoryOpen);
                       }
                     } else {
                       setActiveMenu(item.id);
