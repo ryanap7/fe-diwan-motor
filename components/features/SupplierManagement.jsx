@@ -156,63 +156,11 @@ const SupplierManagement = () => {
     }
   };
 
-  const handleProductMapping = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/suppliers/${selectedSupplier.id}/map-products`, mappingData, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success('Product mapping berhasil disimpan!');
-      fetchSupplierData();
-      setMappingDialogOpen(false);
-      setMappingData({
-        product_ids: [],
-        lead_time_days: '',
-        unit_price: '',
-        minimum_order: '',
-        notes: ''
-      });
-    } catch (error) {
-      toast.error('Gagal menyimpan product mapping');
-    }
-  };
-
   const filteredSuppliers = suppliers.filter(supplier =>
     supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     supplier.contact_person.toLowerCase().includes(searchQuery.toLowerCase()) ||
     supplier.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const getPerformanceRating = (supplierId) => {
-    const performance = supplierPerformance.find(p => p.supplier_id === supplierId);
-    if (!performance) return { rating: 0, stats: null };
-    
-    const avgDeliveryTime = performance.avg_delivery_time || 0;
-    const onTimeDelivery = performance.on_time_delivery_rate || 0;
-    const qualityScore = performance.quality_score || 0;
-    
-    // Calculate overall rating (1-5 stars)
-    const rating = Math.round((onTimeDelivery + qualityScore) / 20);
-    
-    return {
-      rating: Math.max(1, Math.min(5, rating)),
-      stats: {
-        avgDeliveryTime,
-        onTimeDelivery,
-        qualityScore,
-        totalOrders: performance.total_orders || 0
-      }
-    };
-  };
-
-  const renderStarRating = (rating) => {
-    return [...Array(5)].map((_, i) => (
-      <Star 
-        key={i} 
-        className={`w-4 h-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
-      />
-    ));
-  };
 
   if (loading) {
     return (
