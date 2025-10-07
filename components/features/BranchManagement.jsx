@@ -35,10 +35,7 @@ const BranchManagement = () => {
     address: '',
     phone: '',
     email: '',
-    manager_name: '',
-    manager_phone: '',
-    operating_hours: '',
-    stock_capacity: ''
+    operating_hours: ''
   });
   const [saving, setSaving] = useState(false);
 
