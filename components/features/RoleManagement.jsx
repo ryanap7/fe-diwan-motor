@@ -170,16 +170,14 @@ const RoleManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Manage User Roles</h3>
-          <p className="text-sm text-muted-foreground">Total: {roles.length} roles</p>
+          <h3 className="text-lg font-semibold text-gray-900">System User Roles</h3>
+          <p className="text-sm text-muted-foreground">Total: {roles.length} predefined roles</p>
         </div>
-        <Button
-          onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Role
-        </Button>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+          <p className="text-sm text-blue-900">
+            <strong>ℹ️ Info:</strong> System roles are predefined and cannot be modified
+          </p>
+        </div>
       </div>
 
       {/* Roles Grid */}
