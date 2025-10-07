@@ -477,6 +477,110 @@ export async function POST(request) {
       return NextResponse.json(newLog);
     }
 
+    // Categories - Create
+    if (path === 'categories/create') {
+      const newCategory = {
+        id: uuidv4(),
+        name: body.name,
+        description: body.description || '',
+        parent_id: body.parent_id || null,
+        is_active: body.is_active !== undefined ? body.is_active : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('categories').insertOne(newCategory);
+      return NextResponse.json(newCategory);
+    }
+
+    // Categories - Update
+    if (path.startsWith('categories/') && path.includes('/update')) {
+      const categoryId = path.split('/')[1];
+      const updates = {
+        name: body.name,
+        description: body.description || '',
+        parent_id: body.parent_id || null,
+        is_active: body.is_active,
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('categories').updateOne({ id: categoryId }, { $set: updates });
+      const category = await db.collection('categories').findOne({ id: categoryId });
+      return NextResponse.json(category);
+    }
+
+    // Categories - Toggle Active
+    if (path.startsWith('categories/') && path.includes('/toggle')) {
+      const categoryId = path.split('/')[1];
+      const category = await db.collection('categories').findOne({ id: categoryId });
+      
+      await db.collection('categories').updateOne(
+        { id: categoryId },
+        { $set: { is_active: !category.is_active, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedCategory = await db.collection('categories').findOne({ id: categoryId });
+      return NextResponse.json(updatedCategory);
+    }
+
+    // Categories - Delete
+    if (path.startsWith('categories/') && path.includes('/delete')) {
+      const categoryId = path.split('/')[1];
+      await db.collection('categories').deleteOne({ id: categoryId });
+      return NextResponse.json({ message: 'Category deleted successfully' });
+    }
+
+    // Brands - Create
+    if (path === 'brands/create') {
+      const newBrand = {
+        id: uuidv4(),
+        name: body.name,
+        description: body.description || '',
+        is_active: body.is_active !== undefined ? body.is_active : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('brands').insertOne(newBrand);
+      return NextResponse.json(newBrand);
+    }
+
+    // Brands - Update
+    if (path.startsWith('brands/') && path.includes('/update')) {
+      const brandId = path.split('/')[1];
+      const updates = {
+        name: body.name,
+        description: body.description || '',
+        is_active: body.is_active,
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('brands').updateOne({ id: brandId }, { $set: updates });
+      const brand = await db.collection('brands').findOne({ id: brandId });
+      return NextResponse.json(brand);
+    }
+
+    // Brands - Toggle Active
+    if (path.startsWith('brands/') && path.includes('/toggle')) {
+      const brandId = path.split('/')[1];
+      const brand = await db.collection('brands').findOne({ id: brandId });
+      
+      await db.collection('brands').updateOne(
+        { id: brandId },
+        { $set: { is_active: !brand.is_active, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedBrand = await db.collection('brands').findOne({ id: brandId });
+      return NextResponse.json(updatedBrand);
+    }
+
+    // Brands - Delete
+    if (path.startsWith('brands/') && path.includes('/delete')) {
+      const brandId = path.split('/')[1];
+      await db.collection('brands').deleteOne({ id: brandId });
+      return NextResponse.json({ message: 'Brand deleted successfully' });
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
