@@ -391,10 +391,10 @@ const ProductManagement = () => {
                       <span className="text-muted-foreground">Harga Grosir:</span>
                       <span>Rp {product.price_levels?.wholesale?.toLocaleString('id-ID') || '0'}</span>
                     </div>
-                    {product.promotional_pricing && product.promotional_pricing.length > 0 && (
+                    {product.promo && product.promo.is_active && product.promo.discount_percentage > 0 && (
                       <div className="flex justify-between text-xs">
-                        <span className="text-orange-500 font-medium">🎉 Ada Promo!</span>
-                        <span className="text-orange-600 font-medium">{product.promotional_pricing.length} promo aktif</span>
+                        <span className="text-orange-500 font-medium">🎉 Promo Diskon!</span>
+                        <span className="text-orange-600 font-bold">{product.promo.discount_percentage}% OFF</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs pt-2 border-t">
