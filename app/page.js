@@ -432,6 +432,7 @@ const App = () => {
             {activeMenu === 'reporting-analytics' && <ReportingAnalytics />}
             {activeMenu === 'activity-logs' && <ActivityLogs />}
             {activeMenu === 'roles' && <RoleManagement />}
+            {activeMenu === 'branch-profile' && <BranchManagement currentUser={currentUser} viewMode="profile" />}
           </div>
         </main>
       </div>
