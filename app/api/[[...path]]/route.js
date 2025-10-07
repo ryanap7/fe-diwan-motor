@@ -1868,6 +1868,105 @@ export async function GET(request) {
       return NextResponse.json(suppliers);
     }
 
+    // Suppliers - Performance Report (FR-SUP-002)
+    if (path === 'suppliers/performance') {
+      const suppliers = await db.collection('suppliers').find({}).toArray();
+      const performanceData = [];
+
+      for (const supplier of suppliers) {
+        // Get all purchase orders for this supplier
+        const purchaseOrders = await db.collection('purchase_orders')
+          .find({ supplier_id: supplier.id, status: { $in: ['completed', 'partial'] } })
+          .toArray();
+
+        if (purchaseOrders.length > 0) {
+          let totalDeliveryTime = 0;
+          let onTimeDeliveries = 0;
+          let qualitySum = 0;
+          let deliveryCount = 0;
+
+          for (const po of purchaseOrders) {
+            if (po.expected_date && po.completed_date) {
+              const expectedDate = new Date(po.expected_date);
+              const completedDate = new Date(po.completed_date);
+              const deliveryTime = Math.ceil((completedDate - expectedDate) / (1000 * 60 * 60 * 24));
+              
+              totalDeliveryTime += Math.abs(deliveryTime);
+              deliveryCount++;
+              
+              // On-time if delivered within 2 days of expected date
+              if (deliveryTime <= 2) {
+                onTimeDeliveries++;
+              }
+            }
+
+            // Quality score (default 85% if not specified)
+            qualitySum += po.quality_score || 85;
+          }
+
+          const avgDeliveryTime = deliveryCount > 0 ? Math.round(totalDeliveryTime / deliveryCount) : 0;
+          const onTimeDeliveryRate = deliveryCount > 0 ? Math.round((onTimeDeliveries / deliveryCount) * 100) : 0;
+          const avgQualityScore = Math.round(qualitySum / purchaseOrders.length);
+
+          performanceData.push({
+            supplier_id: supplier.id,
+            supplier_name: supplier.name,
+            total_orders: purchaseOrders.length,
+            avg_delivery_time: avgDeliveryTime,
+            on_time_delivery_rate: onTimeDeliveryRate,
+            quality_score: avgQualityScore,
+            last_updated: new Date().toISOString()
+          });
+        } else {
+          // Supplier with no completed orders
+          performanceData.push({
+            supplier_id: supplier.id,
+            supplier_name: supplier.name,
+            total_orders: 0,
+            avg_delivery_time: 0,
+            on_time_delivery_rate: 0,
+            quality_score: 0,
+            last_updated: new Date().toISOString()
+          });
+        }
+      }
+
+      return NextResponse.json(performanceData);
+    }
+
+    // Suppliers - Product Mappings (FR-SUP-003)
+    if (path === 'suppliers/mappings') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      const supplierId = searchParams.get('supplier_id');
+      
+      let query = {};
+      if (supplierId) {
+        query.supplier_id = supplierId;
+      }
+      
+      const mappings = await db.collection('supplier_products')
+        .find(query)
+        .sort({ created_at: -1 })
+        .toArray();
+      
+      // Enhance with supplier and product details
+      const enhancedMappings = [];
+      for (const mapping of mappings) {
+        const supplier = await db.collection('suppliers').findOne({ id: mapping.supplier_id });
+        const product = await db.collection('products').findOne({ id: mapping.product_id });
+        
+        enhancedMappings.push({
+          ...mapping,
+          supplier_name: supplier?.name || 'Unknown',
+          product_name: product?.name || 'Unknown',
+          product_sku: product?.sku || 'Unknown'
+        });
+      }
+      
+      return NextResponse.json(enhancedMappings);
+    }
+
     // Purchase Orders - List all (FR-INV-012)
     if (path === 'purchase-orders') {
       const url = new URL(request.url);
