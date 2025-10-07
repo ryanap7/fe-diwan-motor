@@ -362,7 +362,19 @@ const InventoryManagement = () => {
                             Sisa: {getTotalStock(product)} unit
                           </p>
                         </div>
-                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
+                        <Button 
+                          size="sm" 
+                          className="bg-orange-500 hover:bg-orange-600"
+                          onClick={() => {
+                            // Redirect to Purchase Orders with pre-selected product
+                            window.dispatchEvent(new CustomEvent('navigateToMenu', { 
+                              detail: { 
+                                menuId: 'purchase-orders',
+                                productId: product.id 
+                              } 
+                            }));
+                          }}
+                        >
                           Buat Purchase Order
                         </Button>
                       </div>
