@@ -179,13 +179,7 @@ const POSTransactions = () => {
   };
 
   // Calculate summary statistics
-  const totalRevenue = filteredTransactions
-    .filter(t => t.status === 'completed')
-    .reduce((sum, t) => sum + t.total, 0);
-  
-  const totalRefunded = filteredTransactions
-    .filter(t => t.status === 'refunded')
-    .reduce((sum, t) => sum + t.total, 0);
+  const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
 
   if (loading) {
     return (
