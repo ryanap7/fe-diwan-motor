@@ -183,34 +183,86 @@ const Dashboard = () => {
     }
   };
 
-  const statCards = [
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Main stat cards
+  const mainStatCards = [
     {
-      title: 'Total Cabang',
-      value: stats.totalBranches,
-      description: `${stats.activeBranches} aktif`,
-      icon: Store,
-      gradient: 'from-blue-500 to-cyan-500'
-    },
-    {
-      title: 'Cabang Aktif',
-      value: stats.activeBranches,
-      description: 'Saat ini beroperasi',
-      icon: TrendingUp,
+      title: 'Pendapatan Hari Ini',
+      value: formatCurrency(stats.todayRevenue),
+      description: `${stats.todayTransactions} transaksi`,
+      icon: DollarSign,
       gradient: 'from-green-500 to-emerald-500'
     },
     {
-      title: 'Peran Pengguna',
-      value: stats.totalRoles,
-      description: 'Peran terdefinisi',
-      icon: Users,
+      title: 'Pendapatan Minggu Ini',
+      value: formatCurrency(stats.weekRevenue),
+      description: '7 hari terakhir',
+      icon: TrendingUp,
+      gradient: 'from-blue-500 to-cyan-500'
+    },
+    {
+      title: 'Pendapatan Bulan Ini',
+      value: formatCurrency(stats.monthRevenue),
+      description: 'Bulan berjalan',
+      icon: Calendar,
       gradient: 'from-purple-500 to-pink-500'
     },
     {
-      title: 'Perusahaan',
-      value: stats.companyName.length > 15 ? stats.companyName.substring(0, 15) + '...' : stats.companyName,
-      description: 'Profil bisnis',
-      icon: Building2,
+      title: 'Total Transaksi',
+      value: stats.totalTransactions,
+      description: 'Semua transaksi',
+      icon: ShoppingCart,
       gradient: 'from-orange-500 to-red-500'
+    }
+  ];
+
+  // Secondary stat cards
+  const secondaryStatCards = [
+    {
+      title: 'Total Produk',
+      value: stats.totalProducts,
+      description: `${stats.activeProducts} aktif`,
+      icon: Package,
+      gradient: 'from-indigo-500 to-purple-500'
+    },
+    {
+      title: 'Stok Menipis',
+      value: stats.lowStockProducts,
+      description: 'Perlu restock',
+      icon: AlertTriangle,
+      gradient: 'from-yellow-500 to-orange-500',
+      alert: stats.lowStockProducts > 0
+    },
+    {
+      title: 'Nilai Total Stok',
+      value: formatCurrency(stats.totalStockValue),
+      description: 'Asset inventory',
+      icon: Boxes,
+      gradient: 'from-teal-500 to-green-500'
+    },
+    {
+      title: 'Total Customer',
+      value: stats.totalCustomers,
+      description: `+${stats.newCustomersThisMonth} bulan ini`,
+      icon: UserCheck,
+      gradient: 'from-pink-500 to-rose-500'
     }
   ];
 
