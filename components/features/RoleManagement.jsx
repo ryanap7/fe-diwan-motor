@@ -2,43 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Users, Plus, Edit, Trash2, Shield, Loader2 } from 'lucide-react';
+import { Users, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const AVAILABLE_PERMISSIONS = [
-  { id: 'all', label: 'All Permissions', description: 'Full system access' },
-  { id: 'manage_branch', label: 'Manage Branch', description: 'Manage branch operations' },
-  { id: 'manage_inventory', label: 'Manage Inventory', description: 'Add, edit, delete inventory' },
-  { id: 'manage_products', label: 'Manage Products', description: 'Add, edit, delete products' },
-  { id: 'manage_suppliers', label: 'Manage Suppliers', description: 'Add, edit, delete suppliers' },
-  { id: 'manage_customers', label: 'Manage Customers', description: 'Add, edit, delete customers' },
-  { id: 'process_sales', label: 'Process Sales', description: 'Create sales transactions' },
-  { id: 'view_reports', label: 'View Reports', description: 'Access reports and analytics' },
-  { id: 'view_products', label: 'View Products', description: 'View product catalog' },
+  { id: 'all', label: 'Semua Izin', description: 'Akses penuh sistem' },
+  { id: 'manage_branch', label: 'Kelola Cabang', description: 'Mengelola operasi cabang' },
+  { id: 'manage_inventory', label: 'Kelola Inventori', description: 'Menambah, mengedit, menghapus inventori' },
+  { id: 'manage_products', label: 'Kelola Produk', description: 'Menambah, mengedit, menghapus produk' },
+  { id: 'manage_suppliers', label: 'Kelola Supplier', description: 'Menambah, mengedit, menghapus supplier' },
+  { id: 'manage_customers', label: 'Kelola Pelanggan', description: 'Menambah, mengedit, menghapus pelanggan' },
+  { id: 'process_sales', label: 'Proses Penjualan', description: 'Membuat transaksi penjualan' },
+  { id: 'view_reports', label: 'Lihat Laporan', description: 'Akses laporan dan analitik' },
+  { id: 'view_products', label: 'Lihat Produk', description: 'Melihat katalog produk' },
 ];
 
 const RoleManagement = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState(null);
-  const [roleToDelete, setRoleToDelete] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    permissions: []
-  });
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchRoles();
@@ -52,96 +35,10 @@ const RoleManagement = () => {
       });
       setRoles(response.data || []);
     } catch (error) {
-      toast.error('Failed to load roles');
+      toast.error('Gagal memuat peran');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOpenDialog = (role = null) => {
-    if (role) {
-      setEditingRole(role);
-      setFormData({
-        name: role.name,
-        description: role.description || '',
-        permissions: role.permissions || []
-      });
-    } else {
-      setEditingRole(null);
-      setFormData({
-        name: '',
-        description: '',
-        permissions: []
-      });
-    }
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setEditingRole(null);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      if (editingRole) {
-        await axios.post(`/api/roles/${editingRole.id}/update`, formData, { headers });
-        toast.success('Role updated successfully!');
-      } else {
-        await axios.post('/api/roles/create', formData, { headers });
-        toast.success('Role created successfully!');
-      }
-
-      fetchRoles();
-      handleCloseDialog();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to save role');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!roleToDelete) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/roles/${roleToDelete.id}/delete`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Role deleted successfully!');
-      fetchRoles();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to delete role');
-    } finally {
-      setDeleteDialogOpen(false);
-      setRoleToDelete(null);
-    }
-  };
-
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handlePermissionToggle = (permissionId) => {
-    setFormData(prev => {
-      const permissions = [...prev.permissions];
-      const index = permissions.indexOf(permissionId);
-      
-      if (index > -1) {
-        permissions.splice(index, 1);
-      } else {
-        permissions.push(permissionId);
-      }
-      
-      return { ...prev, permissions };
-    });
   };
 
   if (loading) {
@@ -170,12 +67,12 @@ const RoleManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">System User Roles</h3>
-          <p className="text-sm text-muted-foreground">Total: {roles.length} predefined roles</p>
+          <h3 className="text-lg font-semibold text-gray-900">Peran Pengguna Sistem</h3>
+          <p className="text-sm text-muted-foreground">Total: {roles.length} peran yang telah ditentukan</p>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
           <p className="text-sm text-blue-900">
-            <strong>ℹ️ Info:</strong> System roles are predefined and cannot be modified
+            <strong>ℹ️ Info:</strong> Peran sistem telah ditentukan dan tidak dapat diubah
           </p>
         </div>
       </div>
@@ -195,18 +92,18 @@ const RoleManagement = () => {
                 </div>
                 {role.is_system && (
                   <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                    System
+                    Sistem
                   </Badge>
                 )}
               </div>
               <CardTitle className="text-xl">{role.name}</CardTitle>
               <CardDescription className="line-clamp-2">
-                {role.description || 'No description'}
+                {role.description || 'Tidak ada deskripsi'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 relative">
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Permissions:</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Izin:</p>
                 <div className="flex flex-wrap gap-1">
                   {role.permissions?.length > 0 ? (
                     role.permissions.slice(0, 3).map((perm) => (
@@ -215,11 +112,11 @@ const RoleManagement = () => {
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-xs text-muted-foreground">No permissions</span>
+                    <span className="text-xs text-muted-foreground">Tidak ada izin</span>
                   )}
                   {role.permissions?.length > 3 && (
                     <Badge variant="outline" className="text-xs bg-gray-50">
-                      +{role.permissions.length - 3} more
+                      +{role.permissions.length - 3} lagi
                     </Badge>
                   )}
                 </div>
@@ -230,7 +127,7 @@ const RoleManagement = () => {
                   <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-center">
                     <p className="text-xs text-gray-600">
                       <Shield className="w-3 h-3 inline mr-1" />
-                      System Role - Read Only
+                      Peran Sistem - Hanya Baca
                     </p>
                   </div>
                 ) : (
@@ -238,19 +135,14 @@ const RoleManagement = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleOpenDialog(role)}
                       className="flex-1 hover:bg-purple-50 hover:border-purple-300 transition-colors duration-200"
                     >
                       <Edit className="w-3 h-3 mr-1" />
-                      Edit
+                      Ubah
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setRoleToDelete(role);
-                        setDeleteDialogOpen(true);
-                      }}
                       className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
                     >
                       <Trash2 className="w-3 h-3" />
