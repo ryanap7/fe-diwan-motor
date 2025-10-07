@@ -536,6 +536,108 @@ const BranchManagement = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Staff Assignment Dialog */}
+      <Dialog open={staffDialogOpen} onOpenChange={setStaffDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Assign Staff to Branch</DialogTitle>
+            <DialogDescription>
+              Assign Branch Manager and Cashier to <strong>{branchForStaffAssignment?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleStaffAssignmentSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="manager">Branch Manager</Label>
+              <Select
+                value={staffAssignment.manager_id || 'none'}
+                onValueChange={(value) => setStaffAssignment(prev => ({ ...prev, manager_id: value === 'none' ? '' : value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select branch manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Manager</SelectItem>
+                  {getAvailableManagers().map((user) => {
+                    const isAssigned = users.find(u => u.id === user.id && u.branch_id && u.branch_id !== branchForStaffAssignment?.id);
+                    return (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{user.username}</span>
+                          {isAssigned && <span className="text-xs text-orange-600">(Assigned to other branch)</span>}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Only users with "Branch Manager" role are shown
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cashier">Cashier</Label>
+              <Select
+                value={staffAssignment.cashier_id || 'none'}
+                onValueChange={(value) => setStaffAssignment(prev => ({ ...prev, cashier_id: value === 'none' ? '' : value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select cashier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Cashier</SelectItem>
+                  {getAvailableCashiers().map((user) => {
+                    const isAssigned = users.find(u => u.id === user.id && u.branch_id && u.branch_id !== branchForStaffAssignment?.id);
+                    return (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{user.username}</span>
+                          {isAssigned && <span className="text-xs text-orange-600">(Assigned to other branch)</span>}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Only users with "Cashier" role are shown
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-900">
+                <strong>💡 Info:</strong> Assigning a user who is already assigned to another branch will automatically unassign them from the previous branch.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseStaffDialog}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Assign Staff'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
