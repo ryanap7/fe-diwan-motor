@@ -1857,6 +1857,128 @@ export async function GET(request) {
         await db.collection('customers').insertMany(defaultCustomers);
       }
 
+      // Initialize more dummy products if needed
+      const productCount = await db.collection('products').countDocuments();
+      if (productCount < 20) {
+        const categories = await db.collection('categories').find({}).toArray();
+        const brands = await db.collection('brands').find({}).toArray();
+        
+        const moreProducts = [
+          { name: 'Oli Mesin Motul 10W-40', sku: 'OLI-MOTUL-001', purchase_price: 65000, normal_price: 85000, wholesale_price: 75000, category: 'Oli & Pelumas' },
+          { name: 'Kampas Rem Depan', sku: 'REM-DEP-001', purchase_price: 45000, normal_price: 65000, wholesale_price: 55000, category: 'Rem' },
+          { name: 'Kampas Rem Belakang', sku: 'REM-BLK-001', purchase_price: 40000, normal_price: 55000, wholesale_price: 48000, category: 'Rem' },
+          { name: 'Aki Motor 12V 5Ah', sku: 'AKI-001', purchase_price: 180000, normal_price: 250000, wholesale_price: 220000, category: 'Kelistrikan' },
+          { name: 'Busi NGK Iridium', sku: 'BUSI-NGK-001', purchase_price: 25000, normal_price: 35000, wholesale_price: 30000, category: 'Kelistrikan' },
+          { name: 'Filter Udara Racing', sku: 'FILTER-001', purchase_price: 75000, normal_price: 110000, wholesale_price: 95000, category: 'Filter' },
+          { name: 'Rantai Motor 428H', sku: 'RANTAI-001', purchase_price: 85000, normal_price: 125000, wholesale_price: 105000, category: 'Transmisi' },
+          { name: 'Gear Set Depan Belakang', sku: 'GEAR-001', purchase_price: 120000, normal_price: 175000, wholesale_price: 150000, category: 'Transmisi' },
+          { name: 'Spion Kiri Kanan Set', sku: 'SPION-001', purchase_price: 55000, normal_price: 80000, wholesale_price: 70000, category: 'Body' },
+          { name: 'Lampu Depan LED', sku: 'LAMPU-DEP-001', purchase_price: 150000, normal_price: 220000, wholesale_price: 190000, category: 'Kelistrikan' },
+          { name: 'Lampu Belakang LED', sku: 'LAMPU-BLK-001', purchase_price: 85000, normal_price: 125000, wholesale_price: 105000, category: 'Kelistrikan' },
+          { name: 'Kabel Gas Racing', sku: 'KABEL-001', purchase_price: 35000, normal_price: 50000, wholesale_price: 42000, category: 'Kontrol' },
+          { name: 'Handle Rem Racing', sku: 'HANDLE-001', purchase_price: 95000, normal_price: 135000, wholesale_price: 115000, category: 'Kontrol' },
+          { name: 'Knalpot Racing Titanium', sku: 'KNALPOT-001', purchase_price: 450000, normal_price: 650000, wholesale_price: 550000, category: 'Exhaust' },
+          { name: 'CDI Racing Unlimited', sku: 'CDI-001', purchase_price: 280000, normal_price: 400000, wholesale_price: 340000, category: 'Kelistrikan' },
+          { name: 'Kopling Manual Set', sku: 'KOPLING-001', purchase_price: 165000, normal_price: 240000, wholesale_price: 200000, category: 'Transmisi' },
+          { name: 'Shock Breaker Depan', sku: 'SHOCK-DEP-001', purchase_price: 320000, normal_price: 450000, wholesale_price: 385000, category: 'Suspensi' },
+          { name: 'Shock Breaker Belakang', sku: 'SHOCK-BLK-001', purchase_price: 380000, normal_price: 550000, wholesale_price: 465000, category: 'Suspensi' },
+          { name: 'Velg Racing Aluminium', sku: 'VELG-001', purchase_price: 550000, normal_price: 800000, wholesale_price: 675000, category: 'Roda' },
+          { name: 'Jok Racing Sporty', sku: 'JOK-001', purchase_price: 285000, normal_price: 410000, wholesale_price: 350000, category: 'Body' }
+        ];
+
+        for (const prod of moreProducts) {
+          const category = categories.find(c => c.name === prod.category);
+          const brand = brands[Math.floor(Math.random() * brands.length)];
+          
+          await db.collection('products').insertOne({
+            id: uuidv4(),
+            sku: prod.sku,
+            name: prod.name,
+            category_id: category?.id || categories[0]?.id,
+            brand_id: brand?.id,
+            compatible_models: 'All Models',
+            uom: 'Pcs',
+            purchase_price: prod.purchase_price,
+            price_levels: {
+              normal: prod.normal_price,
+              wholesale: prod.wholesale_price
+            },
+            barcode: `BAR${Date.now()}${Math.random().toString(36).substring(7)}`,
+            images: [],
+            specifications: `Produk berkualitas untuk ${prod.name}`,
+            storage_location: `Rak-${Math.floor(Math.random() * 10) + 1}`,
+            is_active: true,
+            promotion: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // Initialize inventory for all products and branches
+      const inventoryCount = await db.collection('inventory').countDocuments();
+      if (inventoryCount === 0) {
+        const products = await db.collection('products').find({}).toArray();
+        const branches = await db.collection('branches').find({}).toArray();
+        
+        const inventoryData = [];
+        for (const product of products) {
+          for (const branch of branches) {
+            const quantity = Math.floor(Math.random() * 50) + 5; // 5-55 units
+            inventoryData.push({
+              id: uuidv4(),
+              product_id: product.id,
+              product_name: product.name,
+              branch_id: branch.id,
+              branch_name: branch.name,
+              quantity: quantity,
+              min_stock: 10,
+              max_stock: 100,
+              last_updated: new Date().toISOString(),
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+        
+        await db.collection('inventory').insertMany(inventoryData);
+      }
+
+      // Initialize more customers
+      const currentCustomerCount = await db.collection('customers').countDocuments();
+      if (currentCustomerCount < 20) {
+        const moreCustomers = [
+          { name: 'Agus Wijaya', phone: '081234567801', email: 'agus@email.com', address: 'Jl. Gatot Subroto No. 45, Jakarta' },
+          { name: 'Dewi Lestari', phone: '081234567802', email: 'dewi@email.com', address: 'Jl. Ahmad Yani No. 67, Bandung' },
+          { name: 'Eko Prasetyo', phone: '081234567803', email: 'eko@email.com', address: 'Jl. Diponegoro No. 89, Surabaya' },
+          { name: 'Fitri Handayani', phone: '081234567804', email: 'fitri@email.com', address: 'Jl. Sudirman No. 12, Medan' },
+          { name: 'Gunawan Santoso', phone: '081234567805', email: 'gunawan@email.com', address: 'Jl. Thamrin No. 34, Semarang' },
+          { name: 'Hendra Kusuma', phone: '081234567806', email: 'hendra@email.com', address: 'Jl. Pahlawan No. 56, Malang' },
+          { name: 'Indah Permata', phone: '081234567807', email: 'indah@email.com', address: 'Jl. Merdeka No. 78, Yogyakarta' },
+          { name: 'Joko Susilo', phone: '081234567808', email: 'joko@email.com', address: 'Jl. Veteran No. 90, Solo' },
+          { name: 'Kartika Sari', phone: '081234567809', email: 'kartika@email.com', address: 'Jl. Raya No. 23, Palembang' },
+          { name: 'Lukman Hakim', phone: '081234567810', email: 'lukman@email.com', address: 'Jl. Kemerdekaan No. 45, Makassar' },
+          { name: 'Maya Anggraini', phone: '081234567811', email: 'maya@email.com', address: 'Jl. Pemuda No. 67, Denpasar' },
+          { name: 'Nugroho Adi', phone: '081234567812', email: 'nugroho@email.com', address: 'Jl. Gajah Mada No. 89, Pontianak' },
+          { name: 'Olivia Tan', phone: '081234567813', email: 'olivia@email.com', address: 'Jl. Hayam Wuruk No. 12, Batam' }
+        ];
+
+        for (const cust of moreCustomers) {
+          await db.collection('customers').insertOne({
+            id: uuidv4(),
+            name: cust.name,
+            phone: cust.phone,
+            email: cust.email,
+            address: cust.address,
+            notes: '',
+            is_active: true,
+            total_purchases: Math.floor(Math.random() * 10),
+            total_spent: Math.floor(Math.random() * 2000000),
+            last_purchase: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString()
+          });
+        }
+      }
+
       // Initialize default transactions if none exist
       const transactionCount = await db.collection('transactions').countDocuments();
       if (transactionCount === 0) {
@@ -1867,8 +1989,8 @@ export async function GET(request) {
         
         const defaultTransactions = [];
         
-        // Generate 20 sample transactions
-        for (let i = 0; i < 20; i++) {
+        // Generate 50 sample transactions
+        for (let i = 0; i < 50; i++) {
           const randomBranch = branches[Math.floor(Math.random() * branches.length)];
           const randomCashier = users[Math.floor(Math.random() * users.length)];
           const randomCustomer = i % 3 === 0 ? customers[Math.floor(Math.random() * customers.length)] : null;
