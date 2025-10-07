@@ -1901,10 +1901,10 @@ export async function GET(request) {
           const tax = 0; // No tax for now
           const total = subtotal - discount + tax;
           
-          const paymentMethods = ['cash', 'debit_card', 'credit_card', 'transfer', 'ewallet'];
-          const statuses = ['completed', 'completed', 'completed', 'completed', 'refunded'];
-          
           const transactionDate = new Date(Date.now() - (i * 3 * 60 * 60 * 1000)); // Every 3 hours back
+          
+          // Random change amount for cash payments
+          const extraChange = i % 3 === 0 ? Math.floor(Math.random() * 50000) : 0;
           
           defaultTransactions.push({
             id: uuidv4(),
@@ -1922,10 +1922,10 @@ export async function GET(request) {
             discount: discount,
             tax: tax,
             total: total,
-            payment_method: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-            payment_amount: total + (i % 3 === 0 ? Math.floor(Math.random() * 50000) : 0), // Some with change
-            change_amount: i % 3 === 0 ? Math.floor(Math.random() * 50000) : 0,
-            status: statuses[Math.floor(Math.random() * statuses.length)],
+            payment_method: 'cash', // Only cash payment
+            payment_amount: total + extraChange, // Cash amount paid
+            change_amount: extraChange, // Change returned
+            status: 'completed', // Only completed status
             notes: i % 7 === 0 ? 'Transaksi dengan diskon spesial' : '',
             created_at: transactionDate.toISOString(),
             updated_at: transactionDate.toISOString()
