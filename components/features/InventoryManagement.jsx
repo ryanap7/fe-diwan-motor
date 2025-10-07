@@ -181,7 +181,6 @@ const InventoryManagement = () => {
         <TabsList>
           <TabsTrigger value="overview">Overview Stok</TabsTrigger>
           <TabsTrigger value="lowstock">Stok Menipis</TabsTrigger>
-          <TabsTrigger value="tracking">Tracking & Batch</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
