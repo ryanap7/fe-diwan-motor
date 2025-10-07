@@ -1557,8 +1557,9 @@ export async function POST(request) {
       return NextResponse.json(newCustomer);
     }
 
-    // Customers - Update (FR-CUS-001)
+    // Customers - Update (FR-CUS-001) (Admin only)
     if (path.startsWith('customers/') && path.includes('/update')) {
+      requireAdmin();
       const customerId = path.split('/')[1];
       const updates = {
         name: body.name,
