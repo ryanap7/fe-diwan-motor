@@ -1134,10 +1134,131 @@ export async function GET(request) {
       return NextResponse.json(brands);
     }
 
-    // Products - List all
+    // Products - List all with enhanced data
     if (path === 'products') {
-      const products = await db.collection('products').find({}).sort({ created_at: -1 }).toArray();
-      return NextResponse.json(products);
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      // Build query filters
+      const query = {};
+      
+      // Filter by category
+      if (searchParams.get('category_id')) {
+        query.category_id = searchParams.get('category_id');
+      }
+      
+      // Filter by brand
+      if (searchParams.get('brand_id')) {
+        query.brand_id = searchParams.get('brand_id');
+      }
+      
+      // Filter by active status
+      if (searchParams.get('is_active') !== null) {
+        query.is_active = searchParams.get('is_active') === 'true';
+      }
+      
+      // Filter by tags
+      if (searchParams.get('tags')) {
+        const tags = searchParams.get('tags').split(',');
+        query.tags = { $in: tags };
+      }
+      
+      // Search by name or SKU
+      if (searchParams.get('search')) {
+        const searchTerm = searchParams.get('search');
+        query.$or = [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { sku: { $regex: searchTerm, $options: 'i' } }
+        ];
+      }
+      
+      const products = await db.collection('products').find(query).sort({ created_at: -1 }).toArray();
+      
+      // Enhance products with margin analysis and current pricing
+      const enhancedProducts = products.map(product => ({
+        ...product,
+        current_pricing: getCurrentPricing(product),
+        margin_analysis: calculateMargin(product),
+        total_stock: Object.values(product.stock_per_branch || {}).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0)
+      }));
+      
+      return NextResponse.json(enhancedProducts);
+    }
+
+    // Products - Get single product with full details
+    if (path.startsWith('products/') && path.split('/').length === 2 && !path.includes('/')) {
+      const productId = path.split('/')[1];
+      const product = await db.collection('products').findOne({ id: productId });
+      
+      if (!product) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+      
+      // Get category and brand details
+      const category = product.category_id 
+        ? await db.collection('categories').findOne({ id: product.category_id })
+        : null;
+      const brand = product.brand_id 
+        ? await db.collection('brands').findOne({ id: product.brand_id })
+        : null;
+      
+      const enhancedProduct = {
+        ...product,
+        category: category,
+        brand: brand,
+        current_pricing: getCurrentPricing(product),
+        margin_analysis: calculateMargin(product),
+        total_stock: Object.values(product.stock_per_branch || {}).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0)
+      };
+      
+      return NextResponse.json(enhancedProduct);
+    }
+
+    // Products - Margin Analysis Report (FR-PRD-011)
+    if (path === 'products/margin-report') {
+      const products = await db.collection('products').find({ is_active: true }).toArray();
+      
+      const marginReport = products.map(product => {
+        const margins = calculateMargin(product);
+        const totalStock = Object.values(product.stock_per_branch || {}).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0);
+        
+        return {
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+          purchase_price: product.purchase_price,
+          margins: margins,
+          total_stock: totalStock,
+          stock_value: (product.purchase_price || 0) * totalStock
+        };
+      });
+      
+      // Calculate summary statistics
+      const totalProducts = marginReport.length;
+      const totalStockValue = marginReport.reduce((sum, item) => sum + item.stock_value, 0);
+      const averageMargins = {};
+      
+      ['retail', 'wholesale', 'member'].forEach(level => {
+        const marginsForLevel = marginReport
+          .map(item => item.margins[level]?.margin_percentage)
+          .filter(margin => margin !== undefined);
+        
+        if (marginsForLevel.length > 0) {
+          averageMargins[level] = marginsForLevel.reduce((sum, margin) => sum + margin, 0) / marginsForLevel.length;
+        }
+      });
+      
+      return NextResponse.json({
+        products: marginReport,
+        summary: {
+          total_products: totalProducts,
+          total_stock_value: totalStockValue,
+          average_margins: averageMargins
+        }
+      });
     }
 
     return NextResponse.json(
