@@ -927,6 +927,217 @@ export async function POST(request) {
 
       return NextResponse.json(updatedProduct);
     }
+    // Inventory Management - Stock Transfer (FR-INV-003)
+    if (path === 'inventory/transfer') {
+      const { product_id, from_branch_id, to_branch_id, quantity, notes } = body;
+      
+      // Get current product to check stock levels
+      const product = await db.collection('products').findOne({ id: product_id });
+      if (!product) {
+        return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      }
+
+      const currentFromStock = parseInt(product.stock_per_branch?.[from_branch_id]) || 0;
+      const transferQty = parseInt(quantity);
+
+      if (currentFromStock < transferQty) {
+        return NextResponse.json({ error: 'Insufficient stock in source branch' }, { status: 400 });
+      }
+
+      // Update stock levels
+      const updatedStockPerBranch = { ...product.stock_per_branch };
+      updatedStockPerBranch[from_branch_id] = currentFromStock - transferQty;
+      updatedStockPerBranch[to_branch_id] = (parseInt(updatedStockPerBranch[to_branch_id]) || 0) + transferQty;
+
+      await db.collection('products').updateOne(
+        { id: product_id },
+        { $set: { stock_per_branch: updatedStockPerBranch, updated_at: new Date().toISOString() } }
+      );
+
+      // Log stock movement
+      const transferLog = {
+        id: uuidv4(),
+        type: 'TRANSFER',
+        product_id: product_id,
+        from_branch_id: from_branch_id,
+        to_branch_id: to_branch_id,
+        quantity: transferQty,
+        notes: notes || '',
+        user_id: currentUser.id,
+        username: currentUser.username,
+        timestamp: new Date().toISOString()
+      };
+      
+      await db.collection('stock_movements').insertOne(transferLog);
+
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'STOCK_TRANSFER',
+        entity_type: 'INVENTORY',
+        entity_id: product_id,
+        entity_name: product.name,
+        details: `Transferred ${transferQty} units from branch ${from_branch_id} to ${to_branch_id}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Stock transfer completed successfully' });
+    }
+
+    // Inventory Management - Stock Adjustment (FR-INV-004)
+    if (path === 'inventory/adjustment') {
+      const { product_id, branch_id, adjustment_type, quantity, reason, notes } = body;
+      
+      const product = await db.collection('products').findOne({ id: product_id });
+      if (!product) {
+        return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      }
+
+      const currentStock = parseInt(product.stock_per_branch?.[branch_id]) || 0;
+      const adjustmentQty = parseInt(quantity);
+      let newStock;
+
+      switch (adjustment_type) {
+        case 'add':
+          newStock = currentStock + adjustmentQty;
+          break;
+        case 'subtract':
+          newStock = Math.max(0, currentStock - adjustmentQty);
+          break;
+        case 'set':
+          newStock = adjustmentQty;
+          break;
+        default:
+          return NextResponse.json({ error: 'Invalid adjustment type' }, { status: 400 });
+      }
+
+      // Update stock
+      const updatedStockPerBranch = { ...product.stock_per_branch };
+      updatedStockPerBranch[branch_id] = newStock;
+
+      await db.collection('products').updateOne(
+        { id: product_id },
+        { $set: { stock_per_branch: updatedStockPerBranch, updated_at: new Date().toISOString() } }
+      );
+
+      // Log stock movement
+      const adjustmentLog = {
+        id: uuidv4(),
+        type: 'ADJUSTMENT',
+        product_id: product_id,
+        branch_id: branch_id,
+        adjustment_type: adjustment_type,
+        previous_stock: currentStock,
+        new_stock: newStock,
+        quantity: adjustmentQty,
+        reason: reason || '',
+        notes: notes || '',
+        user_id: currentUser.id,
+        username: currentUser.username,
+        timestamp: new Date().toISOString()
+      };
+      
+      await db.collection('stock_movements').insertOne(adjustmentLog);
+
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'STOCK_ADJUSTMENT',
+        entity_type: 'INVENTORY',
+        entity_id: product_id,
+        entity_name: product.name,
+        details: `Stock ${adjustment_type}: ${currentStock} → ${newStock} (${reason})`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Stock adjustment completed successfully' });
+    }
+
+    // Inventory Management - Stock Opname/Physical Count (FR-INV-005)
+    if (path === 'inventory/opname') {
+      const { branch_id, counts, notes } = body; // counts: [{ product_id, physical_count }]
+      
+      const opnameId = uuidv4();
+      const opnameRecord = {
+        id: opnameId,
+        branch_id: branch_id,
+        status: 'completed',
+        notes: notes || '',
+        user_id: currentUser.id,
+        username: currentUser.username,
+        timestamp: new Date().toISOString(),
+        items: []
+      };
+
+      // Process each count
+      for (const count of counts) {
+        const product = await db.collection('products').findOne({ id: count.product_id });
+        if (product) {
+          const currentStock = parseInt(product.stock_per_branch?.[branch_id]) || 0;
+          const physicalCount = parseInt(count.physical_count);
+          const difference = physicalCount - currentStock;
+
+          // Update stock if there's a difference
+          if (difference !== 0) {
+            const updatedStockPerBranch = { ...product.stock_per_branch };
+            updatedStockPerBranch[branch_id] = physicalCount;
+
+            await db.collection('products').updateOne(
+              { id: count.product_id },
+              { $set: { stock_per_branch: updatedStockPerBranch, updated_at: new Date().toISOString() } }
+            );
+
+            // Log stock movement
+            const opnameLog = {
+              id: uuidv4(),
+              type: 'OPNAME',
+              product_id: count.product_id,
+              branch_id: branch_id,
+              previous_stock: currentStock,
+              physical_count: physicalCount,
+              difference: difference,
+              opname_id: opnameId,
+              user_id: currentUser.id,
+              username: currentUser.username,
+              timestamp: new Date().toISOString()
+            };
+            
+            await db.collection('stock_movements').insertOne(opnameLog);
+          }
+
+          opnameRecord.items.push({
+            product_id: count.product_id,
+            product_name: product.name,
+            system_stock: currentStock,
+            physical_count: physicalCount,
+            difference: difference
+          });
+        }
+      }
+
+      // Save opname record
+      await db.collection('stock_opname').insertOne(opnameRecord);
+
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'STOCK_OPNAME',
+        entity_type: 'INVENTORY',
+        entity_id: opnameId,
+        entity_name: `Stock Opname Branch ${branch_id}`,
+        details: `Completed stock opname for ${counts.length} products`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ 
+        message: 'Stock opname completed successfully',
+        opname_id: opnameId,
+        items_processed: counts.length
+      });
+    }
 
     return NextResponse.json(
       { error: 'Endpoint not found' },
