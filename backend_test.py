@@ -18,49 +18,64 @@ AUTH_PASSWORD = "admin123"
 class ProductManagementTester:
     def __init__(self):
         self.base_url = BASE_URL
-        self.headers = HEADERS.copy()
-        self.auth_token = None
+        self.token = None
         self.test_results = []
+        self.created_products = []
+        self.created_categories = []
+        self.created_brands = []
+        self.created_branches = []
         
-    def log_test(self, test_name, success, message, response_data=None):
+    def log_result(self, test_name, success, message, details=None):
         """Log test results"""
         result = {
-            "test": test_name,
-            "success": success,
-            "message": message,
-            "timestamp": datetime.now().isoformat(),
-            "response_data": response_data
+            'test': test_name,
+            'success': success,
+            'message': message,
+            'details': details,
+            'timestamp': datetime.now().isoformat()
         }
         self.test_results.append(result)
         status = "✅ PASS" if success else "❌ FAIL"
         print(f"{status}: {test_name} - {message}")
-        if response_data and not success:
-            print(f"   Response: {response_data}")
+        if details:
+            print(f"   Details: {details}")
     
-    def make_request(self, method, endpoint, data=None, use_auth=False):
-        """Make HTTP request with error handling"""
-        url = f"{self.base_url}/{endpoint}"
-        headers = self.headers.copy()
-        
-        if use_auth and self.auth_token:
-            headers["Authorization"] = f"Bearer {self.auth_token}"
-        
+    def authenticate(self):
+        """Authenticate and get JWT token"""
         try:
-            if method.upper() == "GET":
-                response = requests.get(url, headers=headers, timeout=30)
-            elif method.upper() == "POST":
-                response = requests.post(url, headers=headers, json=data, timeout=30)
-            elif method.upper() == "PUT":
-                response = requests.put(url, headers=headers, json=data, timeout=30)
-            elif method.upper() == "DELETE":
-                response = requests.delete(url, headers=headers, timeout=30)
-            else:
-                raise ValueError(f"Unsupported method: {method}")
+            # First initialize the system
+            init_response = requests.get(f"{self.base_url}/init")
+            print(f"System initialization: {init_response.status_code}")
             
-            return response
-        except requests.exceptions.RequestException as e:
-            print(f"Request failed: {e}")
-            return None
+            # Login to get token
+            login_data = {
+                "username": AUTH_USERNAME,
+                "password": AUTH_PASSWORD
+            }
+            
+            response = requests.post(f"{self.base_url}/auth/login", json=login_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data.get('token')
+                self.log_result("Authentication", True, "Successfully authenticated", 
+                              f"Token received for user: {data.get('user', {}).get('username')}")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Login failed: {response.status_code}", 
+                              response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def get_headers(self):
+        """Get headers with authorization token"""
+        return {
+            'Authorization': f'Bearer {self.token}',
+            'Content-Type': 'application/json'
+        }
     
     def test_system_initialization(self):
         """Test GET /api/init - System initialization"""
