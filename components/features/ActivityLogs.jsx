@@ -298,6 +298,7 @@ const ActivityLogs = () => {
                 type="date"
                 value={filters.date_from}
                 onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                className="h-10"
               />
             </div>
 
@@ -307,6 +308,7 @@ const ActivityLogs = () => {
                 type="date"
                 value={filters.date_to}
                 onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                className="h-10"
               />
             </div>
           </div>
