@@ -1224,7 +1224,7 @@ export async function GET(request) {
       const totalStockValue = marginReport.reduce((sum, item) => sum + item.stock_value, 0);
       const averageMargins = {};
       
-      ['retail', 'wholesale', 'member'].forEach(level => {
+      ['normal', 'wholesale'].forEach(level => {
         const marginsForLevel = marginReport
           .map(item => item.margins[level]?.margin_percentage)
           .filter(margin => margin !== undefined);
