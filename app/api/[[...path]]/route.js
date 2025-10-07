@@ -98,24 +98,19 @@ function calculateMargin(product) {
 
 // Helper function to get current pricing including promotions (FR-PRD-009)
 function getCurrentPricing(product) {
-  const now = new Date();
-  let activePricing = product.price_levels;
+  let currentPricing = { ...product.price_levels };
   
-  // Check for active promotional pricing
-  if (product.promotional_pricing && product.promotional_pricing.length > 0) {
-    const activePromo = product.promotional_pricing.find(promo => {
-      if (!promo.is_active) return false;
-      const startDate = new Date(promo.start_date);
-      const endDate = new Date(promo.end_date);
-      return now >= startDate && now <= endDate;
-    });
+  // Apply percentage discount if promo is active
+  if (product.promo && product.promo.is_active && product.promo.discount_percentage > 0) {
+    const discountMultiplier = (100 - product.promo.discount_percentage) / 100;
     
-    if (activePromo) {
-      activePricing = activePromo.price_levels;
-    }
+    currentPricing = {
+      normal: Math.round(product.price_levels.normal * discountMultiplier),
+      wholesale: Math.round(product.price_levels.wholesale * discountMultiplier)
+    };
   }
   
-  return activePricing;
+  return currentPricing;
 }
 
 // Helper function to calculate volume discount (FR-PRD-010)
