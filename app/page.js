@@ -13,6 +13,7 @@ import BranchManagement from '@/components/features/BranchManagement';
 import RoleManagement from '@/components/features/RoleManagement';
 import Dashboard from '@/components/features/Dashboard';
 import UserManagement from '@/components/features/UserManagement';
+import ActivityLogs from '@/components/features/ActivityLogs';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
