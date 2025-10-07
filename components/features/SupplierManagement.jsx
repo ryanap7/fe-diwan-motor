@@ -215,8 +215,6 @@ const SupplierManagement = () => {
           {/* Supplier List */}
           <div className="grid grid-cols-1 gap-4">
             {filteredSuppliers.map((supplier) => {
-              const performance = getPerformanceRating(supplier.id);
-              
               return (
                 <Card key={supplier.id} className={`${!supplier.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
                   <CardContent className="pt-6">
