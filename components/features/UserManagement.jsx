@@ -368,37 +368,10 @@ const UserManagement = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="branch">Branch Assignment</Label>
-              <Select
-                value={formData.branch_id || 'none'}
-                onValueChange={(value) => handleChange('branch_id', value === 'none' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select branch (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    <div className="flex items-center gap-2">
-                      <span>No Branch Assignment</span>
-                    </div>
-                  </SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      <div className="flex items-center gap-2">
-                        <Store className="w-3 h-3" />
-                        <span>{branch.name}</span>
-                        <span className="text-xs text-muted-foreground">({branch.code})</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                <p className="text-xs text-blue-900">
-                  <strong>💡 Tip:</strong> Assign Branch Managers and Cashiers to specific branches. Admins typically don't need branch assignment.
-                </p>
-              </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-900">
+                <strong>💡 Info:</strong> To assign Branch Managers and Cashiers to branches, go to <strong>Branches</strong> menu and click the <strong>"Assign"</strong> button on each branch card.
+              </p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
