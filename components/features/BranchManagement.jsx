@@ -15,6 +15,8 @@ import axios from 'axios';
 
 const BranchManagement = () => {
   const [branches, setBranches] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -40,15 +42,33 @@ const BranchManagement = () => {
   const fetchBranches = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/branches', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setBranches(response.data || []);
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      const [branchesRes, usersRes, rolesRes] = await Promise.all([
+        axios.get('/api/branches', { headers }),
+        axios.get('/api/users', { headers }),
+        axios.get('/api/roles', { headers })
+      ]);
+      
+      setBranches(branchesRes.data || []);
+      setUsers(usersRes.data || []);
+      setRoles(rolesRes.data || []);
     } catch (error) {
       toast.error('Failed to load branches');
     } finally {
       setLoading(false);
     }
+  };
+  
+  const getBranchUsers = (branchId) => {
+    const branchUsers = users.filter(u => u.branch_id === branchId);
+    const managerRole = roles.find(r => r.name === 'Branch Manager');
+    const cashierRole = roles.find(r => r.name === 'Cashier');
+    
+    const manager = branchUsers.find(u => u.role_id === managerRole?.id);
+    const cashier = branchUsers.find(u => u.role_id === cashierRole?.id);
+    
+    return { manager, cashier };
   };
 
   const handleOpenDialog = (branch = null) => {
