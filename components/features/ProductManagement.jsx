@@ -433,6 +433,18 @@ const ProductManagement = () => {
                         size="sm"
                         onClick={() => {
                           setSelectedProductForPromo(product);
+                          // Pre-fill form if promo exists
+                          if (product.promo && product.promo.is_active) {
+                            setPromoFormData({
+                              discount_percentage: product.promo.discount_percentage || '',
+                              is_active: product.promo.is_active
+                            });
+                          } else {
+                            setPromoFormData({
+                              discount_percentage: '',
+                              is_active: true
+                            });
+                          }
                           setPromoDialogOpen(true);
                         }}
                         className="hover:bg-orange-50 hover:text-orange-600"
