@@ -51,6 +51,27 @@ function verifyToken(token) {
   }
 }
 
+// Helper function to log activity
+async function logActivity(db, data) {
+  try {
+    const newLog = {
+      id: uuidv4(),
+      user_id: data.user_id,
+      username: data.username,
+      action: data.action,
+      entity_type: data.entity_type,
+      entity_id: data.entity_id || null,
+      entity_name: data.entity_name || null,
+      details: data.details || null,
+      ip_address: data.ip_address || 'unknown',
+      timestamp: new Date().toISOString()
+    };
+    await db.collection('activity_logs').insertOne(newLog);
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+}
+
 export async function POST(request) {
   try {
     const { db } = await connectToDatabase();
