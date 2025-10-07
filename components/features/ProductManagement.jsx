@@ -289,7 +289,7 @@ const ProductManagement = () => {
                 <SelectValue placeholder="Semua Brand" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Brand</SelectItem>
+                <SelectItem value="all">Semua Brand</SelectItem>
                 {brands.map((brand) => (
                   <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
                 ))}
