@@ -36,7 +36,7 @@ const CompanyProfile = () => {
         setCompany(response.data);
       }
     } catch (error) {
-      toast.error('Failed to load company profile');
+      toast.error('Gagal memuat profil perusahaan');
     } finally {
       setLoading(false);
     }
@@ -51,9 +51,9 @@ const CompanyProfile = () => {
       await axios.post('/api/company/update', company, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Company profile updated successfully!');
+      toast.success('Profil perusahaan berhasil diperbarui!');
     } catch (error) {
-      toast.error('Failed to update company profile');
+      toast.error('Gagal memperbarui profil perusahaan');
     } finally {
       setSaving(false);
     }
@@ -89,8 +89,8 @@ const CompanyProfile = () => {
               <Building2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-2xl">Company Profile</CardTitle>
-              <CardDescription>Manage your business information</CardDescription>
+              <CardTitle className="text-2xl">Profil Perusahaan</CardTitle>
+              <CardDescription>Kelola informasi bisnis Anda</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -98,13 +98,13 @@ const CompanyProfile = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-base font-semibold">
-                Company Name <span className="text-red-500">*</span>
+                Nama Perusahaan <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
                 value={company.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="Enter company name"
+                placeholder="Masukkan nama perusahaan"
                 required
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
@@ -112,13 +112,13 @@ const CompanyProfile = () => {
 
             <div className="space-y-2">
               <Label htmlFor="address" className="text-base font-semibold">
-                Address
+                Alamat
               </Label>
               <Textarea
                 id="address"
                 value={company.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                placeholder="Enter company address"
+                placeholder="Masukkan alamat perusahaan"
                 rows={3}
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 resize-none"
               />
@@ -127,13 +127,13 @@ const CompanyProfile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-base font-semibold">
-                  Phone
+                  Telepon
                 </Label>
                 <Input
                   id="phone"
                   value={company.phone}
                   onChange={(e) => handleChange('phone', e.target.value)}
-                  placeholder="Enter phone number"
+                  placeholder="Masukkan nomor telepon"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -147,7 +147,7 @@ const CompanyProfile = () => {
                   type="email"
                   value={company.email}
                   onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="Enter email address"
+                  placeholder="Masukkan alamat email"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -155,26 +155,26 @@ const CompanyProfile = () => {
 
             <div className="space-y-2">
               <Label htmlFor="tax_number" className="text-base font-semibold">
-                Tax Number / NPWP
+                Nomor Pajak / NPWP
               </Label>
               <Input
                 id="tax_number"
                 value={company.tax_number}
                 onChange={(e) => handleChange('tax_number', e.target.value)}
-                placeholder="Enter tax number"
+                placeholder="Masukkan nomor pajak"
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="logo_url" className="text-base font-semibold">
-                Logo URL
+                URL Logo
               </Label>
               <Input
                 id="logo_url"
                 value={company.logo_url}
                 onChange={(e) => handleChange('logo_url', e.target.value)}
-                placeholder="Enter logo URL (optional)"
+                placeholder="Masukkan URL logo (opsional)"
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -188,12 +188,12 @@ const CompanyProfile = () => {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving Changes...
+                    Menyimpan Perubahan...
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Save Company Profile
+                    Simpan Profil Perusahaan
                   </>
                 )}
               </Button>
