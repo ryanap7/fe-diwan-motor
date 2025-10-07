@@ -2779,8 +2779,9 @@ export async function GET(request) {
       return NextResponse.json(enhancedMappings);
     }
 
-    // Customers - List all (FR-CUS-001)
+    // Customers - List all (FR-CUS-001) (Admin only)
     if (path === 'customers') {
+      requireAdmin();
       const url = new URL(request.url);
       const searchParams = url.searchParams;
       
