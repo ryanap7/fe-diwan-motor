@@ -14,7 +14,7 @@ import { Store, Plus, Ubah, Trash2, Power, MapPin, Telepon, User, Loader2, UserC
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const CabangManagement = () => {
+const BranchManagement = () => {
   const [cabang, setCabanges] = useState([]);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -22,7 +22,7 @@ const CabangManagement = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
-  const [editingCabang, setUbahingCabang] = useState(null);
+  const [editingbranch, setUbahingCabang] = useState(null);
   const [branchToDelete, setCabangToDelete] = useState(null);
   const [branchForStaffTetapkanment, setCabangForStaffTetapkanment] = useState(null);
   const [staffTetapkanment, setStaffTetapkanment] = useState({
@@ -113,7 +113,7 @@ const CabangManagement = () => {
       const headers = { Authorization: `Bearer ${token}` };
 
       if (editingCabang) {
-        await axios.post(`/api/cabang/${editingCabang.id}/update`, formData, { headers });
+        await axios.post(`/api/cabang/${editingbranch.id}/update`, formData, { headers });
         toast.success('Cabang berhasil diperbarui!');
       } else {
         await axios.post('/api/cabang/create', formData, { headers });
@@ -664,4 +664,4 @@ const CabangManagement = () => {
   );
 };
 
-export default CabangManagement;
+export default BranchManagement;
