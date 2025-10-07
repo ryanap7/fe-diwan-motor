@@ -83,32 +83,52 @@ const UserManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.username?.trim()) {
+      toast.error('Username is required');
+      return;
+    }
+    
+    if (!formData.role_id) {
+      toast.error('Please select a role');
+      return;
+    }
+    
+    if (!editingUser && !formData.password) {
+      toast.error('Password is required for new users');
+      return;
+    }
+    
     setSaving(true);
 
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
+      // Prepare data
+      const dataToSend = {
+        username: formData.username.trim(),
+        role_id: formData.role_id,
+        branch_id: formData.branch_id || null
+      };
+
       if (editingUser) {
-        const updateData = { ...formData };
-        if (!updateData.password) {
-          delete updateData.password;
+        if (formData.password?.trim()) {
+          dataToSend.password = formData.password;
         }
-        await axios.post(`/api/users/${editingUser.id}/update`, updateData, { headers });
+        await axios.post(`/api/users/${editingUser.id}/update`, dataToSend, { headers });
         toast.success('User updated successfully!');
       } else {
-        if (!formData.password) {
-          toast.error('Password is required for new users');
-          setSaving(false);
-          return;
-        }
-        await axios.post('/api/users/create', formData, { headers });
+        dataToSend.password = formData.password;
+        await axios.post('/api/users/create', dataToSend, { headers });
         toast.success('User created successfully!');
       }
 
       fetchData();
       handleCloseDialog();
     } catch (error) {
+      console.error('User save error:', error);
       toast.error(error.response?.data?.error || 'Failed to save user');
     } finally {
       setSaving(false);
