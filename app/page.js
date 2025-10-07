@@ -304,7 +304,7 @@ const App = () => {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 hover:scale-105"
           >
             <LogOut className="w-5 h-5" />
-            {sidebarOpen && <span className="font-medium">Logout</span>}
+            {sidebarOpen && <span className="font-medium">Keluar</span>}
           </button>
         </div>
       </div>
