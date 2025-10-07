@@ -1314,23 +1314,34 @@ export async function POST(request) {
       const poCount = await db.collection('purchase_orders').countDocuments();
       const poNumber = `PO${new Date().getFullYear()}${String(poCount + 1).padStart(6, '0')}`;
 
+      // Get supplier and branch info
+      const supplier = await db.collection('suppliers').findOne({ id: supplier_id });
+      const branch = await db.collection('branches').findOne({ id: branch_id });
+
       const newPO = {
         id: uuidv4(),
         po_number: poNumber,
         supplier_id: supplier_id,
+        supplier_name: supplier?.name || 'Unknown',
         branch_id: branch_id,
+        branch_name: branch?.name || 'Unknown',
+        order_date: new Date().toISOString(),
         expected_date: expected_date || null,
         status: 'pending', // pending, approved, ordered, partial, completed, cancelled
         notes: notes || '',
         items: items.map(item => ({
           product_id: item.product_id,
           product_name: item.product_name,
-          ordered_qty: parseInt(item.suggested_qty) || 0,
-          received_qty: 0,
-          unit_price: 0 // Can be updated later
+          sku: item.sku || '',
+          quantity_ordered: parseInt(item.quantity) || parseInt(item.suggested_qty) || 0,
+          quantity_received: 0,
+          price: parseInt(item.price) || 0,
+          subtotal: (parseInt(item.quantity) || 0) * (parseInt(item.price) || 0)
         })),
+        total_amount: items.reduce((sum, item) => sum + ((parseInt(item.quantity) || 0) * (parseInt(item.price) || 0)), 0),
         total_items: items.length,
         created_by: currentUser.id,
+        created_by_name: currentUser.username,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
