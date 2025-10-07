@@ -39,6 +39,23 @@ const App = () => {
   useEffect(() => {
     initializeSystem();
     checkAuth();
+    
+    // Listen for navigation events from other components
+    const handleNavigateToMenu = (event) => {
+      const { menuId, productId } = event.detail;
+      setActiveMenu(menuId);
+      
+      // Store productId for pre-selection in PO
+      if (productId) {
+        localStorage.setItem('preSelectedProduct', productId);
+      }
+    };
+
+    window.addEventListener('navigateToMenu', handleNavigateToMenu);
+    
+    return () => {
+      window.removeEventListener('navigateToMenu', handleNavigateToMenu);
+    };
   }, []);
 
   const initializeSystem = async () => {
