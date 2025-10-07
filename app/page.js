@@ -18,6 +18,7 @@ import CategoryManagement from '@/components/features/CategoryManagement';
 import BrandManagement from '@/components/features/BrandManagement';
 import ProductManagement from '@/components/features/ProductManagement';
 import InventoryManagement from '@/components/features/InventoryManagement';
+import PurchaseOrderManagement from '@/components/features/PurchaseOrderManagement';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
