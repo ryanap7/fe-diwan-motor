@@ -390,8 +390,7 @@ const StockMovementManagement = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
+        
       </div>
     </div>
   );
