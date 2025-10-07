@@ -327,22 +327,7 @@ const SupplierManagement = () => {
                         </div>
                       </div>
 
-                      {/* Performance */}
-                      <div className="lg:col-span-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Performance:</span>
-                            <div className="flex">{renderStarRating(performance.rating)}</div>
-                          </div>
-                          {performance.stats && (
-                            <div className="text-xs text-muted-foreground space-y-1">
-                              <div>Total PO: {performance.stats.totalOrders}</div>
-                              <div>On-time: {performance.stats.onTimeDelivery}%</div>
-                              <div>Avg. Delivery: {performance.stats.avgDeliveryTime} hari</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      {/* Performance section removed */}
 
                       {/* Terms */}
                       <div className="lg:col-span-2">
