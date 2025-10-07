@@ -164,7 +164,7 @@ const App = () => {
                 {loginLoading ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Signing in...</span>
+                    <span>Masuk...</span>
                   </div>
                 ) : (
                   'Sign In'
