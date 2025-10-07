@@ -2480,13 +2480,31 @@ export async function GET(request) {
 
     // Branches - List all
     if (path === 'branches') {
-      const branches = await db.collection('branches').find({}).sort({ created_at: -1 }).toArray();
+      let branches;
+      if (isAdmin) {
+        // Admin can see all branches
+        branches = await db.collection('branches').find({}).sort({ created_at: -1 }).toArray();
+      } else if (isBranchManager && currentUser.branch_id) {
+        // Branch Manager can only see their own branch
+        branches = await db.collection('branches').find({ id: currentUser.branch_id }).toArray();
+      } else {
+        branches = [];
+      }
       return NextResponse.json(branches);
     }
 
     // Branches - Get one
     if (path.startsWith('branches/') && !path.includes('/')) {
       const branchId = path.split('/')[1];
+      
+      // Branch Manager can only access their own branch
+      if (isBranchManager && currentUser.branch_id !== branchId) {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+      
       const branch = await db.collection('branches').findOne({ id: branchId });
       
       if (!branch) {
@@ -2499,14 +2517,16 @@ export async function GET(request) {
       return NextResponse.json(branch);
     }
 
-    // Roles - List all
+    // Roles - List all (Admin only)
     if (path === 'roles') {
+      requireAdmin();
       const roles = await db.collection('roles').find({}).sort({ created_at: -1 }).toArray();
       return NextResponse.json(roles);
     }
 
-    // Users - List all
+    // Users - List all (Admin only)
     if (path === 'users') {
+      requireAdmin();
       const users = await db.collection('users').find({}).sort({ created_at: -1 }).toArray();
       // Remove password from response
       const sanitizedUsers = users.map(user => {
@@ -2516,8 +2536,9 @@ export async function GET(request) {
       return NextResponse.json(sanitizedUsers);
     }
 
-    // Activity Logs - List all
+    // Activity Logs - List all (Admin only)
     if (path === 'activity-logs') {
+      requireAdmin();
       const logs = await db.collection('activity_logs').find({}).sort({ timestamp: -1 }).limit(500).toArray();
       return NextResponse.json(logs);
     }
