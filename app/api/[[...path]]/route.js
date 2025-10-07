@@ -1,104 +1,499 @@
-import { MongoClient } from 'mongodb'
-import { v4 as uuidv4 } from 'uuid'
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server';
+import { MongoClient } from 'mongodb';
+import { v4 as uuidv4 } from 'uuid';
 
-// MongoDB connection
-let client
-let db
+const mongoUrl = process.env.MONGO_URL;
+const dbName = process.env.DB_NAME || 'motorbike_pos';
 
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
+let cachedClient = null;
+let cachedDb = null;
+
+async function connectToDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
   }
-  return db
+
+  const client = await MongoClient.connect(mongoUrl);
+  const db = client.db(dbName);
+
+  cachedClient = client;
+  cachedDb = db;
+
+  return { client, db };
 }
 
-// Helper function to handle CORS
-function handleCORS(response) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
-  return response
+// Simple password hashing (in production, use bcrypt)
+function hashPassword(password) {
+  return Buffer.from(password).toString('base64');
 }
 
-// OPTIONS handler for CORS
-export async function OPTIONS() {
-  return handleCORS(new NextResponse(null, { status: 200 }))
+function verifyPassword(password, hash) {
+  return hashPassword(password) === hash;
 }
 
-// Route handler function
-async function handleRoute(request, { params }) {
-  const { path = [] } = params
-  const route = `/${path.join('/')}`
-  const method = request.method
+// Simple JWT simulation (in production, use jsonwebtoken)
+function createToken(user) {
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role_id: user.role_id,
+    branch_id: user.branch_id
+  };
+  return Buffer.from(JSON.stringify(payload)).toString('base64');
+}
 
+function verifyToken(token) {
   try {
-    const db = await connectToMongo()
+    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
 
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/root' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
+export async function POST(request) {
+  try {
+    const { db } = await connectToDatabase();
+    const url = new URL(request.url);
+    const path = url.pathname.replace('/api/', '');
+    const body = await request.json();
 
-    // Status endpoints - POST /api/status
-    if (route === '/status' && method === 'POST') {
-      const body = await request.json()
+    // Auth - Login
+    if (path === 'auth/login') {
+      const { username, password } = body;
       
-      if (!body.client_name) {
-        return handleCORS(NextResponse.json(
-          { error: "client_name is required" }, 
+      const user = await db.collection('users').findOne({ username });
+      if (!user || !verifyPassword(password, user.password)) {
+        return NextResponse.json(
+          { error: 'Invalid credentials' },
+          { status: 401 }
+        );
+      }
+
+      const token = createToken(user);
+      const role = await db.collection('roles').findOne({ id: user.role_id });
+      const branch = user.branch_id 
+        ? await db.collection('branches').findOne({ id: user.branch_id })
+        : null;
+
+      return NextResponse.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: role ? { id: role.id, name: role.name } : null,
+          branch: branch ? { id: branch.id, name: branch.name } : null
+        }
+      });
+    }
+
+    // Auth - Register
+    if (path === 'auth/register') {
+      const { username, password, role_id, branch_id } = body;
+      
+      const existingUser = await db.collection('users').findOne({ username });
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'Username already exists' },
           { status: 400 }
-        ))
+        );
       }
 
-      const statusObj = {
+      const newUser = {
         id: uuidv4(),
-        client_name: body.client_name,
-        timestamp: new Date()
+        username,
+        password: hashPassword(password),
+        role_id: role_id || null,
+        branch_id: branch_id || null,
+        created_at: new Date().toISOString()
+      };
+
+      await db.collection('users').insertOne(newUser);
+
+      return NextResponse.json({
+        message: 'User created successfully',
+        user: { id: newUser.id, username: newUser.username }
+      });
+    }
+
+    // Get auth header
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = verifyToken(token);
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    // Auth - Get current user
+    if (path === 'auth/me' && request.method === 'GET') {
+      const user = await db.collection('users').findOne({ id: currentUser.id });
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
       }
 
-      await db.collection('status_checks').insertOne(statusObj)
-      return handleCORS(NextResponse.json(statusObj))
+      const role = await db.collection('roles').findOne({ id: user.role_id });
+      const branch = user.branch_id 
+        ? await db.collection('branches').findOne({ id: user.branch_id })
+        : null;
+
+      return NextResponse.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          role: role ? { id: role.id, name: role.name } : null,
+          branch: branch ? { id: branch.id, name: branch.name } : null
+        }
+      });
     }
 
-    // Status endpoints - GET /api/status
-    if (route === '/status' && method === 'GET') {
-      const statusChecks = await db.collection('status_checks')
-        .find({})
-        .limit(1000)
-        .toArray()
-
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest)
+    // Company Profile
+    if (path === 'company') {
+      const company = await db.collection('company').findOne({});
       
-      return handleCORS(NextResponse.json(cleanedStatusChecks))
+      if (!company) {
+        const newCompany = {
+          id: uuidv4(),
+          name: '',
+          address: '',
+          phone: '',
+          email: '',
+          tax_number: '',
+          logo_url: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        await db.collection('company').insertOne(newCompany);
+        return NextResponse.json(newCompany);
+      }
+      
+      return NextResponse.json(company);
     }
 
-    // Route not found
-    return handleCORS(NextResponse.json(
-      { error: `Route ${route} not found` }, 
+    if (path === 'company/update') {
+      const updates = {
+        ...body,
+        updated_at: new Date().toISOString()
+      };
+      delete updates.id;
+      delete updates._id;
+      delete updates.created_at;
+
+      await db.collection('company').updateOne({}, { $set: updates }, { upsert: true });
+      const company = await db.collection('company').findOne({});
+      
+      return NextResponse.json(company);
+    }
+
+    // Branches - Create
+    if (path === 'branches/create') {
+      const newBranch = {
+        id: uuidv4(),
+        ...body,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('branches').insertOne(newBranch);
+      return NextResponse.json(newBranch);
+    }
+
+    // Branches - Update
+    if (path.startsWith('branches/') && path.includes('/update')) {
+      const branchId = path.split('/')[1];
+      const updates = {
+        ...body,
+        updated_at: new Date().toISOString()
+      };
+      delete updates.id;
+      delete updates._id;
+      delete updates.created_at;
+
+      await db.collection('branches').updateOne(
+        { id: branchId },
+        { $set: updates }
+      );
+
+      const branch = await db.collection('branches').findOne({ id: branchId });
+      return NextResponse.json(branch);
+    }
+
+    // Branches - Toggle Active
+    if (path.startsWith('branches/') && path.includes('/toggle')) {
+      const branchId = path.split('/')[1];
+      const branch = await db.collection('branches').findOne({ id: branchId });
+      
+      if (!branch) {
+        return NextResponse.json(
+          { error: 'Branch not found' },
+          { status: 404 }
+        );
+      }
+
+      await db.collection('branches').updateOne(
+        { id: branchId },
+        { $set: { is_active: !branch.is_active, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedBranch = await db.collection('branches').findOne({ id: branchId });
+      return NextResponse.json(updatedBranch);
+    }
+
+    // Branches - Delete
+    if (path.startsWith('branches/') && path.includes('/delete')) {
+      const branchId = path.split('/')[1];
+      await db.collection('branches').deleteOne({ id: branchId });
+      return NextResponse.json({ message: 'Branch deleted successfully' });
+    }
+
+    // Roles - Create
+    if (path === 'roles/create') {
+      const newRole = {
+        id: uuidv4(),
+        ...body,
+        is_system: false,
+        created_at: new Date().toISOString()
+      };
+
+      await db.collection('roles').insertOne(newRole);
+      return NextResponse.json(newRole);
+    }
+
+    // Roles - Update
+    if (path.startsWith('roles/') && path.includes('/update')) {
+      const roleId = path.split('/')[1];
+      const updates = { ...body };
+      delete updates.id;
+      delete updates._id;
+      delete updates.created_at;
+      delete updates.is_system;
+
+      await db.collection('roles').updateOne(
+        { id: roleId, is_system: { $ne: true } },
+        { $set: updates }
+      );
+
+      const role = await db.collection('roles').findOne({ id: roleId });
+      return NextResponse.json(role);
+    }
+
+    // Roles - Delete
+    if (path.startsWith('roles/') && path.includes('/delete')) {
+      const roleId = path.split('/')[1];
+      
+      const role = await db.collection('roles').findOne({ id: roleId });
+      if (role?.is_system) {
+        return NextResponse.json(
+          { error: 'Cannot delete system role' },
+          { status: 400 }
+        );
+      }
+
+      await db.collection('roles').deleteOne({ id: roleId });
+      return NextResponse.json({ message: 'Role deleted successfully' });
+    }
+
+    return NextResponse.json(
+      { error: 'Endpoint not found' },
       { status: 404 }
-    ))
+    );
 
   } catch (error) {
-    console.error('API Error:', error)
-    return handleCORS(NextResponse.json(
-      { error: "Internal server error" }, 
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
       { status: 500 }
-    ))
+    );
   }
 }
 
-// Export all HTTP methods
-export const GET = handleRoute
-export const POST = handleRoute
-export const PUT = handleRoute
-export const DELETE = handleRoute
-export const PATCH = handleRoute
+export async function GET(request) {
+  try {
+    const { db } = await connectToDatabase();
+    const url = new URL(request.url);
+    const path = url.pathname.replace('/api/', '');
+
+    // Get auth header
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    // Auth - Get current user
+    if (path === 'auth/me') {
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+
+      const currentUser = verifyToken(token);
+      if (!currentUser) {
+        return NextResponse.json(
+          { error: 'Invalid token' },
+          { status: 401 }
+        );
+      }
+
+      const user = await db.collection('users').findOne({ id: currentUser.id });
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      const role = await db.collection('roles').findOne({ id: user.role_id });
+      const branch = user.branch_id 
+        ? await db.collection('branches').findOne({ id: user.branch_id })
+        : null;
+
+      return NextResponse.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          role: role ? { id: role.id, name: role.name, permissions: role.permissions } : null,
+          branch: branch ? { id: branch.id, name: branch.name, code: branch.code } : null
+        }
+      });
+    }
+
+    // Initialize system roles and admin user if not exists
+    if (path === 'init') {
+      const rolesCount = await db.collection('roles').countDocuments();
+      
+      if (rolesCount === 0) {
+        const systemRoles = [
+          {
+            id: uuidv4(),
+            name: 'Admin',
+            description: 'Full system access',
+            permissions: ['all'],
+            is_system: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            name: 'Branch Manager',
+            description: 'Manage branch operations',
+            permissions: ['manage_branch', 'view_reports', 'manage_inventory'],
+            is_system: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            name: 'Cashier',
+            description: 'Process sales transactions',
+            permissions: ['process_sales', 'view_products'],
+            is_system: true,
+            created_at: new Date().toISOString()
+          }
+        ];
+
+        await db.collection('roles').insertMany(systemRoles);
+
+        // Create default admin user
+        const adminRole = systemRoles[0];
+        const adminUser = {
+          id: uuidv4(),
+          username: 'admin',
+          password: hashPassword('admin123'),
+          role_id: adminRole.id,
+          branch_id: null,
+          created_at: new Date().toISOString()
+        };
+
+        await db.collection('users').insertOne(adminUser);
+      }
+
+      return NextResponse.json({ message: 'System initialized' });
+    }
+
+    // Company Profile
+    if (path === 'company') {
+      const company = await db.collection('company').findOne({});
+      
+      if (!company) {
+        const newCompany = {
+          id: uuidv4(),
+          name: '',
+          address: '',
+          phone: '',
+          email: '',
+          tax_number: '',
+          logo_url: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        await db.collection('company').insertOne(newCompany);
+        return NextResponse.json(newCompany);
+      }
+      
+      return NextResponse.json(company);
+    }
+
+    // Branches - List all
+    if (path === 'branches') {
+      const branches = await db.collection('branches').find({}).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(branches);
+    }
+
+    // Branches - Get one
+    if (path.startsWith('branches/') && !path.includes('/')) {
+      const branchId = path.split('/')[1];
+      const branch = await db.collection('branches').findOne({ id: branchId });
+      
+      if (!branch) {
+        return NextResponse.json(
+          { error: 'Branch not found' },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json(branch);
+    }
+
+    // Roles - List all
+    if (path === 'roles') {
+      const roles = await db.collection('roles').find({}).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(roles);
+    }
+
+    return NextResponse.json(
+      { error: 'Endpoint not found' },
+      { status: 404 }
+    );
+
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request) {
+  return POST(request);
+}
+
+export async function DELETE(request) {
+  return POST(request);
+}
+
+export async function PATCH(request) {
+  return POST(request);
+}
