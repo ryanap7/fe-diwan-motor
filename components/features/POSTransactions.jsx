@@ -99,7 +99,6 @@ const POSTransactions = () => {
   const resetFilters = () => {
     setFilters({
       branch_id: '',
-      cashier_id: '',
       search: '',
       date_from: '',
       date_to: ''
