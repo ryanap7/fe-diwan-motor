@@ -12,9 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
-  Building2, Plus, Edit, Trash2, Power, Loader2, Search, Star, 
-  TrendingUp, TrendingDown, Package, MapPin, Phone, Mail, FileText,
-  Clock, CheckCircle, AlertTriangle
+  Building2, Plus, Edit, Trash2, Power, Loader2, Search, 
+  MapPin, Phone, Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
