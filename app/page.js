@@ -199,9 +199,9 @@ const App = () => {
             {sidebarOpen && (
               <div className="animate-in fade-in-50 slide-in-from-left-5 duration-300">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Motorbike POS
+                  POS Motor
                 </h1>
-                <p className="text-xs text-muted-foreground">Configuration</p>
+                <p className="text-xs text-muted-foreground">Konfigurasi</p>
               </div>
             )}
           </div>
