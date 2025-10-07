@@ -77,21 +77,74 @@ class ProductManagementTester:
             'Content-Type': 'application/json'
         }
     
-    def test_system_initialization(self):
-        """Test GET /api/init - System initialization"""
-        print("\n=== Testing System Initialization ===")
-        
-        response = self.make_request("GET", "init")
-        if response is None:
-            self.log_test("System Init", False, "Request failed - no response")
-            return False
-        
-        if response.status_code == 200:
-            data = response.json()
-            self.log_test("System Init", True, f"System initialized successfully: {data.get('message', '')}")
-            return True
-        else:
-            self.log_test("System Init", False, f"Failed with status {response.status_code}", response.text)
+    def setup_test_data(self):
+        """Create test categories, brands, and branches for product testing"""
+        try:
+            # Create test category
+            category_data = {
+                "name": "Motorcycle Parts",
+                "description": "Test category for motorcycle parts",
+                "is_active": True
+            }
+            
+            response = requests.post(f"{self.base_url}/categories/create", 
+                                   json=category_data, headers=self.get_headers())
+            
+            if response.status_code == 200:
+                category = response.json()
+                self.created_categories.append(category['id'])
+                self.log_result("Setup - Category Creation", True, 
+                              f"Created test category: {category['name']}")
+            else:
+                self.log_result("Setup - Category Creation", False, 
+                              f"Failed to create category: {response.status_code}")
+                return False
+            
+            # Create test brand
+            brand_data = {
+                "name": "Honda",
+                "description": "Test brand for Honda parts",
+                "is_active": True
+            }
+            
+            response = requests.post(f"{self.base_url}/brands/create", 
+                                   json=brand_data, headers=self.get_headers())
+            
+            if response.status_code == 200:
+                brand = response.json()
+                self.created_brands.append(brand['id'])
+                self.log_result("Setup - Brand Creation", True, 
+                              f"Created test brand: {brand['name']}")
+            else:
+                self.log_result("Setup - Brand Creation", False, 
+                              f"Failed to create brand: {response.status_code}")
+                return False
+            
+            # Create test branch
+            branch_data = {
+                "name": "Main Branch",
+                "code": "MB001",
+                "address": "123 Main Street",
+                "phone": "555-0123",
+                "is_active": True
+            }
+            
+            response = requests.post(f"{self.base_url}/branches/create", 
+                                   json=branch_data, headers=self.get_headers())
+            
+            if response.status_code == 200:
+                branch = response.json()
+                self.created_branches.append(branch['id'])
+                self.log_result("Setup - Branch Creation", True, 
+                              f"Created test branch: {branch['name']}")
+                return True
+            else:
+                self.log_result("Setup - Branch Creation", False, 
+                              f"Failed to create branch: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Setup Test Data", False, f"Setup error: {str(e)}")
             return False
     
     def test_authentication(self):
