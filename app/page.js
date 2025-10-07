@@ -366,6 +366,31 @@ const App = () => {
                 </p>
               </div>
             </div>
+            
+            {/* User Info - Moved to Header */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-gray-200">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
+                  {currentUser?.username?.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-semibold text-gray-900">{currentUser?.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentUser?.role?.name}
+                  </p>
+                </div>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </header>
 
