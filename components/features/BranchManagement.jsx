@@ -215,85 +215,114 @@ const BranchManagement = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {branches.map((branch) => (
-            <Card
-              key={branch.id}
-              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-500 opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-              <CardHeader className="pb-3 relative">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-xs bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200"
-                      >
-                        {branch.code}
-                      </Badge>
-                      <Badge
-                        variant={branch.is_active ? 'default' : 'secondary'}
-                        className={branch.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
-                      >
-                        {branch.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
+          {branches.map((branch) => {
+            const { manager, cashier } = getBranchUsers(branch.id);
+            
+            return (
+              <Card
+                key={branch.id}
+                className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-500 opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                <CardHeader className="pb-3 relative">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200"
+                        >
+                          {branch.code}
+                        </Badge>
+                        <Badge
+                          variant={branch.is_active ? 'default' : 'secondary'}
+                          className={branch.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                        >
+                          {branch.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <CardTitle className="text-xl mb-1">{branch.name}</CardTitle>
                     </div>
-                    <CardTitle className="text-xl mb-1">{branch.name}</CardTitle>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 relative">
-                <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <span>{branch.address || 'No address'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="w-4 h-4 flex-shrink-0" />
-                  <span>{branch.phone || 'No phone'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="w-4 h-4 flex-shrink-0" />
-                  <span>{branch.manager_name || 'No manager assigned'}</span>
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-3 relative">
+                  <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{branch.address || 'No address'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="w-4 h-4 flex-shrink-0" />
+                    <span>{branch.phone || 'No phone'}</span>
+                  </div>
+                  
+                  {/* Assigned Staff Section */}
+                  <div className="border-t pt-3 mt-3">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Assigned Staff:</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <User className="w-4 h-4 flex-shrink-0 text-blue-600" />
+                        <span className="font-medium text-xs text-gray-600">Manager:</span>
+                        {manager ? (
+                          <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
+                            {manager.username}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <User className="w-4 h-4 flex-shrink-0 text-green-600" />
+                        <span className="font-medium text-xs text-gray-600">Cashier:</span>
+                        {cashier ? (
+                          <Badge variant="outline" className="text-xs bg-green-50 border-green-200">
+                            {cashier.username}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="pt-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenDialog(branch)}
-                    className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                  >
-                    <Edit className="w-3 h-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleActive(branch)}
-                    className={`flex-1 transition-colors duration-200 ${
-                      branch.is_active
-                        ? 'hover:bg-orange-50 hover:border-orange-300'
-                        : 'hover:bg-green-50 hover:border-green-300'
-                    }`}
-                  >
-                    <Power className="w-3 h-3 mr-1" />
-                    {branch.is_active ? 'Disable' : 'Enable'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setBranchToDelete(branch);
-                      setDeleteDialogOpen(true);
-                    }}
-                    className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="pt-4 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenDialog(branch)}
+                      className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                    >
+                      <Edit className="w-3 h-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleActive(branch)}
+                      className={`flex-1 transition-colors duration-200 ${
+                        branch.is_active
+                          ? 'hover:bg-orange-50 hover:border-orange-300'
+                          : 'hover:bg-green-50 hover:border-green-300'
+                      }`}
+                    >
+                      <Power className="w-3 h-3 mr-1" />
+                      {branch.is_active ? 'Disable' : 'Enable'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setBranchToDelete(branch);
+                        setDeleteDialogOpen(true);
+                      }}
+                      className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
