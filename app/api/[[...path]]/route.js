@@ -1589,8 +1589,9 @@ export async function POST(request) {
       return NextResponse.json(customer);
     }
 
-    // Customers - Toggle Active
+    // Customers - Toggle Active (Admin only)
     if (path.startsWith('customers/') && path.includes('/toggle')) {
+      requireAdmin();
       const customerId = path.split('/')[1];
       const customer = await db.collection('customers').findOne({ id: customerId });
       
