@@ -1139,7 +1139,7 @@ export async function POST(request) {
       });
     }
 
-    // Suppliers - Create (for Purchase Orders)
+    // Suppliers - Create (FR-SUP-001)
     if (path === 'suppliers/create') {
       const newSupplier = {
         id: uuidv4(),
@@ -1148,6 +1148,8 @@ export async function POST(request) {
         phone: body.phone || '',
         email: body.email || '',
         address: body.address || '',
+        payment_terms: body.payment_terms || '',
+        delivery_terms: body.delivery_terms || '',
         notes: body.notes || '',
         is_active: body.is_active !== undefined ? body.is_active : true,
         created_at: new Date().toISOString(),
@@ -1169,6 +1171,139 @@ export async function POST(request) {
       });
 
       return NextResponse.json(newSupplier);
+    }
+
+    // Suppliers - Update (FR-SUP-001)
+    if (path.startsWith('suppliers/') && path.includes('/update')) {
+      const supplierId = path.split('/')[1];
+      const updates = {
+        name: body.name,
+        contact_person: body.contact_person || '',
+        phone: body.phone || '',
+        email: body.email || '',
+        address: body.address || '',
+        payment_terms: body.payment_terms || '',
+        delivery_terms: body.delivery_terms || '',
+        notes: body.notes || '',
+        is_active: body.is_active,
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('suppliers').updateOne({ id: supplierId }, { $set: updates });
+      const supplier = await db.collection('suppliers').findOne({ id: supplierId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'UPDATE',
+        entity_type: 'SUPPLIER',
+        entity_id: supplierId,
+        entity_name: supplier.name,
+        details: `Updated supplier: ${supplier.name}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(supplier);
+    }
+
+    // Suppliers - Toggle Active
+    if (path.startsWith('suppliers/') && path.includes('/toggle')) {
+      const supplierId = path.split('/')[1];
+      const supplier = await db.collection('suppliers').findOne({ id: supplierId });
+      
+      await db.collection('suppliers').updateOne(
+        { id: supplierId },
+        { $set: { is_active: !supplier.is_active, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedSupplier = await db.collection('suppliers').findOne({ id: supplierId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: updatedSupplier.is_active ? 'ACTIVATE' : 'DEACTIVATE',
+        entity_type: 'SUPPLIER',
+        entity_id: supplierId,
+        entity_name: updatedSupplier.name,
+        details: `${updatedSupplier.is_active ? 'Activated' : 'Deactivated'} supplier: ${updatedSupplier.name}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(updatedSupplier);
+    }
+
+    // Suppliers - Delete
+    if (path.startsWith('suppliers/') && path.includes('/delete')) {
+      const supplierId = path.split('/')[1];
+      const supplier = await db.collection('suppliers').findOne({ id: supplierId });
+      
+      await db.collection('suppliers').deleteOne({ id: supplierId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'DELETE',
+        entity_type: 'SUPPLIER',
+        entity_id: supplierId,
+        entity_name: supplier?.name || 'Unknown',
+        details: `Deleted supplier: ${supplier?.name || 'Unknown'}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Supplier deleted successfully' });
+    }
+
+    // Suppliers - Product Mapping (FR-SUP-003)
+    if (path.startsWith('suppliers/') && path.includes('/map-products')) {
+      const supplierId = path.split('/')[1];
+      const { product_ids, lead_time_days, unit_price, minimum_order, notes } = body;
+      
+      const supplier = await db.collection('suppliers').findOne({ id: supplierId });
+      if (!supplier) {
+        return NextResponse.json({ error: 'Supplier not found' }, { status: 404 });
+      }
+
+      // Create product mappings
+      const mappings = product_ids.map(productId => ({
+        id: uuidv4(),
+        supplier_id: supplierId,
+        product_id: productId,
+        lead_time_days: parseInt(lead_time_days) || 7,
+        unit_price: parseFloat(unit_price) || 0,
+        minimum_order: parseInt(minimum_order) || 1,
+        notes: notes || '',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      // Remove existing mappings for these products from this supplier
+      await db.collection('supplier_products').deleteMany({ 
+        supplier_id: supplierId,
+        product_id: { $in: product_ids }
+      });
+
+      // Insert new mappings
+      if (mappings.length > 0) {
+        await db.collection('supplier_products').insertMany(mappings);
+      }
+
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'MAP_PRODUCTS',
+        entity_type: 'SUPPLIER',
+        entity_id: supplierId,
+        entity_name: supplier.name,
+        details: `Mapped ${product_ids.length} products to supplier: ${supplier.name}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Product mapping saved successfully', mappings_count: mappings.length });
     }
 
     // Purchase Orders - Create (FR-INV-010)
