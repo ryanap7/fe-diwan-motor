@@ -374,17 +374,19 @@ const ProductManagement = () => {
 
                   <div className="space-y-2 mb-3 border-t pt-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Retail:</span>
-                      <span className="font-semibold">Rp {product.price_levels?.retail?.toLocaleString('id-ID') || '0'}</span>
+                      <span className="text-muted-foreground">Harga Normal:</span>
+                      <span className="font-semibold">Rp {product.price_levels?.normal?.toLocaleString('id-ID') || '0'}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Grosir:</span>
+                      <span className="text-muted-foreground">Harga Grosir:</span>
                       <span>Rp {product.price_levels?.wholesale?.toLocaleString('id-ID') || '0'}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Member:</span>
-                      <span>Rp {product.price_levels?.member?.toLocaleString('id-ID') || '0'}</span>
-                    </div>
+                    {product.promotional_pricing && product.promotional_pricing.length > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-orange-500 font-medium">🎉 Ada Promo!</span>
+                        <span className="text-orange-600 font-medium">{product.promotional_pricing.length} promo aktif</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs pt-2 border-t">
                       <span className="text-muted-foreground">Margin:</span>
                       <span className={parseFloat(margin) > 20 ? 'text-green-600 font-semibold' : 'text-orange-600'}>
