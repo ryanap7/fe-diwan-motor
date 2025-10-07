@@ -1618,6 +1618,57 @@ export async function GET(request) {
       });
     }
 
+    // Suppliers - List all
+    if (path === 'suppliers') {
+      const suppliers = await db.collection('suppliers').find({}).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(suppliers);
+    }
+
+    // Purchase Orders - List all (FR-INV-012)
+    if (path === 'purchase-orders') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      const query = {};
+      
+      // Filter by status
+      if (searchParams.get('status')) {
+        query.status = searchParams.get('status');
+      }
+      
+      // Filter by branch
+      if (searchParams.get('branch_id')) {
+        query.branch_id = searchParams.get('branch_id');
+      }
+      
+      // Filter by supplier
+      if (searchParams.get('supplier_id')) {
+        query.supplier_id = searchParams.get('supplier_id');
+      }
+      
+      const purchaseOrders = await db.collection('purchase_orders')
+        .find(query)
+        .sort({ created_at: -1 })
+        .toArray();
+      
+      return NextResponse.json(purchaseOrders);
+    }
+
+    // Purchase Orders - Get single PO with details
+    if (path.startsWith('purchase-orders/') && path.split('/').length === 2 && !path.includes('/')) {
+      const poId = path.split('/')[1];
+      const purchaseOrder = await db.collection('purchase_orders').findOne({ id: poId });
+      
+      if (!purchaseOrder) {
+        return NextResponse.json(
+          { error: 'Purchase Order not found' },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json(purchaseOrder);
+    }
+
     // Products - Get single product with full details
     if (path.startsWith('products/') && path.split('/').length === 2 && !path.includes('/update') && !path.includes('/toggle') && !path.includes('/delete') && !path.includes('/stock') && !path.includes('/promo') && !path.includes('/volume-discount') && !path.includes('margin-report')) {
       const productId = path.split('/')[1];
