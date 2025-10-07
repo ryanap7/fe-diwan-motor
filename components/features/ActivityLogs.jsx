@@ -323,68 +323,172 @@ const ActivityLogs = () => {
         </CardContent>
       </Card>
 
-      {filteredLogs.length === 0 ? (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-8 h-8 text-blue-600" />
+      <Card className="border-0 shadow-lg">
+        <CardContent className="p-0">
+          {filteredLogs.length === 0 ? (
+            <div className="pt-12 pb-12 text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada log aktivitas</h3>
+              <p className="text-muted-foreground">
+                {logs.length === 0 ? 'Belum ada aktivitas yang tercatat' : 'Tidak ada aktivitas yang cocok dengan filter'}
+              </p>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada log aktivitas</h3>
-            <p className="text-muted-foreground">
-              {logs.length === 0 ? 'Belum ada aktivitas yang tercatat' : 'Tidak ada aktivitas yang cocok dengan filter'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filteredLogs.map((log) => (
-            <Card
-              key={log.id}
-              className="border-0 shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                      {log.username?.charAt(0).toUpperCase() || '?'}
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[150px]">Waktu</TableHead>
+                      <TableHead className="w-[120px]">Pengguna</TableHead>
+                      <TableHead className="w-[100px]">Aksi</TableHead>
+                      <TableHead className="w-[120px]">Tipe</TableHead>
+                      <TableHead className="w-[150px]">Entitas</TableHead>
+                      <TableHead>Detail</TableHead>
+                      <TableHead className="w-[120px]">IP Address</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLogs.map((log) => (
+                      <TableRow key={log.id} className="hover:bg-gray-50">
+                        <TableCell className="text-sm">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-gray-400" />
+                            <span className="text-xs">{formatDate(log.timestamp)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                              {log.username?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <span className="font-medium text-sm">{log.username}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`${getActionBadgeColor(log.action)} hover:${getActionBadgeColor(log.action)} text-white text-xs`}>
+                            {getActionLabel(log.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {getEntityTypeLabel(log.entity_type)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium text-sm">
+                          {log.entity_name || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                          {log.details || '-'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {log.ip_address || '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="border-t px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredLogs.length)} dari {filteredLogs.length} log
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-semibold text-gray-900">{log.username}</span>
-                        <Badge className={`${getActionBadgeColor(log.action)} hover:${getActionBadgeColor(log.action)} text-white text-xs`}>
-                          {getActionLabel(log.action)}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {getEntityTypeLabel(log.entity_type)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        {log.entity_name && (
-                          <span className="font-medium">{log.entity_name}</span>
-                        )}
-                      </p>
-                      {log.details && (
-                        <p className="text-xs text-muted-foreground">{log.details}</p>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Baris per halaman:</Label>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Sebelumnya
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                          <span className="px-2">...</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => goToPage(totalPages)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
                       )}
                     </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 ml-4">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                      <Calendar className="w-3 h-3" />
-                      <span>{formatDate(log.timestamp)}</span>
-                    </div>
-                    {log.ip_address && (
-                      <div className="text-xs text-muted-foreground">
-                        IP: {log.ip_address}
-                      </div>
-                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                    >
+                      Selanjutnya
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
