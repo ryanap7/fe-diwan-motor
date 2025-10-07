@@ -248,16 +248,22 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Manage Branches</h3>
-          <p className="text-sm text-muted-foreground">Total: {branches.length} branches</p>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {isProfileMode ? 'Profile Cabang Saya' : 'Manage Branches'}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {isProfileMode ? 'Informasi cabang tempat Anda bekerja' : `Total: ${branches.length} branches`}
+          </p>
         </div>
-        <Button
-          onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Branch
-        </Button>
+        {!isProfileMode && (
+          <Button
+            onClick={() => handleOpenDialog()}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Branch
+          </Button>
+        )}
       </div>
 
       {/* Branches Grid */}
