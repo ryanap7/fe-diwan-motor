@@ -29,6 +29,8 @@ const ProductManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterBrand, setFilterBrand] = useState('all');
+  const [promoDialogOpen, setPromoDialogOpen] = useState(false);
+  const [selectedProductForPromo, setSelectedProductForPromo] = useState(null);
   
   const [formData, setFormData] = useState({
     sku: '',
