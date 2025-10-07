@@ -909,8 +909,8 @@ const PurchaseOrderManagement = () => {
                       {selectedPO.items?.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.product_name}</TableCell>
-                          <TableCell>{item.ordered_qty}</TableCell>
-                          <TableCell>{item.received_qty || 0}</TableCell>
+                          <TableCell>{item.quantity_ordered || item.ordered_qty || 0}</TableCell>
+                          <TableCell>{item.quantity_received || item.received_qty || 0}</TableCell>
                           <TableCell>
                             {(item.received_qty || 0) >= item.ordered_qty ? (
                               <Badge variant="default">Lengkap</Badge>
