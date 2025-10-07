@@ -328,7 +328,7 @@ const App = () => {
                   {menuItems.find(item => item.id === activeMenu)?.label}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Manage your system configuration
+                  Kelola konfigurasi sistem Anda
                 </p>
               </div>
             </div>
