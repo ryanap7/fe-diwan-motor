@@ -698,6 +698,139 @@ const ProductManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Promo Dialog */}
+      <Dialog open={promoDialogOpen} onOpenChange={setPromoDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Percent className="w-5 h-5 text-orange-500" />
+              Atur Promo untuk {selectedProductForPromo?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Buat promo khusus untuk produk ini dengan harga dan periode tertentu
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Nama Promo <span className="text-red-500">*</span></Label>
+              <Input
+                value={promoFormData.name}
+                onChange={(e) => setPromoFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="contoh: Flash Sale Weekend, Diskon Akhir Tahun"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 p-4 bg-orange-50 rounded-lg">
+              <div className="space-y-2">
+                <Label>Harga Normal Promo <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  value={promoFormData.normal_price}
+                  onChange={(e) => setPromoFormData(prev => ({ ...prev, normal_price: e.target.value }))}
+                  placeholder="0"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Harga normal saat ini: Rp {selectedProductForPromo?.price_levels?.normal?.toLocaleString('id-ID') || '0'}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Harga Grosir Promo</Label>
+                <Input
+                  type="number"
+                  value={promoFormData.wholesale_price}
+                  onChange={(e) => setPromoFormData(prev => ({ ...prev, wholesale_price: e.target.value }))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Harga grosir saat ini: Rp {selectedProductForPromo?.price_levels?.wholesale?.toLocaleString('id-ID') || '0'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
+                <Input
+                  type="datetime-local"
+                  value={promoFormData.start_date}
+                  onChange={(e) => setPromoFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tanggal Berakhir <span className="text-red-500">*</span></Label>
+                <Input
+                  type="datetime-local"
+                  value={promoFormData.end_date}
+                  onChange={(e) => setPromoFormData(prev => ({ ...prev, end_date: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPromoDialogOpen(false);
+                  setPromoFormData({
+                    name: '',
+                    normal_price: '',
+                    wholesale_price: '',
+                    start_date: '',
+                    end_date: '',
+                    is_active: true
+                  });
+                }}
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    await axios.post(`/api/products/${selectedProductForPromo.id}/promo`, {
+                      name: promoFormData.name,
+                      price_levels: {
+                        normal: parseFloat(promoFormData.normal_price) || 0,
+                        wholesale: parseFloat(promoFormData.wholesale_price) || 0
+                      },
+                      start_date: promoFormData.start_date,
+                      end_date: promoFormData.end_date,
+                      is_active: promoFormData.is_active
+                    }, {
+                      headers: { Authorization: 'Bearer ' + token }
+                    });
+                    toast.success('Promo berhasil ditambahkan!');
+                    fetchData();
+                    setPromoDialogOpen(false);
+                    setPromoFormData({
+                      name: '',
+                      normal_price: '',
+                      wholesale_price: '',
+                      start_date: '',
+                      end_date: '',
+                      is_active: true
+                    });
+                  } catch (error) {
+                    toast.error('Gagal menambahkan promo');
+                  }
+                }}
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+              >
+                <Percent className="w-4 h-4 mr-2" />
+                Buat Promo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
