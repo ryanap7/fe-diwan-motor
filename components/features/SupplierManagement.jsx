@@ -330,16 +330,21 @@ const SupplierManagement = () => {
                       {/* Performance section removed */}
 
                       {/* Terms */}
-                      <div className="lg:col-span-2">
-                        <div className="text-xs space-y-1">
+                      <div className="lg:col-span-5">
+                        <div className="text-sm space-y-1">
                           {supplier.payment_terms && (
                             <div>
-                              <span className="font-medium">Payment:</span> {supplier.payment_terms}
+                              <span className="font-medium">Payment Terms:</span> {supplier.payment_terms}
                             </div>
                           )}
                           {supplier.delivery_terms && (
                             <div>
-                              <span className="font-medium">Delivery:</span> {supplier.delivery_terms}
+                              <span className="font-medium">Delivery Terms:</span> {supplier.delivery_terms}
+                            </div>
+                          )}
+                          {supplier.address && (
+                            <div>
+                              <span className="font-medium">Address:</span> {supplier.address}
                             </div>
                           )}
                         </div>
