@@ -31,6 +31,14 @@ const ProductManagement = () => {
   const [filterBrand, setFilterBrand] = useState('all');
   const [promoDialogOpen, setPromoDialogOpen] = useState(false);
   const [selectedProductForPromo, setSelectedProductForPromo] = useState(null);
+  const [promoFormData, setPromoFormData] = useState({
+    name: '',
+    normal_price: '',
+    wholesale_price: '',
+    start_date: '',
+    end_date: '',
+    is_active: true
+  });
   
   const [formData, setFormData] = useState({
     sku: '',
