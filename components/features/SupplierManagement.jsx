@@ -327,7 +327,7 @@ const SupplierManagement = () => {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+        </div>
 
       </div>
 
