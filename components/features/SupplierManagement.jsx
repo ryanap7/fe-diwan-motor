@@ -26,12 +26,10 @@ const SupplierManagement = () => {
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
   
   // Form states
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [supplierToDelete, setSupplierToDelete] = useState(null);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
