@@ -32,11 +32,7 @@ const ProductManagement = () => {
   const [promoDialogOpen, setPromoDialogOpen] = useState(false);
   const [selectedProductForPromo, setSelectedProductForPromo] = useState(null);
   const [promoFormData, setPromoFormData] = useState({
-    name: '',
-    normal_price: '',
-    wholesale_price: '',
-    start_date: '',
-    end_date: '',
+    discount_percentage: '',
     is_active: true
   });
   
