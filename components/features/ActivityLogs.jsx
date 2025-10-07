@@ -153,10 +153,10 @@ const ActivityLogs = () => {
   if (loading) {
     return (
       <Card className="border-0 shadow-lg">
-        <CardContent className=\"pt-6\">
-          <div className=\"space-y-4\">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className=\"h-16 bg-gray-200 rounded animate-pulse\"></div>
+              <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
             ))}
           </div>
         </CardContent>
@@ -165,59 +165,59 @@ const ActivityLogs = () => {
   }
 
   return (
-    <div className=\"space-y-6\">
+    <div className="space-y-6">
       {/* Header */}
-      <div className=\"flex justify-between items-center\">
+      <div className="flex justify-between items-center">
         <div>
-          <h3 className=\"text-lg font-semibold text-gray-900\">Log Aktivitas</h3>
-          <p className=\"text-sm text-muted-foreground\">
+          <h3 className="text-lg font-semibold text-gray-900">Log Aktivitas</h3>
+          <p className="text-sm text-muted-foreground">
             Menampilkan {filteredLogs.length} dari {logs.length} aktivitas
           </p>
         </div>
         <Button
           onClick={fetchData}
-          variant=\"outline\"
-          className=\"hover:bg-blue-50\"
+          variant="outline"
+          className="hover:bg-blue-50"
         >
-          <RefreshCw className=\"w-4 h-4 mr-2\" />
+          <RefreshCw className="w-4 h-4 mr-2" />
           Muat Ulang
         </Button>
       </div>
 
       {/* Filters */}
       <Card className="border-0 shadow-lg">
-        <CardHeader className=\"pb-4\">
-          <div className=\"flex items-center gap-2\">
-            <Filter className=\"w-5 h-5 text-blue-600\" />
-            <CardTitle className=\"text-lg\">Filter</CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-blue-600" />
+            <CardTitle className="text-lg">Filter</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4\">
-            <div className=\"space-y-2\">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
               <Label>Cari</Label>
-              <div className=\"relative\">
-                <Search className=\"absolute left-3 top-3 w-4 h-4 text-gray-400\" />
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder=\"Cari pengguna, entitas...\"
+                  placeholder="Cari pengguna, entitas..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className=\"pl-10\"
+                  className="pl-10"
                 />
               </div>
             </div>
 
-            <div className=\"space-y-2\">
+            <div className="space-y-2">
               <Label>Pengguna</Label>
               <Select
                 value={filters.user_id}
                 onValueChange={(value) => handleFilterChange('user_id', value === 'all' ? '' : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder=\"Semua pengguna\" />
+                  <SelectValue placeholder="Semua pengguna" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value=\"all\">Semua Pengguna</SelectItem>
+                  <SelectItem value="all">Semua Pengguna</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.username}
@@ -227,71 +227,71 @@ const ActivityLogs = () => {
               </Select>
             </div>
 
-            <div className=\"space-y-2\">
+            <div className="space-y-2">
               <Label>Aksi</Label>
               <Select
                 value={filters.action}
                 onValueChange={(value) => handleFilterChange('action', value === 'all' ? '' : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder=\"Semua aksi\" />
+                  <SelectValue placeholder="Semua aksi" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value=\"all\">Semua Aksi</SelectItem>
-                  <SelectItem value=\"login\">Masuk</SelectItem>
-                  <SelectItem value=\"logout\">Keluar</SelectItem>
-                  <SelectItem value=\"create\">Buat</SelectItem>
-                  <SelectItem value=\"update\">Ubah</SelectItem>
-                  <SelectItem value=\"delete\">Hapus</SelectItem>
-                  <SelectItem value=\"assign\">Tetapkan</SelectItem>
+                  <SelectItem value="all">Semua Aksi</SelectItem>
+                  <SelectItem value="login">Masuk</SelectItem>
+                  <SelectItem value="logout">Keluar</SelectItem>
+                  <SelectItem value="create">Buat</SelectItem>
+                  <SelectItem value="update">Ubah</SelectItem>
+                  <SelectItem value="delete">Hapus</SelectItem>
+                  <SelectItem value="assign">Tetapkan</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className=\"space-y-2\">
+            <div className="space-y-2">
               <Label>Tipe Entitas</Label>
               <Select
                 value={filters.entity_type}
                 onValueChange={(value) => handleFilterChange('entity_type', value === 'all' ? '' : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder=\"Semua tipe\" />
+                  <SelectValue placeholder="Semua tipe" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value=\"all\">Semua Tipe</SelectItem>
-                  <SelectItem value=\"user\">Pengguna</SelectItem>
-                  <SelectItem value=\"branch\">Cabang</SelectItem>
-                  <SelectItem value=\"company\">Perusahaan</SelectItem>
-                  <SelectItem value=\"staff_assignment\">Penugasan Staf</SelectItem>
-                  <SelectItem value=\"auth\">Autentikasi</SelectItem>
+                  <SelectItem value="all">Semua Tipe</SelectItem>
+                  <SelectItem value="user">Pengguna</SelectItem>
+                  <SelectItem value="branch">Cabang</SelectItem>
+                  <SelectItem value="company">Perusahaan</SelectItem>
+                  <SelectItem value="staff_assignment">Penugasan Staf</SelectItem>
+                  <SelectItem value="auth">Autentikasi</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className=\"space-y-2\">
+            <div className="space-y-2">
               <Label>Tanggal Dari</Label>
               <Input
-                type=\"date\"
+                type="date"
                 value={filters.date_from}
                 onChange={(e) => handleFilterChange('date_from', e.target.value)}
               />
             </div>
 
-            <div className=\"space-y-2\">
+            <div className="space-y-2">
               <Label>Tanggal Sampai</Label>
               <Input
-                type=\"date\"
+                type="date"
                 value={filters.date_to}
                 onChange={(e) => handleFilterChange('date_to', e.target.value)}
               />
             </div>
           </div>
 
-          <div className=\"mt-4 flex justify-end\">
+          <div className="mt-4 flex justify-end">
             <Button
               onClick={resetFilters}
-              variant=\"outline\"
-              size=\"sm\"
+              variant="outline"
+              size="sm"
             >
               Reset Filter
             </Button>
@@ -302,56 +302,56 @@ const ActivityLogs = () => {
       {/* Activity Logs List */}
       {filteredLogs.length === 0 ? (
         <Card className="border-0 shadow-lg">
-          <CardContent className=\"pt-12 pb-12 text-center\">
-            <div className=\"w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4\">
-              <FileText className=\"w-8 h-8 text-blue-600\" />
+          <CardContent className="pt-12 pb-12 text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className=\"text-lg font-semibold text-gray-900 mb-2\">Tidak ada log aktivitas</h3>
-            <p className=\"text-muted-foreground\">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada log aktivitas</h3>
+            <p className="text-muted-foreground">
               {logs.length === 0 ? 'Belum ada aktivitas yang tercatat' : 'Tidak ada aktivitas yang cocok dengan filter'}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className=\"space-y-3\">
+        <div className="space-y-3">
           {filteredLogs.map((log) => (
             <Card
               key={log.id}
-              className=\"border-0 shadow-md hover:shadow-lg transition-all duration-200\"
+              className="border-0 shadow-md hover:shadow-lg transition-all duration-200"
             >
-              <CardContent className=\"p-4\">
-                <div className=\"flex items-start justify-between\">
-                  <div className=\"flex items-start gap-4 flex-1\">
-                    <div className=\"w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0\">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
                       {log.username?.charAt(0).toUpperCase() || '?'}
                     </div>
-                    <div className=\"flex-1 min-w-0\">
-                      <div className=\"flex items-center gap-2 mb-1 flex-wrap\">
-                        <span className=\"font-semibold text-gray-900\">{log.username}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-semibold text-gray-900">{log.username}</span>
                         <Badge className={`${getActionBadgeColor(log.action)} hover:${getActionBadgeColor(log.action)} text-white text-xs`}>
                           {getActionLabel(log.action)}
                         </Badge>
-                        <Badge variant=\"outline\" className=\"text-xs\">
+                        <Badge variant="outline" className="text-xs">
                           {getEntityTypeLabel(log.entity_type)}
                         </Badge>
                       </div>
-                      <p className=\"text-sm text-gray-600 mb-1\">
+                      <p className="text-sm text-gray-600 mb-1">
                         {log.entity_name && (
-                          <span className=\"font-medium\">{log.entity_name}</span>
+                          <span className="font-medium">{log.entity_name}</span>
                         )}
                       </p>
                       {log.details && (
-                        <p className=\"text-xs text-muted-foreground\">{log.details}</p>
+                        <p className="text-xs text-muted-foreground">{log.details}</p>
                       )}
                     </div>
                   </div>
-                  <div className=\"text-right flex-shrink-0 ml-4\">
-                    <div className=\"flex items-center gap-1 text-xs text-muted-foreground mb-1\">
-                      <Calendar className=\"w-3 h-3\" />
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                      <Calendar className="w-3 h-3" />
                       <span>{formatDate(log.timestamp)}</span>
                     </div>
                     {log.ip_address && (
-                      <div className=\"text-xs text-muted-foreground\">
+                      <div className="text-xs text-muted-foreground">
                         IP: {log.ip_address}
                       </div>
                     )}
