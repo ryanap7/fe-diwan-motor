@@ -643,42 +643,157 @@ const PurchaseOrderManagement = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Items</Label>
-              <div className="border rounded p-4 max-h-60 overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <Label>Items Purchase Order</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    // Add item row
+                    setPOFormData(prev => ({
+                      ...prev,
+                      items: [
+                        ...prev.items,
+                        {
+                          product_id: '',
+                          product_name: '',
+                          sku: '',
+                          quantity: 10,
+                          price: 0
+                        }
+                      ]
+                    }));
+                  }}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Tambah Item
+                </Button>
+              </div>
+              <div className="border rounded p-4 max-h-96 overflow-y-auto">
                 {poFormData.items.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produk</TableHead>
-                        <TableHead>Stok Saat Ini</TableHead>
-                        <TableHead>Jumlah Order</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {poFormData.items.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.product_name}</TableCell>
-                          <TableCell>{item.current_stock}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={item.suggested_qty}
-                              onChange={(e) => {
-                                const updatedItems = [...poFormData.items];
-                                updatedItems[index].suggested_qty = parseInt(e.target.value) || 0;
-                                setPOFormData(prev => ({ ...prev, items: updatedItems }));
-                              }}
-                              className="w-20"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="space-y-3">
+                    {poFormData.items.map((item, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 rounded border">
+                        <div className="col-span-5 space-y-1">
+                          <Label className="text-xs">Produk</Label>
+                          <Select
+                            value={item.product_id}
+                            onValueChange={(value) => {
+                              const product = products.find(p => p.id === value);
+                              const updatedItems = [...poFormData.items];
+                              updatedItems[index] = {
+                                ...updatedItems[index],
+                                product_id: value,
+                                product_name: product?.name || '',
+                                sku: product?.sku || '',
+                                price: product?.purchase_price || 0
+                              };
+                              setPOFormData(prev => ({ ...prev, items: updatedItems }));
+                            }}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Pilih produk" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{product.name}</span>
+                                    <span className="text-xs text-muted-foreground">{product.sku}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Qty</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const updatedItems = [...poFormData.items];
+                              updatedItems[index].quantity = parseInt(e.target.value) || 0;
+                              setPOFormData(prev => ({ ...prev, items: updatedItems }));
+                            }}
+                            className="h-9"
+                          />
+                        </div>
+                        
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Harga</Label>
+                          <Input
+                            type="number"
+                            value={item.price}
+                            onChange={(e) => {
+                              const updatedItems = [...poFormData.items];
+                              updatedItems[index].price = parseInt(e.target.value) || 0;
+                              setPOFormData(prev => ({ ...prev, items: updatedItems }));
+                            }}
+                            className="h-9"
+                          />
+                        </div>
+                        
+                        <div className="col-span-2 space-y-1">
+                          <Label className="text-xs">Subtotal</Label>
+                          <Input
+                            type="text"
+                            value={new Intl.NumberFormat('id-ID', {
+                              style: 'currency',
+                              currency: 'IDR',
+                              minimumFractionDigits: 0
+                            }).format(item.quantity * item.price)}
+                            disabled
+                            className="h-9 bg-gray-100"
+                          />
+                        </div>
+                        
+                        <div className="col-span-1 flex items-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const updatedItems = poFormData.items.filter((_, i) => i !== index);
+                              setPOFormData(prev => ({ ...prev, items: updatedItems }));
+                            }}
+                            className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Total Summary */}
+                    <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-blue-900">Total PO:</span>
+                        <span className="text-xl font-bold text-blue-900">
+                          {new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            minimumFractionDigits: 0
+                          }).format(
+                            poFormData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0)
+                          )}
+                        </span>
+                      </div>
+                      <div className="text-sm text-blue-700 mt-1">
+                        Total {poFormData.items.length} item - {poFormData.items.reduce((sum, item) => sum + item.quantity, 0)} unit
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    Belum ada item yang dipilih
-                  </p>
+                  <div className="text-center py-8">
+                    <Package2 className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-muted-foreground">Belum ada item yang dipilih</p>
+                    <p className="text-sm text-muted-foreground mt-1">Klik "Tambah Item" untuk menambah produk</p>
+                  </div>
                 )}
               </div>
             </div>
