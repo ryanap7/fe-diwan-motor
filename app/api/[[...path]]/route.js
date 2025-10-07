@@ -298,8 +298,9 @@ export async function POST(request) {
       return NextResponse.json(company);
     }
 
-    // Branches - Create
+    // Branches - Create (Admin only)
     if (path === 'branches/create') {
+      requireAdmin();
       const newBranch = {
         id: uuidv4(),
         ...body,
@@ -315,6 +316,15 @@ export async function POST(request) {
     // Branches - Update
     if (path.startsWith('branches/') && path.includes('/update')) {
       const branchId = path.split('/')[1];
+      
+      // Branch Manager can only update their own branch
+      if (isBranchManager && currentUser.branch_id !== branchId) {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+      
       const updates = {
         ...body,
         updated_at: new Date().toISOString()
@@ -332,8 +342,9 @@ export async function POST(request) {
       return NextResponse.json(branch);
     }
 
-    // Branches - Toggle Active
+    // Branches - Toggle Active (Admin only)
     if (path.startsWith('branches/') && path.includes('/toggle')) {
+      requireAdmin();
       const branchId = path.split('/')[1];
       const branch = await db.collection('branches').findOne({ id: branchId });
       
@@ -353,15 +364,17 @@ export async function POST(request) {
       return NextResponse.json(updatedBranch);
     }
 
-    // Branches - Delete
+    // Branches - Delete (Admin only)
     if (path.startsWith('branches/') && path.includes('/delete')) {
+      requireAdmin();
       const branchId = path.split('/')[1];
       await db.collection('branches').deleteOne({ id: branchId });
       return NextResponse.json({ message: 'Branch deleted successfully' });
     }
 
-    // Branches - Assign Staff
+    // Branches - Assign Staff (Admin only)
     if (path === 'branches/assign-staff') {
+      requireAdmin();
       const { branch_id, manager_id, cashier_id } = body;
 
       // First, unassign any existing staff from this branch
