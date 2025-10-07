@@ -138,7 +138,7 @@ const App = () => {
     ]},
     { id: 'suppliers', label: 'Supplier', icon: Building2 },
     { id: 'customers', label: 'Customer', icon: Users },
-    { id: 'pos-transactions', label: 'POS - Transaksi', icon: ShoppingCart },
+    { id: 'pos-transactions', label: 'Transaksi', icon: ShoppingCart },
     { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText },
     { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
       { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
