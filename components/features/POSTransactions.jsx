@@ -29,7 +29,6 @@ const POSTransactions = () => {
   
   const [filters, setFilters] = useState({
     branch_id: '',
-    cashier_id: '',
     search: '',
     date_from: '',
     date_to: ''
