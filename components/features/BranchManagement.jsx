@@ -8,24 +8,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogBatal, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Store, Plus, Edit, Trash2, Power, MapPin, Phone, User, Loader2, UserCheck } from 'lucide-react';
+import { Store, Plus, Ubah, Trash2, Power, MapPin, Telepon, User, Loader2, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const BranchManagement = () => {
-  const [branches, setBranches] = useState([]);
+const CabangManagement = () => {
+  const [cabang, setCabanges] = useState([]);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
-  const [editingBranch, setEditingBranch] = useState(null);
-  const [branchToDelete, setBranchToDelete] = useState(null);
-  const [branchForStaffAssignment, setBranchForStaffAssignment] = useState(null);
-  const [staffAssignment, setStaffAssignment] = useState({
+  const [editingCabang, setUbahingCabang] = useState(null);
+  const [branchToDelete, setCabangToDelete] = useState(null);
+  const [branchForStaffTetapkanment, setCabangForStaffTetapkanment] = useState(null);
+  const [staffTetapkanment, setStaffTetapkanment] = useState({
     manager_id: '',
     cashier_id: ''
   });
@@ -40,36 +40,36 @@ const BranchManagement = () => {
     operating_hours: '',
     stock_capacity: ''
   });
-  const [saving, setSaving] = useState(false);
+  const [saving, setMenyimpan... useState(false);
 
   useEffect(() => {
-    fetchBranches();
+    fetchCabanges();
   }, []);
 
-  const fetchBranches = async () => {
+  const fetchCabanges = async () => {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [branchesRes, usersRes, rolesRes] = await Promise.all([
-        axios.get('/api/branches', { headers }),
+      const [cabangRes, usersRes, rolesRes] = await Promise.all([
+        axios.get('/api/cabang', { headers }),
         axios.get('/api/users', { headers }),
         axios.get('/api/roles', { headers })
       ]);
       
-      setBranches(branchesRes.data || []);
+      setCabanges(cabangRes.data || []);
       setUsers(usersRes.data || []);
       setRoles(rolesRes.data || []);
     } catch (error) {
-      toast.error('Failed to load branches');
+      toast.error('Gagal memuat cabang');
     } finally {
       setLoading(false);
     }
   };
   
-  const getBranchUsers = (branchId) => {
+  const getCabangUsers = (branchId) => {
     const branchUsers = users.filter(u => u.branch_id === branchId);
-    const managerRole = roles.find(r => r.name === 'Branch Manager');
+    const managerRole = roles.find(r => r.name === 'Manajer Cabang');
     const cashierRole = roles.find(r => r.name === 'Cashier');
     
     const manager = branchUsers.find(u => u.role_id === managerRole?.id);
@@ -80,10 +80,10 @@ const BranchManagement = () => {
 
   const handleOpenDialog = (branch = null) => {
     if (branch) {
-      setEditingBranch(branch);
+      setUbahingCabang(branch);
       setFormData(branch);
     } else {
-      setEditingBranch(null);
+      setUbahingCabang(null);
       setFormData({
         code: '',
         name: '',
@@ -101,42 +101,42 @@ const BranchManagement = () => {
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
-    setEditingBranch(null);
+    setUbahingCabang(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    setMenyimpan...ue);
 
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      if (editingBranch) {
-        await axios.post(`/api/branches/${editingBranch.id}/update`, formData, { headers });
-        toast.success('Branch updated successfully!');
+      if (editingCabang) {
+        await axios.post(`/api/cabang/${editingCabang.id}/update`, formData, { headers });
+        toast.success('Cabang berhasil diperbarui!');
       } else {
-        await axios.post('/api/branches/create', formData, { headers });
-        toast.success('Branch created successfully!');
+        await axios.post('/api/cabang/create', formData, { headers });
+        toast.success('Cabang berhasil dibuat!');
       }
 
-      fetchBranches();
+      fetchCabanges();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to save branch');
+      toast.error(error.response?.data?.error || 'Gagal menyimpan cabang');
     } finally {
-      setSaving(false);
+      setMenyimpan...lse);
     }
   };
 
-  const handleToggleActive = async (branch) => {
+  const handleToggleAktif = async (branch) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`/api/branches/${branch.id}/toggle`, {}, {
+      await axios.post(`/api/cabang/${branch.id}/toggle`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success(`Branch ${branch.is_active ? 'deactivated' : 'activated'} successfully!`);
-      fetchBranches();
+      toast.success(`Cabang ${branch.is_active ? 'deactivated' : 'activated'} successfully!`);
+      fetchCabanges();
     } catch (error) {
       toast.error('Failed to toggle branch status');
     }
@@ -147,16 +147,16 @@ const BranchManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`/api/branches/${branchToDelete.id}/delete`, {}, {
+      await axios.post(`/api/cabang/${branchToDelete.id}/delete`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Branch deleted successfully!');
-      fetchBranches();
+      toast.success('Cabang berhasil dihapus!');
+      fetchCabanges();
     } catch (error) {
-      toast.error('Failed to delete branch');
+      toast.error('Gagal menghapus cabang');
     } finally {
       setDeleteDialogOpen(false);
-      setBranchToDelete(null);
+      setCabangToDelete(null);
     }
   };
 
@@ -165,9 +165,9 @@ const BranchManagement = () => {
   };
 
   const handleOpenStaffDialog = (branch) => {
-    const { manager, cashier } = getBranchUsers(branch.id);
-    setBranchForStaffAssignment(branch);
-    setStaffAssignment({
+    const { manager, cashier } = getCabangUsers(branch.id);
+    setCabangForStaffTetapkanment(branch);
+    setStaffTetapkanment({
       manager_id: manager?.id || '',
       cashier_id: cashier?.id || ''
     });
@@ -176,36 +176,36 @@ const BranchManagement = () => {
 
   const handleCloseStaffDialog = () => {
     setStaffDialogOpen(false);
-    setBranchForStaffAssignment(null);
+    setCabangForStaffTetapkanment(null);
   };
 
-  const handleStaffAssignmentSubmit = async (e) => {
+  const handleStaffTetapkanmentSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    setMenyimpan...ue);
 
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
       // Update users with new branch assignments
-      await axios.post('/api/branches/assign-staff', {
-        branch_id: branchForStaffAssignment.id,
-        manager_id: staffAssignment.manager_id || null,
-        cashier_id: staffAssignment.cashier_id || null
+      await axios.post('/api/cabang/assign-staff', {
+        branch_id: branchForStaffTetapkanment.id,
+        manager_id: staffTetapkanment.manager_id || null,
+        cashier_id: staffTetapkanment.cashier_id || null
       }, { headers });
 
       toast.success('Staff assigned successfully!');
-      fetchBranches();
+      fetchCabanges();
       handleCloseStaffDialog();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to assign staff');
     } finally {
-      setSaving(false);
+      setMenyimpan...lse);
     }
   };
 
   const getAvailableManagers = () => {
-    const managerRole = roles.find(r => r.name === 'Branch Manager');
+    const managerRole = roles.find(r => r.name === 'Manajer Cabang');
     if (!managerRole) return [];
     
     return users.filter(u => u.role_id === managerRole.id);
@@ -244,40 +244,40 @@ const BranchManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Manage Branches</h3>
-          <p className="text-sm text-muted-foreground">Total: {branches.length} branches</p>
+          <h3 className="text-lg font-semibold text-gray-900">Kelola Cabang</h3>
+          <p className="text-sm text-muted-foreground">Total: {cabang.length} cabang</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add New Branch
+          Tambah Cabang Baru
         </Button>
       </div>
 
-      {/* Branches Grid */}
-      {branches.length === 0 ? (
+      {/* Cabanges Grid */}
+      {cabang.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Store className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No branches yet</h3>
-            <p className="text-muted-foreground mb-6">Start by adding your first branch location</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Belum ada cabang</h3>
+            <p className="text-muted-foreground mb-6">Mulai dengan menambahkan lokasi cabang pertama Anda</p>
             <Button
               onClick={() => handleOpenDialog()}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add First Branch
+              Tambah Cabang Pertama
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {branches.map((branch) => {
-            const { manager, cashier } = getBranchUsers(branch.id);
+          {cabang.map((branch) => {
+            const { manager, cashier } = getCabangUsers(branch.id);
             
             return (
               <Card
@@ -299,7 +299,7 @@ const BranchManagement = () => {
                           variant={branch.is_active ? 'default' : 'secondary'}
                           className={branch.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
                         >
-                          {branch.is_active ? 'Active' : 'Inactive'}
+                          {branch.is_active ? 'Aktif' : 'Tidak Aktif'}
                         </Badge>
                       </div>
                       <CardTitle className="text-xl mb-1">{branch.name}</CardTitle>
@@ -309,17 +309,17 @@ const BranchManagement = () => {
                 <CardContent className="space-y-3 relative">
                   <div className="flex items-start gap-2 text-sm text-muted-foreground">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span>{branch.address || 'No address'}</span>
+                    <span>{branch.address || 'Tidak ada alamat'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4 flex-shrink-0" />
-                    <span>{branch.phone || 'No phone'}</span>
+                    <Telepon className="w-4 h-4 flex-shrink-0" />
+                    <span>{branch.phone || 'Tidak ada telepon'}</span>
                   </div>
                   
-                  {/* Assigned Staff Section */}
+                  {/* Tetapkaned Staff Section */}
                   <div className="border-t pt-3 mt-3">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold text-gray-700">Assigned Staff:</p>
+                      <p className="text-xs font-semibold text-gray-700">Tetapkaned Staff:</p>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -327,30 +327,30 @@ const BranchManagement = () => {
                         className="h-6 px-2 text-xs hover:bg-blue-50"
                       >
                         <UserCheck className="w-3 h-3 mr-1" />
-                        Assign
+                        Tetapkan
                       </Button>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="w-4 h-4 flex-shrink-0 text-blue-600" />
-                        <span className="font-medium text-xs text-gray-600">Manager:</span>
+                        <span className="font-medium text-xs text-gray-600">Manajer:</span>
                         {manager ? (
                           <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
                             {manager.username}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                          <span className="text-xs text-gray-400 italic">Belum ditugaskan</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <User className="w-4 h-4 flex-shrink-0 text-green-600" />
-                        <span className="font-medium text-xs text-gray-600">Cashier:</span>
+                        <span className="font-medium text-xs text-gray-600">Kasir:</span>
                         {cashier ? (
                           <Badge variant="outline" className="text-xs bg-green-50 border-green-200">
                             {cashier.username}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                          <span className="text-xs text-gray-400 italic">Belum ditugaskan</span>
                         )}
                       </div>
                     </div>
@@ -363,13 +363,13 @@ const BranchManagement = () => {
                       onClick={() => handleOpenDialog(branch)}
                       className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
                     >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit
+                      <Ubah className="w-3 h-3 mr-1" />
+                      Ubah
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleToggleActive(branch)}
+                      onClick={() => handleToggleAktif(branch)}
                       className={`flex-1 transition-colors duration-200 ${
                         branch.is_active
                           ? 'hover:bg-orange-50 hover:border-orange-300'
@@ -377,13 +377,13 @@ const BranchManagement = () => {
                       }`}
                     >
                       <Power className="w-3 h-3 mr-1" />
-                      {branch.is_active ? 'Disable' : 'Enable'}
+                      {branch.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setBranchToDelete(branch);
+                        setCabangToDelete(branch);
                         setDeleteDialogOpen(true);
                       }}
                       className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
@@ -398,48 +398,48 @@ const BranchManagement = () => {
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
+      {/* Add/Ubah Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">
-              {editingBranch ? 'Edit Branch' : 'Add New Branch'}
+              {editingCabang ? 'Ubah Cabang' : 'Tambah Cabang Baru'}
             </DialogTitle>
             <DialogDescription>
-              {editingBranch ? 'Update branch information' : 'Fill in the details for the new branch'}
+              {editingCabang ? 'Update branch information' : 'Fill in the details for the new branch'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Branch Code <span className="text-red-500">*</span></Label>
+                <Label htmlFor="code">Kode Cabang <span className="text-red-500">*</span></Label>
                 <Input
                   id="code"
                   value={formData.code}
                   onChange={(e) => handleChange('code', e.target.value)}
-                  placeholder="e.g., BR001"
+                  placeholder="contoh: BR001"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Branch Name <span className="text-red-500">*</span></Label>
+                <Label htmlFor="name">Nama Cabang <span className="text-red-500">*</span></Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
-                  placeholder="e.g., Main Store"
+                  placeholder="contoh: Toko Utama"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">Alamat</Label>
               <Textarea
                 id="address"
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                placeholder="Enter branch address"
+                placeholder="Masukkan alamat cabang"
                 rows={3}
                 className="resize-none"
               />
@@ -447,12 +447,12 @@ const BranchManagement = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Telepon</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => handleChange('phone', e.target.value)}
-                  placeholder="Enter phone number"
+                  placeholder="Masukkan nomor telepon"
                 />
               </div>
               <div className="space-y-2">
@@ -462,49 +462,49 @@ const BranchManagement = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="Enter email"
+                  placeholder="Masukkan email"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="manager_name">Manager Name</Label>
+                <Label htmlFor="manager_name">Nama Manajer</Label>
                 <Input
                   id="manager_name"
                   value={formData.manager_name}
                   onChange={(e) => handleChange('manager_name', e.target.value)}
-                  placeholder="Enter manager name"
+                  placeholder="Masukkan nama manajer"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="manager_phone">Manager Phone</Label>
+                <Label htmlFor="manager_phone">Manager Telepon</Label>
                 <Input
                   id="manager_phone"
                   value={formData.manager_phone}
                   onChange={(e) => handleChange('manager_phone', e.target.value)}
-                  placeholder="Enter manager phone"
+                  placeholder="Masukkan telepon manajer"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="operating_hours">Operating Hours</Label>
+                <Label htmlFor="operating_hours">Jam Operasional</Label>
                 <Input
                   id="operating_hours"
                   value={formData.operating_hours}
                   onChange={(e) => handleChange('operating_hours', e.target.value)}
-                  placeholder="e.g., 08:00 - 20:00"
+                  placeholder="contoh: 08:00 - 20:00"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="stock_capacity">Stock Capacity</Label>
+                <Label htmlFor="stock_capacity">Kapasitas Stok</Label>
                 <Input
                   id="stock_capacity"
                   value={formData.stock_capacity}
                   onChange={(e) => handleChange('stock_capacity', e.target.value)}
-                  placeholder="e.g., 1000 items"
+                  placeholder="contoh: 1000 item"
                 />
               </div>
             </div>
@@ -516,7 +516,7 @@ const BranchManagement = () => {
                 onClick={handleCloseDialog}
                 disabled={saving}
               >
-                Cancel
+                Batal
               </Button>
               <Button
                 type="submit"
@@ -526,10 +526,10 @@ const BranchManagement = () => {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+                    Menyimpan...
                   </>
                 ) : (
-                  editingBranch ? 'Update Branch' : 'Create Branch'
+                  editingCabang ? 'Perbarui Cabang' : 'Buat Cabang'
                 )}
               </Button>
             </div>
@@ -537,34 +537,34 @@ const BranchManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Staff Assignment Dialog */}
+      {/* Staff Tetapkanment Dialog */}
       <Dialog open={staffDialogOpen} onOpenChange={setStaffDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Assign Staff to Branch</DialogTitle>
+            <DialogTitle className="text-2xl">Tetapkan Staf ke Cabang</DialogTitle>
             <DialogDescription>
-              Assign Branch Manager and Cashier to <strong>{branchForStaffAssignment?.name}</strong>
+              Tetapkan Manajer Cabang and Cashier to <strong>{branchForStaffTetapkanment?.name}</strong>
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleStaffAssignmentSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleStaffTetapkanmentSubmit} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="manager">Branch Manager</Label>
+              <Label htmlFor="manager">Manajer Cabang</Label>
               <Select
-                value={staffAssignment.manager_id || 'none'}
-                onValueChange={(value) => setStaffAssignment(prev => ({ ...prev, manager_id: value === 'none' ? '' : value }))}
+                value={staffTetapkanment.manager_id || 'none'}
+                onValueChange={(value) => setStaffTetapkanment(prev => ({ ...prev, manager_id: value === 'none' ? '' : value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select branch manager" />
+                  <SelectValue placeholder="Pilih manajer cabang" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Manager</SelectItem>
+                  <SelectItem value="none">Tidak Ada Manajer</SelectItem>
                   {getAvailableManagers().map((user) => {
-                    const isAssigned = users.find(u => u.id === user.id && u.branch_id && u.branch_id !== branchForStaffAssignment?.id);
+                    const isTetapkaned = users.find(u => u.id === user.id && u.branch_id && u.branch_id !== branchForStaffTetapkanment?.id);
                     return (
                       <SelectItem key={user.id} value={user.id}>
                         <div className="flex items-center gap-2">
                           <span>{user.username}</span>
-                          {isAssigned && <span className="text-xs text-orange-600">(Assigned to other branch)</span>}
+                          {isTetapkaned && <span className="text-xs text-orange-600">(Tetapkaned to other branch)</span>}
                         </div>
                       </SelectItem>
                     );
@@ -572,28 +572,28 @@ const BranchManagement = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Only users with "Branch Manager" role are shown
+                Only users with "Manajer Cabang" yang ditampilkan
               </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="cashier">Cashier</Label>
               <Select
-                value={staffAssignment.cashier_id || 'none'}
-                onValueChange={(value) => setStaffAssignment(prev => ({ ...prev, cashier_id: value === 'none' ? '' : value }))}
+                value={staffTetapkanment.cashier_id || 'none'}
+                onValueChange={(value) => setStaffTetapkanment(prev => ({ ...prev, cashier_id: value === 'none' ? '' : value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select cashier" />
+                  <SelectValue placeholder="Pilih kasir" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Cashier</SelectItem>
+                  <SelectItem value="none">Tidak Ada Kasir</SelectItem>
                   {getAvailableCashiers().map((user) => {
-                    const isAssigned = users.find(u => u.id === user.id && u.branch_id && u.branch_id !== branchForStaffAssignment?.id);
+                    const isTetapkaned = users.find(u => u.id === user.id && u.branch_id && u.branch_id !== branchForStaffTetapkanment?.id);
                     return (
                       <SelectItem key={user.id} value={user.id}>
                         <div className="flex items-center gap-2">
                           <span>{user.username}</span>
-                          {isAssigned && <span className="text-xs text-orange-600">(Assigned to other branch)</span>}
+                          {isTetapkaned && <span className="text-xs text-orange-600">(Tetapkaned to other branch)</span>}
                         </div>
                       </SelectItem>
                     );
@@ -601,13 +601,13 @@ const BranchManagement = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Only users with "Cashier" role are shown
+                Only users with "Cashier" yang ditampilkan
               </p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-xs text-blue-900">
-                <strong>💡 Info:</strong> Assigning a user who is already assigned to another branch will automatically unassign them from the previous branch.
+                <strong>💡 Info:</strong> Tetapkaning a user who is already assigned to another branch will automatically unassign them from the previous branch.
               </p>
             </div>
 
@@ -618,7 +618,7 @@ const BranchManagement = () => {
                 onClick={handleCloseStaffDialog}
                 disabled={saving}
               >
-                Cancel
+                Batal
               </Button>
               <Button
                 type="submit"
@@ -628,10 +628,10 @@ const BranchManagement = () => {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+                    Menyimpan...
                   </>
                 ) : (
-                  'Assign Staff'
+                  'Tetapkan Staf'
                 )}
               </Button>
             </div>
@@ -643,19 +643,19 @@ const BranchManagement = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the branch <strong>{branchToDelete?.name}</strong>.
-              This action cannot be undone.
+              Ini akan menghapus cabang secara permanen <strong>{branchToDelete?.name}</strong>.
+              Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogBatal>Batal</AlertDialogBatal>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete Branch
+              Hapus Cabang
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -664,4 +664,4 @@ const BranchManagement = () => {
   );
 };
 
-export default BranchManagement;
+export default CabangManagement;
