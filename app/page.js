@@ -332,14 +332,6 @@ const App = () => {
                 </p>
               </div>
             </div>
-            {currentUser?.branch && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-                <Store className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">
-                  {currentUser.branch.name}
-                </span>
-              </div>
-            )}
           </div>
         </header>
 
