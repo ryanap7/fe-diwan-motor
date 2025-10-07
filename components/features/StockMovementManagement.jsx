@@ -21,7 +21,6 @@ const StockMovementManagement = () => {
   const [products, setProducts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('movements');
   
   // Filter states
   const [filters, setFilters] = useState({
