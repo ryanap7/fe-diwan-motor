@@ -211,8 +211,6 @@ const StockMovementManagement = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="movements">Log Pergerakan</TabsTrigger>
-          <TabsTrigger value="mutation">Laporan Mutasi</TabsTrigger>
-          <TabsTrigger value="history">History Per Item</TabsTrigger>
         </TabsList>
 
         <TabsContent value="movements" className="space-y-4">
