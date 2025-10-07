@@ -197,15 +197,18 @@ backend:
 
   - task: "Automatic SKU/Barcode Generation (FR-PRD-002)"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented automatic SKU generation (PRD000001 format) and barcode generation (EAN-13 compatible format) when not provided in product creation."
+        - working: true
+        - agent: "testing"
+        - comment: "Automatic generation working perfectly. When SKU/barcode not provided, system generates SKU in PRD000001 format and EAN-13 compatible barcode. Manual SKU/barcode values are preserved when provided. Tested both scenarios successfully."
 
   - task: "Multiple Price Levels (FR-PRD-008)"
     implemented: true
