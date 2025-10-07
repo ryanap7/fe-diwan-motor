@@ -422,6 +422,22 @@ export async function GET(request) {
       return NextResponse.json({ message: 'System initialized' });
     }
 
+    // Authorization check for protected endpoints
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = verifyToken(token);
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
     // Company Profile
     if (path === 'company') {
       const company = await db.collection('company').findOne({});
