@@ -98,6 +98,11 @@ const App = () => {
     { id: 'dashboard', label: 'Beranda', icon: BarChart3 },
     { id: 'branches', label: 'Cabang', icon: Store },
     { id: 'users', label: 'Pengguna', icon: Users },
+    { id: 'products', label: 'Produk', icon: Package, submenu: [
+      { id: 'categories', label: 'Kategori', icon: ShoppingBag },
+      { id: 'brands', label: 'Brand/Merk', icon: Package },
+      { id: 'products-list', label: 'Daftar Produk', icon: Package },
+    ]},
     { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText },
     { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
       { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
