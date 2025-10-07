@@ -581,6 +581,285 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Brand deleted successfully' });
     }
 
+    // Products - Create (FR-PRD-001)
+    if (path === 'products/create') {
+      // Generate automatic SKU if not provided (FR-PRD-002)
+      let sku = body.sku;
+      if (!sku) {
+        const count = await db.collection('products').countDocuments();
+        sku = `PRD${String(count + 1).padStart(6, '0')}`;
+      }
+
+      // Generate automatic barcode if not provided (FR-PRD-002)
+      let barcode = body.barcode;
+      if (!barcode) {
+        barcode = `8901234${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+      }
+
+      const newProduct = {
+        id: uuidv4(),
+        sku: sku,
+        name: body.name,
+        category_id: body.category_id,
+        brand_id: body.brand_id,
+        compatible_models: body.compatible_models || '',
+        uom: body.uom,
+        purchase_price: parseFloat(body.purchase_price) || 0,
+        // Multiple price levels (FR-PRD-008)
+        price_levels: {
+          retail: parseFloat(body.price_levels?.retail) || 0,
+          wholesale: parseFloat(body.price_levels?.wholesale) || 0,
+          member: parseFloat(body.price_levels?.member) || 0
+        },
+        barcode: barcode,
+        images: body.images || [], // Array of image URLs (max 5)
+        technical_specs: body.technical_specs || '',
+        storage_location: body.storage_location || '',
+        // Tag/label system (FR-PRD-006)
+        tags: body.tags || [],
+        labels: body.labels || [],
+        // Product bundling (FR-PRD-007)
+        is_bundle: body.is_bundle || false,
+        bundle_products: body.bundle_products || [], // Array of {product_id, quantity}
+        // Time-based pricing (FR-PRD-009)
+        promotional_pricing: body.promotional_pricing || [],
+        // Volume discount rules (FR-PRD-010)
+        volume_discounts: body.volume_discounts || [],
+        // Stock per branch
+        stock_per_branch: body.stock_per_branch || {},
+        is_active: body.is_active !== undefined ? body.is_active : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('products').insertOne(newProduct);
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'CREATE',
+        entity_type: 'PRODUCT',
+        entity_id: newProduct.id,
+        entity_name: newProduct.name,
+        details: `Created product with SKU: ${newProduct.sku}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(newProduct);
+    }
+
+    // Products - Update (FR-PRD-001)
+    if (path.startsWith('products/') && path.includes('/update')) {
+      const productId = path.split('/')[1];
+      const updates = {
+        name: body.name,
+        category_id: body.category_id,
+        brand_id: body.brand_id,
+        compatible_models: body.compatible_models || '',
+        uom: body.uom,
+        purchase_price: parseFloat(body.purchase_price) || 0,
+        price_levels: {
+          retail: parseFloat(body.price_levels?.retail) || 0,
+          wholesale: parseFloat(body.price_levels?.wholesale) || 0,
+          member: parseFloat(body.price_levels?.member) || 0
+        },
+        barcode: body.barcode,
+        images: body.images || [],
+        technical_specs: body.technical_specs || '',
+        storage_location: body.storage_location || '',
+        tags: body.tags || [],
+        labels: body.labels || [],
+        is_bundle: body.is_bundle || false,
+        bundle_products: body.bundle_products || [],
+        promotional_pricing: body.promotional_pricing || [],
+        volume_discounts: body.volume_discounts || [],
+        stock_per_branch: body.stock_per_branch || {},
+        is_active: body.is_active,
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('products').updateOne({ id: productId }, { $set: updates });
+      const product = await db.collection('products').findOne({ id: productId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'UPDATE',
+        entity_type: 'PRODUCT',
+        entity_id: productId,
+        entity_name: product.name,
+        details: `Updated product with SKU: ${product.sku}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(product);
+    }
+
+    // Products - Toggle Active
+    if (path.startsWith('products/') && path.includes('/toggle')) {
+      const productId = path.split('/')[1];
+      const product = await db.collection('products').findOne({ id: productId });
+      
+      await db.collection('products').updateOne(
+        { id: productId },
+        { $set: { is_active: !product.is_active, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedProduct = await db.collection('products').findOne({ id: productId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: updatedProduct.is_active ? 'ACTIVATE' : 'DEACTIVATE',
+        entity_type: 'PRODUCT',
+        entity_id: productId,
+        entity_name: updatedProduct.name,
+        details: `${updatedProduct.is_active ? 'Activated' : 'Deactivated'} product with SKU: ${updatedProduct.sku}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(updatedProduct);
+    }
+
+    // Products - Delete
+    if (path.startsWith('products/') && path.includes('/delete')) {
+      const productId = path.split('/')[1];
+      const product = await db.collection('products').findOne({ id: productId });
+      
+      await db.collection('products').deleteOne({ id: productId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'DELETE',
+        entity_type: 'PRODUCT',
+        entity_id: productId,
+        entity_name: product?.name || 'Unknown',
+        details: `Deleted product with SKU: ${product?.sku || 'Unknown'}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Product deleted successfully' });
+    }
+
+    // Products - Update Stock per Branch
+    if (path.startsWith('products/') && path.includes('/stock')) {
+      const productId = path.split('/')[1];
+      const { branch_id, stock_quantity } = body;
+      
+      const product = await db.collection('products').findOne({ id: productId });
+      const updatedStockPerBranch = { ...product.stock_per_branch };
+      updatedStockPerBranch[branch_id] = parseInt(stock_quantity);
+
+      await db.collection('products').updateOne(
+        { id: productId },
+        { $set: { stock_per_branch: updatedStockPerBranch, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedProduct = await db.collection('products').findOne({ id: productId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'UPDATE_STOCK',
+        entity_type: 'PRODUCT',
+        entity_id: productId,
+        entity_name: updatedProduct.name,
+        details: `Updated stock for branch ${branch_id}: ${stock_quantity}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(updatedProduct);
+    }
+
+    // Products - Add/Update Promotional Pricing (FR-PRD-009)
+    if (path.startsWith('products/') && path.includes('/promo')) {
+      const productId = path.split('/')[1];
+      const { name, price_levels, start_date, end_date, is_active } = body;
+      
+      const product = await db.collection('products').findOne({ id: productId });
+      const promotionalPricing = [...(product.promotional_pricing || [])];
+      
+      const newPromo = {
+        id: uuidv4(),
+        name,
+        price_levels,
+        start_date,
+        end_date,
+        is_active: is_active !== undefined ? is_active : true,
+        created_at: new Date().toISOString()
+      };
+      
+      promotionalPricing.push(newPromo);
+
+      await db.collection('products').updateOne(
+        { id: productId },
+        { $set: { promotional_pricing: promotionalPricing, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedProduct = await db.collection('products').findOne({ id: productId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'ADD_PROMO',
+        entity_type: 'PRODUCT',
+        entity_id: productId,
+        entity_name: updatedProduct.name,
+        details: `Added promotional pricing: ${name}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(updatedProduct);
+    }
+
+    // Products - Add/Update Volume Discount Rules (FR-PRD-010)
+    if (path.startsWith('products/') && path.includes('/volume-discount')) {
+      const productId = path.split('/')[1];
+      const { min_quantity, discount_type, discount_value, is_active } = body;
+      
+      const product = await db.collection('products').findOne({ id: productId });
+      const volumeDiscounts = [...(product.volume_discounts || [])];
+      
+      const newDiscount = {
+        id: uuidv4(),
+        min_quantity: parseInt(min_quantity),
+        discount_type, // 'percentage' or 'fixed'
+        discount_value: parseFloat(discount_value),
+        is_active: is_active !== undefined ? is_active : true,
+        created_at: new Date().toISOString()
+      };
+      
+      volumeDiscounts.push(newDiscount);
+
+      await db.collection('products').updateOne(
+        { id: productId },
+        { $set: { volume_discounts: volumeDiscounts, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedProduct = await db.collection('products').findOne({ id: productId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'ADD_VOLUME_DISCOUNT',
+        entity_type: 'PRODUCT',
+        entity_id: productId,
+        entity_name: updatedProduct.name,
+        details: `Added volume discount for min quantity: ${min_quantity}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(updatedProduct);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
