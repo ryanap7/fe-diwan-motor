@@ -1875,6 +1875,104 @@ export async function GET(request) {
       });
     }
 
+    // Inventory Management - Stock Mutation Report (FR-INV-014)
+    if (path === 'inventory/mutation-report') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      const startDate = searchParams.get('start_date');
+      const endDate = searchParams.get('end_date');
+      const branchId = searchParams.get('branch_id');
+      
+      if (!startDate || !endDate) {
+        return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
+      }
+      
+      // Get all products
+      const products = await db.collection('products').find({}).toArray();
+      
+      // Build query for movements in date range
+      const movementQuery = {
+        timestamp: {
+          $gte: startDate,
+          $lte: endDate + 'T23:59:59.999Z'
+        }
+      };
+      
+      if (branchId) {
+        movementQuery.$or = [
+          { branch_id: branchId },
+          { from_branch_id: branchId },
+          { to_branch_id: branchId }
+        ];
+      }
+      
+      const movements = await db.collection('stock_movements').find(movementQuery).toArray();
+      
+      // Calculate mutation for each product
+      const mutationReport = products.map(product => {
+        const productMovements = movements.filter(m => m.product_id === product.id);
+        
+        // Calculate opening stock (current stock - movements in period)
+        let currentStock = 0;
+        if (branchId) {
+          currentStock = parseInt(product.stock_per_branch?.[branchId]) || 0;
+        } else {
+          currentStock = Object.values(product.stock_per_branch || {})
+            .reduce((sum, stock) => sum + (parseInt(stock) || 0), 0);
+        }
+        
+        // Calculate movements
+        let stockIn = 0;
+        let stockOut = 0;
+        let adjustments = 0;
+        
+        productMovements.forEach(movement => {
+          const qty = parseInt(movement.quantity) || 0;
+          
+          switch (movement.type) {
+            case 'RECEIVE':
+            case 'TRANSFER':
+              if (branchId) {
+                if (movement.to_branch_id === branchId) stockIn += qty;
+                if (movement.from_branch_id === branchId) stockOut += qty;
+              } else {
+                stockIn += qty;
+              }
+              break;
+            case 'ADJUSTMENT':
+              if (movement.adjustment_type === 'add') {
+                stockIn += qty;
+              } else if (movement.adjustment_type === 'subtract') {
+                stockOut += qty;
+              } else {
+                adjustments += qty;
+              }
+              break;
+            case 'OPNAME':
+              adjustments += movement.difference || 0;
+              break;
+          }
+        });
+        
+        const openingStock = currentStock - stockIn + stockOut - adjustments;
+        const closingStock = currentStock;
+        
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          product_sku: product.sku,
+          opening_stock: Math.max(0, openingStock),
+          stock_in: stockIn,
+          stock_out: stockOut,
+          adjustments: adjustments,
+          closing_stock: closingStock
+        };
+      });
+      
+      return NextResponse.json(mutationReport);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
