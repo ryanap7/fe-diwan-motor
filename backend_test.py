@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "https://motoparts-pos.preview.emergentagent.com/api"
+BASE_URL = "https://partsflow-1.preview.emergentagent.com/api"
 AUTH_USERNAME = "admin"
 AUTH_PASSWORD = "admin123"
 
