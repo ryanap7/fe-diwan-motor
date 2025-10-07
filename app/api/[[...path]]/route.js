@@ -499,8 +499,9 @@ export async function POST(request) {
       });
     }
 
-    // Users - Update
+    // Users - Update (Admin only)
     if (path.startsWith('users/') && path.includes('/update')) {
+      requireAdmin();
       const userId = path.split('/')[1];
       const updates = { ...body };
       delete updates.id;
@@ -528,8 +529,9 @@ export async function POST(request) {
       });
     }
 
-    // Users - Delete
+    // Users - Delete (Admin only)
     if (path.startsWith('users/') && path.includes('/delete')) {
+      requireAdmin();
       const userId = path.split('/')[1];
       
       const user = await db.collection('users').findOne({ id: userId });
