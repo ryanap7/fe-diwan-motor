@@ -368,41 +368,59 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                     </div>
                   </div>
 
-                  <div className="pt-4 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenDialog(branch)}
-                      className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(branch)}
-                      className={`flex-1 transition-colors duration-200 ${
-                        branch.is_active
-                          ? 'hover:bg-orange-50 hover:border-orange-300'
-                          : 'hover:bg-green-50 hover:border-green-300'
-                      }`}
-                    >
-                      <Power className="w-3 h-3 mr-1" />
-                      {branch.is_active ? 'Disable' : 'Enable'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setBranchToDelete(branch);
-                        setDeleteDialogOpen(true);
-                      }}
-                      className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
+                  {/* Action buttons - only show for admin */}
+                  {!isProfileMode && (
+                    <div className="pt-4 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDialog(branch)}
+                        className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(branch)}
+                        className={`flex-1 transition-colors duration-200 ${
+                          branch.is_active
+                            ? 'hover:bg-orange-50 hover:border-orange-300'
+                            : 'hover:bg-green-50 hover:border-green-300'
+                        }`}
+                      >
+                        <Power className="w-3 h-3 mr-1" />
+                        {branch.is_active ? 'Disable' : 'Enable'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setBranchToDelete(branch);
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* View-only mode for branch managers */}
+                  {isProfileMode && (
+                    <div className="pt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDialog(branch)}
+                        className="w-full hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Lihat Detail
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
