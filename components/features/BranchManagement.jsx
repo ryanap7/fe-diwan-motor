@@ -330,15 +330,17 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                   <div className="border-t pt-3 mt-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-gray-700">Assigned Staff:</p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenStaffDialog(branch)}
-                        className="h-6 px-2 text-xs hover:bg-blue-50"
-                      >
-                        <UserCheck className="w-3 h-3 mr-1" />
-                        Assign
-                      </Button>
+                      {!isProfileMode && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenStaffDialog(branch)}
+                          className="h-6 px-2 text-xs hover:bg-blue-50"
+                        >
+                          <UserCheck className="w-3 h-3 mr-1" />
+                          Assign
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
