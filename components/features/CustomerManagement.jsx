@@ -86,7 +86,6 @@ const CustomerManagement = () => {
         phone: customer.phone || '',
         email: customer.email || '',
         address: customer.address || '',
-        category: customer.category || 'retail',
         notes: customer.notes || '',
         is_active: customer.is_active !== undefined ? customer.is_active : true
       });
@@ -97,7 +96,6 @@ const CustomerManagement = () => {
         phone: '',
         email: '',
         address: '',
-        category: 'retail',
         notes: '',
         is_active: true
       });
