@@ -336,7 +336,7 @@ const ProductManagement = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map((product) => {
-            const margin = calculateMargin(product.purchase_price, product.retail_price);
+            const margin = calculateMargin(product.purchase_price, product.price_levels?.retail);
             const mainImage = product.images && product.images.length > 0 ? product.images[0] : null;
             
             return (
