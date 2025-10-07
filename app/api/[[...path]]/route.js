@@ -1256,8 +1256,9 @@ export async function POST(request) {
       return NextResponse.json(updatedSupplier);
     }
 
-    // Suppliers - Delete
+    // Suppliers - Delete (Admin only)
     if (path.startsWith('suppliers/') && path.includes('/delete')) {
+      requireAdmin();
       const supplierId = path.split('/')[1];
       const supplier = await db.collection('suppliers').findOne({ id: supplierId });
       
