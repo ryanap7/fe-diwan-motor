@@ -167,7 +167,7 @@ const App = () => {
                     <span>Masuk...</span>
                   </div>
                 ) : (
-                  'Sign In'
+                  'Masuk'
                 )}
               </Button>
             </form>
