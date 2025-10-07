@@ -215,7 +215,7 @@ const App = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{currentUser?.username}</p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {currentUser?.role?.name || 'User'}
+                  {currentUser?.role?.name}
                 </p>
               </div>
             </div>
