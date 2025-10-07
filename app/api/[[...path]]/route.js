@@ -427,6 +427,25 @@ export async function POST(request) {
       return NextResponse.json({ message: 'User deleted successfully' });
     }
 
+    // Activity Logs - Create
+    if (path === 'activity-logs/create') {
+      const newLog = {
+        id: uuidv4(),
+        user_id: currentUser.id,
+        username: body.username || currentUser.username,
+        action: body.action,
+        entity_type: body.entity_type,
+        entity_id: body.entity_id || null,
+        entity_name: body.entity_name || null,
+        details: body.details || null,
+        ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        timestamp: new Date().toISOString()
+      };
+
+      await db.collection('activity_logs').insertOne(newLog);
+      return NextResponse.json(newLog);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
