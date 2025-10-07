@@ -239,7 +239,8 @@ const App = () => {
             const isActive = activeMenu === item.id;
             const hasSubmenu = item.submenu && item.submenu.length > 0;
             const isSettingsMenu = item.id === 'settings';
-            const submenuOpen = isSettingsMenu ? settingsOpen : false;
+            const isProductsMenu = item.id === 'products';
+            const submenuOpen = isSettingsMenu ? settingsOpen : (isProductsMenu ? productsOpen : false);
             
             return (
               <div key={item.id}>
