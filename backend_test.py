@@ -274,30 +274,54 @@ class ProductManagementTester:
         except Exception as e:
             self.log_result("Product CRUD Operations", False, f"CRUD test error: {str(e)}")
             return False
-        
-        if response and response.status_code == 401:
-            self.log_test("Login Invalid Credentials", True, "Correctly rejected invalid credentials")
-        else:
-            status = response.status_code if response else "No response"
-            self.log_test("Login Invalid Credentials", False, f"Should return 401, got {status}")
-        
-        # Test /auth/me with valid token
-        if self.auth_token:
-            response = self.make_request("GET", "auth/me", use_auth=True)
-            if response and response.status_code == 200:
-                data = response.json()
-                user = data.get("user", {})
-                self.log_test("Get Current User", True, 
-                            f"Retrieved user info - Username: {user.get('username')}, Role: {user.get('role', {}).get('name', 'N/A')}")
+    
+    def test_automatic_sku_barcode_generation(self):
+        """Test Automatic SKU/Barcode Generation (FR-PRD-002)"""
+        try:
+            # Test 1: Create product without SKU and barcode
+            product_data = {
+                "name": "Auto-Generated Test Product",
+                "category_id": self.created_categories[0],
+                "brand_id": self.created_brands[0],
+                "compatible_models": "Universal",
+                "uom": "Piece",
+                "purchase_price": 25.00,
+                "price_levels": {
+                    "retail": 49.99,
+                    "wholesale": 40.00,
+                    "member": 45.00
+                },
+                "is_active": True
+            }
+            
+            response = requests.post(f"{self.base_url}/products/create", 
+                                   json=product_data, headers=self.get_headers())
+            
+            if response.status_code == 200:
+                product = response.json()
+                self.created_products.append(product['id'])
+                
+                # Verify SKU and barcode are auto-generated
+                if (product.get('sku') and product.get('barcode') and 
+                    product['sku'].startswith('PRD') and len(product['barcode']) >= 10):
+                    
+                    self.log_result("Auto SKU/Barcode Generation", True, 
+                                  f"SKU and barcode auto-generated successfully", 
+                                  f"SKU: {product['sku']}, Barcode: {product['barcode']}")
+                else:
+                    self.log_result("Auto SKU/Barcode Generation", False, 
+                                  "SKU or barcode not properly generated", 
+                                  f"SKU: {product.get('sku')}, Barcode: {product.get('barcode')}")
             else:
-                status = response.status_code if response else "No response"
-                self.log_test("Get Current User", False, f"Failed with status {status}")
-        
-        # Test /auth/me without token
-        response = self.make_request("GET", "auth/me", use_auth=False)
-        if response and response.status_code == 401:
-            self.log_test("Get Current User No Auth", True, "Correctly rejected request without token")
-        else:
+                self.log_result("Auto SKU/Barcode Generation", False, 
+                              f"Failed to create product: {response.status_code}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("SKU/Barcode Generation", False, f"Generation test error: {str(e)}")
+            return False
             status = response.status_code if response else "No response"
             self.log_test("Get Current User No Auth", False, f"Should return 401, got {status}")
         
