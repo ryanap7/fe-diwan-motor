@@ -2057,56 +2057,102 @@ export async function GET(request) {
         await db.collection('customers').insertMany(defaultCustomers);
       }
 
-      // Initialize more dummy products if needed
+      // Initialize realistic products
       const productCount = await db.collection('products').countDocuments();
-      if (productCount < 20) {
+      if (productCount === 0) {
         const categories = await db.collection('categories').find({}).toArray();
         const brands = await db.collection('brands').find({}).toArray();
         
-        const moreProducts = [
-          { name: 'Oli Mesin Motul 10W-40', sku: 'OLI-MOTUL-001', purchase_price: 65000, normal_price: 85000, wholesale_price: 75000, category: 'Oli & Pelumas' },
-          { name: 'Kampas Rem Depan', sku: 'REM-DEP-001', purchase_price: 45000, normal_price: 65000, wholesale_price: 55000, category: 'Rem' },
-          { name: 'Kampas Rem Belakang', sku: 'REM-BLK-001', purchase_price: 40000, normal_price: 55000, wholesale_price: 48000, category: 'Rem' },
-          { name: 'Aki Motor 12V 5Ah', sku: 'AKI-001', purchase_price: 180000, normal_price: 250000, wholesale_price: 220000, category: 'Kelistrikan' },
-          { name: 'Busi NGK Iridium', sku: 'BUSI-NGK-001', purchase_price: 25000, normal_price: 35000, wholesale_price: 30000, category: 'Kelistrikan' },
-          { name: 'Filter Udara Racing', sku: 'FILTER-001', purchase_price: 75000, normal_price: 110000, wholesale_price: 95000, category: 'Filter' },
-          { name: 'Rantai Motor 428H', sku: 'RANTAI-001', purchase_price: 85000, normal_price: 125000, wholesale_price: 105000, category: 'Transmisi' },
-          { name: 'Gear Set Depan Belakang', sku: 'GEAR-001', purchase_price: 120000, normal_price: 175000, wholesale_price: 150000, category: 'Transmisi' },
-          { name: 'Spion Kiri Kanan Set', sku: 'SPION-001', purchase_price: 55000, normal_price: 80000, wholesale_price: 70000, category: 'Body' },
-          { name: 'Lampu Depan LED', sku: 'LAMPU-DEP-001', purchase_price: 150000, normal_price: 220000, wholesale_price: 190000, category: 'Kelistrikan' },
-          { name: 'Lampu Belakang LED', sku: 'LAMPU-BLK-001', purchase_price: 85000, normal_price: 125000, wholesale_price: 105000, category: 'Kelistrikan' },
-          { name: 'Kabel Gas Racing', sku: 'KABEL-001', purchase_price: 35000, normal_price: 50000, wholesale_price: 42000, category: 'Kontrol' },
-          { name: 'Handle Rem Racing', sku: 'HANDLE-001', purchase_price: 95000, normal_price: 135000, wholesale_price: 115000, category: 'Kontrol' },
-          { name: 'Knalpot Racing Titanium', sku: 'KNALPOT-001', purchase_price: 450000, normal_price: 650000, wholesale_price: 550000, category: 'Exhaust' },
-          { name: 'CDI Racing Unlimited', sku: 'CDI-001', purchase_price: 280000, normal_price: 400000, wholesale_price: 340000, category: 'Kelistrikan' },
-          { name: 'Kopling Manual Set', sku: 'KOPLING-001', purchase_price: 165000, normal_price: 240000, wholesale_price: 200000, category: 'Transmisi' },
-          { name: 'Shock Breaker Depan', sku: 'SHOCK-DEP-001', purchase_price: 320000, normal_price: 450000, wholesale_price: 385000, category: 'Suspensi' },
-          { name: 'Shock Breaker Belakang', sku: 'SHOCK-BLK-001', purchase_price: 380000, normal_price: 550000, wholesale_price: 465000, category: 'Suspensi' },
-          { name: 'Velg Racing Aluminium', sku: 'VELG-001', purchase_price: 550000, normal_price: 800000, wholesale_price: 675000, category: 'Roda' },
-          { name: 'Jok Racing Sporty', sku: 'JOK-001', purchase_price: 285000, normal_price: 410000, wholesale_price: 350000, category: 'Body' }
+        const catMap = {
+          'Ban & Velg': categories.find(c => c.name === 'Ban & Velg'),
+          'Oli & Pelumas': categories.find(c => c.name === 'Oli & Pelumas'),
+          'Sistem Rem': categories.find(c => c.name === 'Sistem Rem'),
+          'Kelistrikan': categories.find(c => c.name === 'Kelistrikan'),
+          'Filter': categories.find(c => c.name === 'Filter'),
+          'Sistem Transmisi': categories.find(c => c.name === 'Sistem Transmisi'),
+          'Body & Aksesoris': categories.find(c => c.name === 'Body & Aksesoris'),
+          'Suspensi': categories.find(c => c.name === 'Suspensi'),
+          'Sistem Kontrol': categories.find(c => c.name === 'Sistem Kontrol'),
+          'Suku Cadang Mesin': categories.find(c => c.name === 'Suku Cadang Mesin')
+        };
+
+        const brandMap = {
+          'Honda': brands.find(b => b.name === 'Honda Genuine Parts'),
+          'Yamaha': brands.find(b => b.name === 'Yamaha Genuine Parts'),
+          'Federal Parts': brands.find(b => b.name === 'Federal Parts (FP)'),
+          'Aspira': brands.find(b => b.name === 'Aspira'),
+          'IRC': brands.find(b => b.name === 'IRC (Inoue Rubber Co.)'),
+          'FDR': brands.find(b => b.name === 'FDR'),
+          'Motul': brands.find(b => b.name === 'Motul'),
+          'NGK': brands.find(b => b.name === 'NGK'),
+          'GS Astra': brands.find(b => b.name === 'GS Astra'),
+          'Osram': brands.find(b => b.name === 'Osram'),
+          'Denso': brands.find(b => b.name === 'Denso')
+        };
+        
+        const products = [
+          { name: 'Ban Motor IRC NF-67 80/90-14 Tubeless', sku: 'BAN-IRC-001', purchase_price: 120000, normal_price: 175000, wholesale_price: 150000, category: 'Ban & Velg', brand: 'IRC', models: 'Vario, Beat, Scoopy' },
+          { name: 'Ban Motor FDR Sport XR Evo 90/80-17', sku: 'BAN-FDR-002', purchase_price: 165000, normal_price: 240000, wholesale_price: 200000, category: 'Ban & Velg', brand: 'FDR', models: 'CBR, R15, Ninja 250' },
+          { name: 'Velg Racing Aluminium 17 inch', sku: 'VELG-001', purchase_price: 850000, normal_price: 1200000, wholesale_price: 1000000, category: 'Ban & Velg', brand: 'Federal Parts', models: 'Universal' },
+          
+          { name: 'Oli Mesin Motul 7100 10W-40 1L', sku: 'OLI-MOTUL-001', purchase_price: 95000, normal_price: 135000, wholesale_price: 115000, category: 'Oli & Pelumas', brand: 'Motul', models: 'All Model' },
+          { name: 'Oli Mesin Honda MPX2 10W-30 0.8L', sku: 'OLI-HON-002', purchase_price: 28000, normal_price: 45000, wholesale_price: 38000, category: 'Oli & Pelumas', brand: 'Honda', models: 'Honda' },
+          { name: 'Oli Yamalube Sport 10W-40 0.8L', sku: 'OLI-YAM-003', purchase_price: 32000, normal_price: 48000, wholesale_price: 40000, category: 'Oli & Pelumas', brand: 'Yamaha', models: 'Yamaha' },
+          
+          { name: 'Kampas Rem Depan Aspira Ventilated', sku: 'REM-ASP-001', purchase_price: 42000, normal_price: 65000, wholesale_price: 55000, category: 'Sistem Rem', brand: 'Aspira', models: 'Vario, Beat, Scoopy' },
+          { name: 'Kampas Rem Belakang Honda Genuine', sku: 'REM-HON-002', purchase_price: 38000, normal_price: 55000, wholesale_price: 47000, category: 'Sistem Rem', brand: 'Honda', models: 'Honda Matic' },
+          { name: 'Minyak Rem DOT 4 Federal 300ml', sku: 'REM-DOT4-003', purchase_price: 25000, normal_price: 38000, wholesale_price: 32000, category: 'Sistem Rem', brand: 'Federal Parts', models: 'Universal' },
+          
+          { name: 'Aki Motor GS Astra GTZ5S 12V 4Ah', sku: 'AKI-GS-001', purchase_price: 185000, normal_price: 265000, wholesale_price: 225000, category: 'Kelistrikan', brand: 'GS Astra', models: 'Vario, Beat, Mio' },
+          { name: 'Busi NGK Iridium IX CPR9EAIX-9', sku: 'BUSI-NGK-001', purchase_price: 65000, normal_price: 95000, wholesale_price: 80000, category: 'Kelistrikan', brand: 'NGK', models: 'Vario, PCX, Nmax' },
+          { name: 'Busi Denso Iridium Power IUH24', sku: 'BUSI-DEN-002', purchase_price: 48000, normal_price: 72000, wholesale_price: 60000, category: 'Kelistrikan', brand: 'Denso', models: 'Honda Matic' },
+          { name: 'Lampu Depan LED Osram H4 12V', sku: 'LAMP-OSR-001', purchase_price: 125000, normal_price: 185000, wholesale_price: 155000, category: 'Kelistrikan', brand: 'Osram', models: 'Universal' },
+          { name: 'Klakson Denso Waterproof 12V', sku: 'KLAK-DEN-001', purchase_price: 55000, normal_price: 85000, wholesale_price: 70000, category: 'Kelistrikan', brand: 'Denso', models: 'Universal' },
+          
+          { name: 'Filter Udara Honda Genuine Beat/Vario', sku: 'FILT-HON-001', purchase_price: 35000, normal_price: 55000, wholesale_price: 45000, category: 'Filter', brand: 'Honda', models: 'Beat, Vario' },
+          { name: 'Filter Oli Yamaha Genuine Mio/Soul', sku: 'FILT-YAM-002', purchase_price: 28000, normal_price: 45000, wholesale_price: 38000, category: 'Filter', brand: 'Yamaha', models: 'Mio, Soul' },
+          { name: 'Filter Udara Racing Ferrox CB150R', sku: 'FILT-FER-003', purchase_price: 145000, normal_price: 215000, wholesale_price: 180000, category: 'Filter', brand: 'Federal Parts', models: 'CB150R, CBR150' },
+          
+          { name: 'Rantai Motor Federal 428H 120L', sku: 'RANT-FED-001', purchase_price: 85000, normal_price: 125000, wholesale_price: 105000, category: 'Sistem Transmisi', brand: 'Federal Parts', models: 'Bebek 110-125cc' },
+          { name: 'Gear Set Honda Revo 110 (14-36)', sku: 'GEAR-HON-001', purchase_price: 95000, normal_price: 145000, wholesale_price: 120000, category: 'Sistem Transmisi', brand: 'Honda', models: 'Revo, Blade' },
+          { name: 'Kopling Manual Set Yamaha Jupiter Z', sku: 'KOPL-YAM-001', purchase_price: 125000, normal_price: 185000, wholesale_price: 155000, category: 'Sistem Transmisi', brand: 'Yamaha', models: 'Jupiter Z, Vega' },
+          
+          { name: 'Spion Kiri Kanan Set Honda Beat', sku: 'SPION-HON-001', purchase_price: 65000, normal_price: 95000, wholesale_price: 80000, category: 'Body & Aksesoris', brand: 'Honda', models: 'Beat, Scoopy' },
+          { name: 'Jok Racing Sporty Universal', sku: 'JOK-UNI-001', purchase_price: 285000, normal_price: 420000, wholesale_price: 350000, category: 'Body & Aksesoris', brand: 'Federal Parts', models: 'Universal' },
+          { name: 'Knalpot Racing R9 Misano Titanium', sku: 'KNALPOT-R9-001', purchase_price: 485000, normal_price: 725000, wholesale_price: 600000, category: 'Body & Aksesoris', brand: 'Federal Parts', models: 'Vario, PCX, Nmax' },
+          { name: 'Windshield Touring Tinggi Universal', sku: 'WIND-UNI-001', purchase_price: 165000, normal_price: 245000, wholesale_price: 205000, category: 'Body & Aksesoris', brand: 'Federal Parts', models: 'Universal' },
+          
+          { name: 'Shock Breaker Depan Federal Hydraulic', sku: 'SHOCK-FED-001', purchase_price: 385000, normal_price: 565000, wholesale_price: 475000, category: 'Suspensi', brand: 'Federal Parts', models: 'Vario, Beat' },
+          { name: 'Shock Breaker Belakang Gas Tabung', sku: 'SHOCK-GAS-002', purchase_price: 425000, normal_price: 625000, wholesale_price: 525000, category: 'Suspensi', brand: 'Federal Parts', models: 'Universal Matic' },
+          
+          { name: 'Kabel Gas Honda Beat Original', sku: 'KABEL-HON-001', purchase_price: 42000, normal_price: 65000, wholesale_price: 55000, category: 'Sistem Kontrol', brand: 'Honda', models: 'Beat' },
+          { name: 'Handle Rem Racing CNC Adjustable', sku: 'HANDLE-CNC-001', purchase_price: 125000, normal_price: 185000, wholesale_price: 155000, category: 'Sistem Kontrol', brand: 'Federal Parts', models: 'Universal' },
+          
+          { name: 'Piston Kit Honda Supra X 125 (54mm)', sku: 'PISTON-HON-001', purchase_price: 165000, normal_price: 245000, wholesale_price: 205000, category: 'Suku Cadang Mesin', brand: 'Honda', models: 'Supra X 125' },
+          { name: 'Gasket Set Full Engine Yamaha Mio', sku: 'GASKET-YAM-001', purchase_price: 85000, normal_price: 125000, wholesale_price: 105000, category: 'Suku Cadang Mesin', brand: 'Yamaha', models: 'Mio' }
         ];
 
-        for (const prod of moreProducts) {
-          const category = categories.find(c => c.name === prod.category);
-          const brand = brands[Math.floor(Math.random() * brands.length)];
+        for (const prod of products) {
+          const category = catMap[prod.category];
+          const brand = brandMap[prod.brand];
           
           await db.collection('products').insertOne({
             id: uuidv4(),
             sku: prod.sku,
             name: prod.name,
             category_id: category?.id || categories[0]?.id,
-            brand_id: brand?.id,
-            compatible_models: 'All Models',
+            brand_id: brand?.id || brands[0]?.id,
+            compatible_models: prod.models,
             uom: 'Pcs',
             purchase_price: prod.purchase_price,
             price_levels: {
               normal: prod.normal_price,
               wholesale: prod.wholesale_price
             },
-            barcode: `BAR${Date.now()}${Math.random().toString(36).substring(7)}`,
+            barcode: `${prod.sku.replace(/-/g, '')}${Math.floor(Math.random() * 10000)}`,
             images: [],
-            specifications: `Produk berkualitas untuk ${prod.name}`,
-            storage_location: `Rak-${Math.floor(Math.random() * 10) + 1}`,
+            specifications: `Produk original/aftermarket berkualitas untuk ${prod.models}`,
+            storage_location: `Rak-${prod.category.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 20) + 1}`,
             is_active: true,
             promotion: null,
             created_at: new Date().toISOString(),
