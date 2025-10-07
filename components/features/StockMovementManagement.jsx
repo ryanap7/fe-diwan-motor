@@ -33,8 +33,7 @@ const StockMovementManagement = () => {
     search_query: ''
   });
 
-  const [mutationReport, setMutationReport] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState('');
+  // Removed unused state variables: mutationReport, selectedProduct
 
   useEffect(() => {
     fetchMovementData();
