@@ -766,6 +766,13 @@ export async function POST(request) {
       const productId = path.split('/')[1];
       const product = await db.collection('products').findOne({ id: productId });
       
+      if (!product) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+      
       await db.collection('products').updateOne(
         { id: productId },
         { $set: { is_active: !product.is_active, updated_at: new Date().toISOString() } }
