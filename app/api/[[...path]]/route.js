@@ -1488,6 +1488,122 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Status updated successfully', status: status });
     }
 
+    // Customers - Create (FR-CUS-001)
+    if (path === 'customers/create') {
+      const newCustomer = {
+        id: uuidv4(),
+        name: body.name,
+        phone: body.phone || '',
+        email: body.email || '',
+        address: body.address || '',
+        category: body.category || 'retail', // retail, wholesale, vip
+        notes: body.notes || '',
+        is_active: body.is_active !== undefined ? body.is_active : true,
+        total_purchases: 0,
+        total_spent: 0,
+        last_purchase: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('customers').insertOne(newCustomer);
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'CREATE',
+        entity_type: 'CUSTOMER',
+        entity_id: newCustomer.id,
+        entity_name: newCustomer.name,
+        details: `Created customer: ${newCustomer.name} (${newCustomer.category})`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(newCustomer);
+    }
+
+    // Customers - Update (FR-CUS-001)
+    if (path.startsWith('customers/') && path.includes('/update')) {
+      const customerId = path.split('/')[1];
+      const updates = {
+        name: body.name,
+        phone: body.phone || '',
+        email: body.email || '',
+        address: body.address || '',
+        category: body.category || 'retail',
+        notes: body.notes || '',
+        is_active: body.is_active,
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('customers').updateOne({ id: customerId }, { $set: updates });
+      const customer = await db.collection('customers').findOne({ id: customerId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'UPDATE',
+        entity_type: 'CUSTOMER',
+        entity_id: customerId,
+        entity_name: customer.name,
+        details: `Updated customer: ${customer.name} (${customer.category})`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(customer);
+    }
+
+    // Customers - Toggle Active
+    if (path.startsWith('customers/') && path.includes('/toggle')) {
+      const customerId = path.split('/')[1];
+      const customer = await db.collection('customers').findOne({ id: customerId });
+      
+      await db.collection('customers').updateOne(
+        { id: customerId },
+        { $set: { is_active: !customer.is_active, updated_at: new Date().toISOString() } }
+      );
+
+      const updatedCustomer = await db.collection('customers').findOne({ id: customerId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: updatedCustomer.is_active ? 'ACTIVATE' : 'DEACTIVATE',
+        entity_type: 'CUSTOMER',
+        entity_id: customerId,
+        entity_name: updatedCustomer.name,
+        details: `${updatedCustomer.is_active ? 'Activated' : 'Deactivated'} customer: ${updatedCustomer.name}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(updatedCustomer);
+    }
+
+    // Customers - Delete
+    if (path.startsWith('customers/') && path.includes('/delete')) {
+      const customerId = path.split('/')[1];
+      const customer = await db.collection('customers').findOne({ id: customerId });
+      
+      await db.collection('customers').deleteOne({ id: customerId });
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'DELETE',
+        entity_type: 'CUSTOMER',
+        entity_id: customerId,
+        entity_name: customer?.name || 'Unknown',
+        details: `Deleted customer: ${customer?.name || 'Unknown'}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Customer deleted successfully' });
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
