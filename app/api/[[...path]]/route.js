@@ -675,6 +675,18 @@ export async function GET(request) {
       return NextResponse.json(logs);
     }
 
+    // Categories - List all
+    if (path === 'categories') {
+      const categories = await db.collection('categories').find({}).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(categories);
+    }
+
+    // Brands - List all
+    if (path === 'brands') {
+      const brands = await db.collection('brands').find({}).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(brands);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
