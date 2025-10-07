@@ -57,15 +57,8 @@ const SupplierManagement = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [suppliersRes, productsRes, performanceRes] = await Promise.all([
-        axios.get('/api/suppliers', { headers }),
-        axios.get('/api/products', { headers }),
-        axios.get('/api/suppliers/performance', { headers }).catch(() => ({ data: [] }))
-      ]);
-
+      const suppliersRes = await axios.get('/api/suppliers', { headers });
       setSuppliers(suppliersRes.data || []);
-      setProducts(productsRes.data || []);
-      setSupplierPerformance(performanceRes.data || []);
     } catch (error) {
       toast.error('Gagal memuat data supplier');
     } finally {
