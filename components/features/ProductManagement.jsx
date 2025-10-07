@@ -639,18 +639,38 @@ const ProductManagement = () => {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
-                URL Gambar Produk (Maksimal 3)
+                Gambar Produk (Maksimal 3)
               </Label>
-              {[0, 1, 2].map((index) => (
-                <Input
-                  key={index}
-                  value={formData.images[index]}
-                  onChange={(e) => handleImageChange(index, e.target.value)}
-                  placeholder={'URL Gambar ' + (index + 1)}
-                  type="url"
-                />
-              ))}
-              <p className="text-xs text-muted-foreground">Paste URL gambar dari internet</p>
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageFileChange}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground">Upload gambar dari perangkat Anda (JPG, PNG, max 3 gambar)</p>
+              
+              {/* Image Preview */}
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {formData.images.map((img, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={img} 
+                        alt={`Preview ${index + 1}`} 
+                        className="w-full h-24 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
