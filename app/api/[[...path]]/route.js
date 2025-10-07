@@ -307,6 +307,81 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Role deleted successfully' });
     }
 
+    // Users - Create
+    if (path === 'users/create') {
+      const { username } = body;
+      
+      const existingUser = await db.collection('users').findOne({ username });
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'Username already exists' },
+          { status: 400 }
+        );
+      }
+
+      const newUser = {
+        id: uuidv4(),
+        username: body.username,
+        password: hashPassword(body.password),
+        role_id: body.role_id || null,
+        branch_id: body.branch_id || null,
+        created_at: new Date().toISOString()
+      };
+
+      await db.collection('users').insertOne(newUser);
+      return NextResponse.json({
+        id: newUser.id,
+        username: newUser.username,
+        role_id: newUser.role_id,
+        branch_id: newUser.branch_id
+      });
+    }
+
+    // Users - Update
+    if (path.startsWith('users/') && path.includes('/update')) {
+      const userId = path.split('/')[1];
+      const updates = { ...body };
+      delete updates.id;
+      delete updates._id;
+      delete updates.created_at;
+      delete updates.username; // Don't allow username change
+
+      if (updates.password) {
+        updates.password = hashPassword(updates.password);
+      } else {
+        delete updates.password;
+      }
+
+      await db.collection('users').updateOne(
+        { id: userId },
+        { $set: updates }
+      );
+
+      const user = await db.collection('users').findOne({ id: userId });
+      return NextResponse.json({
+        id: user.id,
+        username: user.username,
+        role_id: user.role_id,
+        branch_id: user.branch_id
+      });
+    }
+
+    // Users - Delete
+    if (path.startsWith('users/') && path.includes('/delete')) {
+      const userId = path.split('/')[1];
+      
+      const user = await db.collection('users').findOne({ id: userId });
+      if (user?.username === 'admin') {
+        return NextResponse.json(
+          { error: 'Cannot delete admin user' },
+          { status: 400 }
+        );
+      }
+
+      await db.collection('users').deleteOne({ id: userId });
+      return NextResponse.json({ message: 'User deleted successfully' });
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
