@@ -260,6 +260,51 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Branch deleted successfully' });
     }
 
+    // Branches - Assign Staff
+    if (path === 'branches/assign-staff') {
+      const { branch_id, manager_id, cashier_id } = body;
+
+      // First, unassign any existing staff from this branch
+      await db.collection('users').updateMany(
+        { branch_id: branch_id },
+        { $set: { branch_id: null } }
+      );
+
+      // Then assign new staff
+      if (manager_id) {
+        // Unassign manager from any other branch first
+        await db.collection('users').updateMany(
+          { id: manager_id },
+          { $set: { branch_id: null } }
+        );
+        // Assign to this branch
+        await db.collection('users').updateOne(
+          { id: manager_id },
+          { $set: { branch_id: branch_id } }
+        );
+      }
+
+      if (cashier_id) {
+        // Unassign cashier from any other branch first
+        await db.collection('users').updateMany(
+          { id: cashier_id },
+          { $set: { branch_id: null } }
+        );
+        // Assign to this branch
+        await db.collection('users').updateOne(
+          { id: cashier_id },
+          { $set: { branch_id: branch_id } }
+        );
+      }
+
+      return NextResponse.json({ 
+        message: 'Staff assigned successfully',
+        branch_id,
+        manager_id,
+        cashier_id
+      });
+    }
+
     // Roles - Create
     if (path === 'roles/create') {
       const newRole = {
