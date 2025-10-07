@@ -135,6 +135,7 @@ const App = () => {
       { id: 'stock-movements', label: 'Stock Movements', icon: BarChart3 },
     ]},
     { id: 'suppliers', label: 'Supplier', icon: Building2 },
+    { id: 'customers', label: 'Customer', icon: Users },
     { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText },
     { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
       { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
