@@ -212,15 +212,18 @@ backend:
 
   - task: "Multiple Price Levels (FR-PRD-008)"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented multiple price levels (retail, wholesale, member) with proper validation and storage structure."
+        - working: true
+        - agent: "testing"
+        - comment: "Multiple price levels working correctly. All three price levels (retail, wholesale, member) are properly saved and retrieved. Price levels are correctly stored in the price_levels object and accessible for margin calculations and current pricing logic."
 
   - task: "Tag/Label System (FR-PRD-006)"
     implemented: true
