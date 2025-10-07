@@ -97,6 +97,7 @@ const App = () => {
     { id: 'dashboard', label: 'Beranda', icon: BarChart3 },
     { id: 'branches', label: 'Cabang', icon: Store },
     { id: 'users', label: 'Pengguna', icon: Users },
+    { id: 'activity-logs', label: 'Log Aktivitas', icon: Package },
     { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
       { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
       { id: 'roles', label: 'Peran Pengguna', icon: Users },
