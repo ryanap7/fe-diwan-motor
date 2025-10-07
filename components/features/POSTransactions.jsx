@@ -232,26 +232,12 @@ const POSTransactions = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Selesai</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {filteredTransactions.filter(t => t.status === 'completed').length}
-                </p>
-              </div>
-              <FileText className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-sm text-muted-foreground">Total Pendapatan</p>
-                <p className="text-xl font-bold text-blue-600">
+                <p className="text-xl font-bold text-green-600">
                   {formatCurrency(totalRevenue)}
                 </p>
               </div>
-              <Download className="w-8 h-8 text-blue-500" />
+              <Download className="w-8 h-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -260,12 +246,12 @@ const POSTransactions = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Refund</p>
-                <p className="text-xl font-bold text-red-600">
-                  {formatCurrency(totalRefunded)}
+                <p className="text-sm text-muted-foreground">Rata-rata per Transaksi</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {formatCurrency(filteredTransactions.length > 0 ? totalRevenue / filteredTransactions.length : 0)}
                 </p>
               </div>
-              <FileText className="w-8 h-8 text-red-500" />
+              <FileText className="w-8 h-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
