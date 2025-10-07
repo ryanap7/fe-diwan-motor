@@ -189,12 +189,7 @@ const StockMovementManagement = () => {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="movements">Log Pergerakan</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="movements" className="space-y-4">
+      <div className="space-y-4">
           {/* Filters */}
           <Card>
             <CardHeader>
