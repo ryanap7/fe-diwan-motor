@@ -351,14 +351,14 @@ const UserManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="branch">Branch</Label>
               <Select
-                value={formData.branch_id}
-                onValueChange={(value) => handleChange('branch_id', value)}
+                value={formData.branch_id || 'none'}
+                onValueChange={(value) => handleChange('branch_id', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select branch (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No branch</SelectItem>
+                  <SelectItem value="none">No branch</SelectItem>
                   {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name} ({branch.code})
