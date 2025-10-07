@@ -1475,6 +1475,111 @@ export async function GET(request) {
       
       return NextResponse.json(enhancedProduct);
     }
+    // Inventory Management - Get Stock Movements History
+    if (path === 'inventory/movements') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      const query = {};
+      
+      // Filter by product
+      if (searchParams.get('product_id')) {
+        query.product_id = searchParams.get('product_id');
+      }
+      
+      // Filter by branch
+      if (searchParams.get('branch_id')) {
+        query.branch_id = searchParams.get('branch_id');
+      }
+      
+      // Filter by movement type
+      if (searchParams.get('type')) {
+        query.type = searchParams.get('type');
+      }
+      
+      // Date range filter
+      if (searchParams.get('start_date') && searchParams.get('end_date')) {
+        query.timestamp = {
+          $gte: searchParams.get('start_date'),
+          $lte: searchParams.get('end_date')
+        };
+      }
+      
+      const movements = await db.collection('stock_movements')
+        .find(query)
+        .sort({ timestamp: -1 })
+        .limit(100)
+        .toArray();
+      
+      return NextResponse.json(movements);
+    }
+
+    // Inventory Management - Get Stock Opname History
+    if (path === 'inventory/opname-history') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      const query = {};
+      
+      // Filter by branch
+      if (searchParams.get('branch_id')) {
+        query.branch_id = searchParams.get('branch_id');
+      }
+      
+      const opnameHistory = await db.collection('stock_opname')
+        .find(query)
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .toArray();
+      
+      return NextResponse.json(opnameHistory);
+    }
+
+    // Inventory Management - Get Stock Report by Branch
+    if (path === 'inventory/stock-report') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      const branchId = searchParams.get('branch_id');
+      
+      if (!branchId) {
+        return NextResponse.json({ error: 'branch_id is required' }, { status: 400 });
+      }
+      
+      const products = await db.collection('products').find({ is_active: true }).toArray();
+      
+      const stockReport = products.map(product => {
+        const stock = parseInt(product.stock_per_branch?.[branchId]) || 0;
+        const purchasePrice = parseFloat(product.purchase_price) || 0;
+        
+        return {
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+          category_id: product.category_id,
+          brand_id: product.brand_id,
+          current_stock: stock,
+          purchase_price: purchasePrice,
+          stock_value: stock * purchasePrice,
+          price_levels: product.price_levels,
+          storage_location: product.storage_location
+        };
+      });
+      
+      // Calculate totals
+      const totalItems = stockReport.length;
+      const totalStockValue = stockReport.reduce((sum, item) => sum + item.stock_value, 0);
+      const totalUnits = stockReport.reduce((sum, item) => sum + item.current_stock, 0);
+      
+      return NextResponse.json({
+        branch_id: branchId,
+        products: stockReport,
+        summary: {
+          total_items: totalItems,
+          total_units: totalUnits,
+          total_stock_value: totalStockValue
+        }
+      });
+    }
 
     return NextResponse.json(
       { error: 'Endpoint not found' },
