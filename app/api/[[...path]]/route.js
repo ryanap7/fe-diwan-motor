@@ -1732,6 +1732,188 @@ export async function GET(request) {
         await db.collection('users').insertOne(adminUser);
       }
 
+      // Initialize realistic branches
+      const branchCount = await db.collection('branches').countDocuments();
+      if (branchCount === 0) {
+        const branches = [
+          {
+            id: uuidv4(),
+            code: 'JKT01',
+            name: 'Toko Motor Jaya - Jakarta Pusat',
+            address: 'Jl. Gajah Mada No. 125, Jakarta Pusat 10130',
+            city: 'Jakarta',
+            province: 'DKI Jakarta',
+            postal_code: '10130',
+            phone: '021-6385471',
+            email: 'jakarta@tokomotorajaya.com',
+            is_active: true,
+            opening_hours: 'Senin-Sabtu: 08:00-20:00, Minggu: 09:00-17:00',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            code: 'BDG01',
+            name: 'Toko Motor Jaya - Bandung',
+            address: 'Jl. Cihampelas No. 88, Bandung 40131',
+            city: 'Bandung',
+            province: 'Jawa Barat',
+            postal_code: '40131',
+            phone: '022-2034567',
+            email: 'bandung@tokomotorajaya.com',
+            is_active: true,
+            opening_hours: 'Senin-Sabtu: 08:00-20:00, Minggu: 09:00-17:00',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            code: 'SBY01',
+            name: 'Toko Motor Jaya - Surabaya',
+            address: 'Jl. Basuki Rahmat No. 234, Surabaya 60271',
+            city: 'Surabaya',
+            province: 'Jawa Timur',
+            postal_code: '60271',
+            phone: '031-5347890',
+            email: 'surabaya@tokomotorajaya.com',
+            is_active: true,
+            opening_hours: 'Senin-Sabtu: 08:00-20:00, Minggu: 09:00-17:00',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        await db.collection('branches').insertMany(branches);
+      }
+
+      // Initialize realistic categories
+      const categoryCount = await db.collection('categories').countDocuments();
+      if (categoryCount === 0) {
+        const categories = [
+          { id: uuidv4(), name: 'Ban & Velg', description: 'Ban motor dan velg racing', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Oli & Pelumas', description: 'Oli mesin, gardan, dan pelumas', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Sistem Rem', description: 'Kampas rem, minyak rem, cakram', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Kelistrikan', description: 'Aki, busi, CDI, lampu, klakson', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Filter', description: 'Filter udara, oli, bensin', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Sistem Transmisi', description: 'Rantai, gear, kopling', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Body & Aksesoris', description: 'Spion, jok, knalpot, windshield', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Suspensi', description: 'Shock breaker, per, bushing', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Sistem Kontrol', description: 'Handle rem, kabel gas, pedal', parent_id: null, is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Suku Cadang Mesin', description: 'Piston, ring, gasket, bearing', parent_id: null, is_active: true, created_at: new Date().toISOString() }
+        ];
+        await db.collection('categories').insertMany(categories);
+      }
+
+      // Initialize realistic brands
+      const brandCount = await db.collection('brands').countDocuments();
+      if (brandCount === 0) {
+        const brands = [
+          { id: uuidv4(), name: 'Honda Genuine Parts', description: 'Suku cadang original Honda', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Yamaha Genuine Parts', description: 'Suku cadang original Yamaha', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Suzuki Genuine Parts', description: 'Suku cadang original Suzuki', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Kawasaki Genuine Parts', description: 'Suku cadang original Kawasaki', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Federal Parts (FP)', description: 'Suku cadang aftermarket berkualitas', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Aspira', description: 'Brand Astra untuk suku cadang motor', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Indoparts', description: 'Produsen lokal suku cadang motor', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'IRC (Inoue Rubber Co.)', description: 'Ban motor kualitas Jepang', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'FDR', description: 'Ban dan velg racing', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Motul', description: 'Oli mesin premium', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'NGK', description: 'Busi kualitas tinggi', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Denso', description: 'Komponen kelistrikan', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'GS Astra', description: 'Aki motor terpercaya', is_active: true, created_at: new Date().toISOString() },
+          { id: uuidv4(), name: 'Osram', description: 'Lampu motor berkualitas', is_active: true, created_at: new Date().toISOString() }
+        ];
+        await db.collection('brands').insertMany(brands);
+      }
+
+      // Initialize realistic users for each branch
+      const userCount = await db.collection('users').countDocuments();
+      if (userCount === 1) { // Only admin exists
+        const roles = await db.collection('roles').find({}).toArray();
+        const branches = await db.collection('branches').find({}).toArray();
+        const managerRole = roles.find(r => r.name === 'Branch Manager');
+        const cashierRole = roles.find(r => r.name === 'Cashier');
+
+        const users = [
+          // Jakarta Staff
+          {
+            id: uuidv4(),
+            username: 'bambang_jkt',
+            password: hashPassword('password123'),
+            full_name: 'Bambang Susanto',
+            role_id: managerRole.id,
+            branch_id: branches[0].id,
+            email: 'bambang@tokomotorajaya.com',
+            phone: '081234567801',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            username: 'siti_jkt',
+            password: hashPassword('password123'),
+            full_name: 'Siti Rahayu',
+            role_id: cashierRole.id,
+            branch_id: branches[0].id,
+            email: 'siti@tokomotorajaya.com',
+            phone: '081234567802',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          // Bandung Staff
+          {
+            id: uuidv4(),
+            username: 'dedi_bdg',
+            password: hashPassword('password123'),
+            full_name: 'Dedi Kurniawan',
+            role_id: managerRole.id,
+            branch_id: branches[1].id,
+            email: 'dedi@tokomotorajaya.com',
+            phone: '081234567803',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            username: 'rina_bdg',
+            password: hashPassword('password123'),
+            full_name: 'Rina Permata',
+            role_id: cashierRole.id,
+            branch_id: branches[1].id,
+            email: 'rina@tokomotorajaya.com',
+            phone: '081234567804',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          // Surabaya Staff
+          {
+            id: uuidv4(),
+            username: 'agus_sby',
+            password: hashPassword('password123'),
+            full_name: 'Agus Wijaya',
+            role_id: managerRole.id,
+            branch_id: branches[2].id,
+            email: 'agus@tokomotorajaya.com',
+            phone: '081234567805',
+            is_active: true,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            username: 'dewi_sby',
+            password: hashPassword('password123'),
+            full_name: 'Dewi Lestari',
+            role_id: cashierRole.id,
+            branch_id: branches[2].id,
+            email: 'dewi@tokomotorajaya.com',
+            phone: '081234567806',
+            is_active: true,
+            created_at: new Date().toISOString()
+          }
+        ];
+
+        await db.collection('users').insertMany(users);
+      }
+
       // Initialize default suppliers if none exist
       const supplierCount = await db.collection('suppliers').countDocuments();
       if (supplierCount === 0) {
