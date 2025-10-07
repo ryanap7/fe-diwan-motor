@@ -245,7 +245,7 @@ const POSTransactions = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Cari</Label>
               <div className="relative">
@@ -273,26 +273,6 @@ const POSTransactions = () => {
                   {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Kasir</Label>
-              <Select
-                value={filters.cashier_id || 'all'}
-                onValueChange={(value) => handleFilterChange('cashier_id', value === 'all' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua kasir" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Kasir</SelectItem>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.username}
                     </SelectItem>
                   ))}
                 </SelectContent>
