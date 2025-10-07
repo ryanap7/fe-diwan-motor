@@ -48,15 +48,13 @@ const POSTransactions = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [transactionsRes, branchesRes, usersRes] = await Promise.all([
+      const [transactionsRes, branchesRes] = await Promise.all([
         axios.get('/api/transactions', { headers }),
-        axios.get('/api/branches', { headers }),
-        axios.get('/api/users', { headers })
+        axios.get('/api/branches', { headers })
       ]);
 
       setTransactions(transactionsRes.data || []);
       setBranches(branchesRes.data || []);
-      setUsers(usersRes.data || []);
     } catch (error) {
       toast.error('Gagal memuat data transaksi');
     } finally {
