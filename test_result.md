@@ -332,15 +332,18 @@ backend:
 
   - task: "Activity Logging for Products"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Integrated logActivity helper function for all product operations (create, update, delete, toggle, stock updates, promotions, volume discounts)."
+        - working: true
+        - agent: "testing"
+        - comment: "Activity logging working correctly. All product operations (CREATE, UPDATE, DELETE, ACTIVATE/DEACTIVATE, UPDATE_STOCK, ADD_PROMO, ADD_VOLUME_DISCOUNT) are properly logged with user information, entity details, and timestamps. Activity logs are accessible via GET /api/activity-logs."
 
 frontend:
   - task: "Frontend Testing"
