@@ -366,13 +366,20 @@ const InventoryManagement = () => {
                           size="sm" 
                           className="bg-orange-500 hover:bg-orange-600"
                           onClick={() => {
-                            // Redirect to Purchase Orders with pre-selected product
-                            window.dispatchEvent(new CustomEvent('navigateToMenu', { 
+                            // Store product info for PO creation
+                            localStorage.setItem('preSelectedProduct', product.id);
+                            
+                            // Navigate to Purchase Orders
+                            const event = new CustomEvent('navigateToMenu', { 
                               detail: { 
                                 menuId: 'purchase-orders',
                                 productId: product.id 
                               } 
-                            }));
+                            });
+                            window.dispatchEvent(event);
+                            
+                            // Show success message
+                            toast.success(`Navigating to create PO for ${product.name}`);
                           }}
                         >
                           Buat Purchase Order
