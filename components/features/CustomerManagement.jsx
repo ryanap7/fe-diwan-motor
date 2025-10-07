@@ -277,170 +277,74 @@ const CustomerManagement = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="lg:col-span-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenDialog(customer)}
-                          className="flex-1"
-                        >
-                          <Edit className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedCustomer(customer);
-                            fetchCustomerHistory(customer.id);
-                            setHistoryDialogOpen(true);
-                          }}
-                          className="flex-1"
-                        >
-                          <Package className="w-3 h-3 mr-1" />
-                          History
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleToggleActive(customer)}
-                          className={customer.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
-                        >
-                          <Power className="w-3 h-3" />
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setCustomerToDelete(customer);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredCustomers.length === 0 && (
-            <Card>
-              <CardContent className="pt-12 pb-12 text-center">
-                <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Tidak ada customer ditemukan
-                </h3>
-                <p className="text-muted-foreground">
-                  Tambah customer baru atau ubah filter pencarian
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="segmentation">
-          <div className="space-y-6">
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Customer</p>
-                      <p className="text-2xl font-bold">{customerStats.total}</p>
-                    </div>
-                    <Users className="w-8 h-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Retail</p>
-                      <p className="text-2xl font-bold text-blue-600">{customerStats.retail}</p>
-                    </div>
-                    <ShoppingBag className="w-8 h-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Wholesale</p>
-                      <p className="text-2xl font-bold text-green-600">{customerStats.wholesale}</p>
-                    </div>
-                    <Store className="w-8 h-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">VIP</p>
-                      <p className="text-2xl font-bold text-purple-600">{customerStats.vip}</p>
-                    </div>
-                    <Crown className="w-8 h-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Segmentation Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Segmentation</CardTitle>
-                <CardDescription>
-                  Pembagian customer berdasarkan kategori dan perilaku pembelian
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {['retail', 'wholesale', 'vip'].map(category => {
-                    const categoryCustomers = customers.filter(c => c.category === category);
-                    const percentage = customers.length > 0 ? ((categoryCustomers.length / customers.length) * 100).toFixed(1) : 0;
+                {/* Actions */}
+                <div className="lg:col-span-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenDialog(customer)}
+                      className="flex-1"
+                    >
+                      <Edit className="w-3 h-3 mr-1" />
+                      Edit
+                    </Button>
                     
-                    return (
-                      <div key={category} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getCategoryBadge(category)}
-                            <span className="font-medium">{categoryCustomers.length} customer</span>
-                          </div>
-                          <span className="text-sm text-muted-foreground">{percentage}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              category === 'retail' ? 'bg-blue-600' : 
-                              category === 'wholesale' ? 'bg-green-600' : 'bg-purple-600'
-                            }`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedCustomer(customer);
+                        fetchCustomerHistory(customer.id);
+                        setHistoryDialogOpen(true);
+                      }}
+                      className="flex-1"
+                    >
+                      <Package className="w-3 h-3 mr-1" />
+                      History
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleToggleActive(customer)}
+                      className={customer.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
+                    >
+                      <Power className="w-3 h-3" />
+                    </Button>
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setCustomerToDelete(customer);
+                        setDeleteDialogOpen(true);
+                      }}
+                      className="hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredCustomers.length === 0 && (
+        <Card>
+          <CardContent className="pt-12 pb-12 text-center">
+            <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Tidak ada customer ditemukan
+            </h3>
+            <p className="text-muted-foreground">
+              Tambah customer baru atau ubah filter pencarian
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add/Edit Customer Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
