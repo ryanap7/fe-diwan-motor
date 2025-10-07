@@ -833,8 +833,8 @@ const PurchaseOrderManagement = () => {
                 {receiveFormData.items.map((item, index) => (
                   <TableRow key={index}>
                     <TableCell>{item.product_name}</TableCell>
-                    <TableCell>{item.ordered_qty}</TableCell>
-                    <TableCell>{item.received_qty || 0}</TableCell>
+                    <TableCell>{item.quantity_ordered || item.ordered_qty || 0}</TableCell>
+                    <TableCell>{item.quantity_received || item.received_qty || 0}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
