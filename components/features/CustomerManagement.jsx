@@ -183,7 +183,7 @@ const CustomerManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Customer</h3>
-          <p className="text-sm text-muted-foreground">Manajemen data pelanggan dan segmentasi</p>
+          <p className="text-sm text-muted-foreground">Manajemen data pelanggan</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
@@ -194,40 +194,20 @@ const CustomerManagement = () => {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="list">Daftar Customer</TabsTrigger>
-          <TabsTrigger value="segmentation">Segmentasi</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="list" className="space-y-4">
-          {/* Search and Filter */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Cari customer (nama, telepon, email)..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Kategori</SelectItem>
-                    <SelectItem value="retail">Retail</SelectItem>
-                    <SelectItem value="wholesale">Wholesale</SelectItem>
-                    <SelectItem value="vip">VIP</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Search */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Cari customer (nama, telepon, email)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
           {/* Customer Cards */}
           <div className="grid grid-cols-1 gap-4">
