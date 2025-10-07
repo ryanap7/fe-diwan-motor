@@ -704,67 +704,55 @@ const ProductManagement = () => {
               Atur Promo untuk {selectedProductForPromo?.name}
             </DialogTitle>
             <DialogDescription>
-              Buat promo khusus untuk produk ini dengan harga dan periode tertentu
+              Set persentase diskon untuk produk ini. Bisa diubah kapan saja!
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Nama Promo <span className="text-red-500">*</span></Label>
-              <Input
-                value={promoFormData.name}
-                onChange={(e) => setPromoFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="contoh: Flash Sale Weekend, Diskon Akhir Tahun"
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 p-4 bg-orange-50 rounded-lg">
-              <div className="space-y-2">
-                <Label>Harga Normal Promo <span className="text-red-500">*</span></Label>
-                <Input
-                  type="number"
-                  value={promoFormData.normal_price}
-                  onChange={(e) => setPromoFormData(prev => ({ ...prev, normal_price: e.target.value }))}
-                  placeholder="0"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Harga normal saat ini: Rp {selectedProductForPromo?.price_levels?.normal?.toLocaleString('id-ID') || '0'}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Harga Grosir Promo</Label>
-                <Input
-                  type="number"
-                  value={promoFormData.wholesale_price}
-                  onChange={(e) => setPromoFormData(prev => ({ ...prev, wholesale_price: e.target.value }))}
-                  placeholder="0"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Harga grosir saat ini: Rp {selectedProductForPromo?.price_levels?.wholesale?.toLocaleString('id-ID') || '0'}
-                </p>
-              </div>
-            </div>
+          <div className="space-y-6 mt-4">
+            <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-lg font-semibold">Diskon Persentase</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={promoFormData.discount_percentage}
+                      onChange={(e) => setPromoFormData(prev => ({ ...prev, discount_percentage: e.target.value }))}
+                      placeholder="0"
+                      className="text-2xl font-bold text-center"
+                    />
+                    <span className="text-2xl font-bold text-orange-600">%</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Masukkan persentase diskon (0-100%)</p>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tanggal Mulai <span className="text-red-500">*</span></Label>
-                <Input
-                  type="datetime-local"
-                  value={promoFormData.start_date}
-                  onChange={(e) => setPromoFormData(prev => ({ ...prev, start_date: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tanggal Berakhir <span className="text-red-500">*</span></Label>
-                <Input
-                  type="datetime-local"
-                  value={promoFormData.end_date}
-                  onChange={(e) => setPromoFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                  required
-                />
+                {promoFormData.discount_percentage > 0 && selectedProductForPromo && (
+                  <div className="mt-4 p-3 bg-white rounded border">
+                    <p className="text-sm font-medium mb-2">Preview Harga Setelah Diskon:</p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Harga Normal:</span>
+                        <div className="text-right">
+                          <span className="line-through text-muted-foreground">Rp {selectedProductForPromo.price_levels?.normal?.toLocaleString('id-ID')}</span>
+                          <span className="ml-2 font-bold text-green-600">
+                            Rp {Math.round(selectedProductForPromo.price_levels?.normal * (100 - promoFormData.discount_percentage) / 100).toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Harga Grosir:</span>
+                        <div className="text-right">
+                          <span className="line-through text-muted-foreground">Rp {selectedProductForPromo.price_levels?.wholesale?.toLocaleString('id-ID')}</span>
+                          <span className="ml-2 font-bold text-green-600">
+                            Rp {Math.round(selectedProductForPromo.price_levels?.wholesale * (100 - promoFormData.discount_percentage) / 100).toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
