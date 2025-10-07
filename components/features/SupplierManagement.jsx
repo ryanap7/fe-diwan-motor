@@ -21,10 +21,7 @@ import axios from 'axios';
 
 const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [supplierPerformance, setSupplierPerformance] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('list');
   
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
