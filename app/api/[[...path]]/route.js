@@ -141,7 +141,17 @@ export async function POST(request) {
     const { db } = await connectToDatabase();
     const url = new URL(request.url);
     const path = url.pathname.replace('/api/', '');
-    const body = await request.json();
+    
+    let body = {};
+    try {
+      const text = await request.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch (e) {
+      // No JSON body or invalid JSON, use empty object
+      body = {};
+    }
 
     // Auth - Login
     if (path === 'auth/login') {
