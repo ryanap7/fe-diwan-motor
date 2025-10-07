@@ -72,14 +72,6 @@ const POSTransactions = () => {
       filtered = filtered.filter(t => t.branch_id === filters.branch_id);
     }
 
-    if (filters.status) {
-      filtered = filtered.filter(t => t.status === filters.status);
-    }
-
-    if (filters.payment_method) {
-      filtered = filtered.filter(t => t.payment_method === filters.payment_method);
-    }
-
     if (filters.cashier_id) {
       filtered = filtered.filter(t => t.cashier_id === filters.cashier_id);
     }
