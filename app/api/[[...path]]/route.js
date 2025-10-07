@@ -679,11 +679,10 @@ export async function POST(request) {
         compatible_models: body.compatible_models || '',
         uom: body.uom,
         purchase_price: parseFloat(body.purchase_price) || 0,
-        // Multiple price levels (FR-PRD-008)
+        // Multiple price levels (FR-PRD-008) - Simplified to Normal and Wholesale
         price_levels: {
-          retail: parseFloat(body.price_levels?.retail) || 0,
-          wholesale: parseFloat(body.price_levels?.wholesale) || 0,
-          member: parseFloat(body.price_levels?.member) || 0
+          normal: parseFloat(body.price_levels?.normal) || 0,
+          wholesale: parseFloat(body.price_levels?.wholesale) || 0
         },
         barcode: barcode,
         images: body.images || [], // Array of image URLs (max 5)
