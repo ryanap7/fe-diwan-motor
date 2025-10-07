@@ -116,8 +116,9 @@ const CategoryManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`/api/categories/${categoryToDelete.id}/delete`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
+      const categoryId = categoryToDelete.id;
+      await axios.post('/api/categories/' + categoryId + '/delete', {}, {
+        headers: { Authorization: 'Bearer ' + token }
       });
       toast.success('Kategori berhasil dihapus!');
       fetchCategories();
