@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://arsys-nexgen.preview.emergentagent.com/api"
+BASE_URL = "https://motoparts-pos.preview.emergentagent.com/api"
 HEADERS = {"Content-Type": "application/json"}
 
 class MotorbikeAPITester:
