@@ -123,30 +123,49 @@ const App = () => {
     toast.success('Logged out successfully');
   };
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Beranda', icon: BarChart3 },
-    { id: 'branches', label: 'Cabang', icon: Store },
-    { id: 'users', label: 'Pengguna', icon: Users },
-    { id: 'products', label: 'Produk', icon: Package, submenu: [
-      { id: 'categories', label: 'Kategori', icon: ShoppingBag },
-      { id: 'brands', label: 'Brand/Merk', icon: Package },
-      { id: 'products-list', label: 'Daftar Produk', icon: Package },
+  // Define all menu items with role-based access control
+  const allMenuItems = [
+    { id: 'dashboard', label: 'Beranda', icon: BarChart3, roles: ['Admin', 'Branch Manager'] },
+    { id: 'branches', label: 'Cabang', icon: Store, roles: ['Admin'] },
+    { id: 'users', label: 'Pengguna', icon: Users, roles: ['Admin'] },
+    { id: 'products', label: 'Produk', icon: Package, roles: ['Admin', 'Branch Manager'], submenu: [
+      { id: 'categories', label: 'Kategori', icon: ShoppingBag, roles: ['Admin', 'Branch Manager'] },
+      { id: 'brands', label: 'Brand/Merk', icon: Package, roles: ['Admin', 'Branch Manager'] },
+      { id: 'products-list', label: 'Daftar Produk', icon: Package, roles: ['Admin', 'Branch Manager'] },
     ]},
-    { id: 'inventory', label: 'Inventory', icon: Warehouse, submenu: [
-      { id: 'stock-management', label: 'Stock Management', icon: Package },
-      { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingBag },
-      { id: 'stock-movements', label: 'Stock Movements', icon: BarChart3 },
+    { id: 'inventory', label: 'Inventory', icon: Warehouse, roles: ['Admin', 'Branch Manager'], submenu: [
+      { id: 'stock-management', label: 'Stock Management', icon: Package, roles: ['Admin', 'Branch Manager'] },
+      { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingBag, roles: ['Admin', 'Branch Manager'] },
+      { id: 'stock-movements', label: 'Stock Movements', icon: BarChart3, roles: ['Admin', 'Branch Manager'] },
     ]},
-    { id: 'suppliers', label: 'Supplier', icon: Building2 },
-    { id: 'customers', label: 'Customer', icon: Users },
-    { id: 'pos-transactions', label: 'Transaksi', icon: ShoppingCart },
-    { id: 'reporting-analytics', label: 'Laporan & Analisis', icon: PieChart },
-    { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText },
-    { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
-      { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
-      { id: 'roles', label: 'Peran Pengguna', icon: Users },
+    { id: 'suppliers', label: 'Supplier', icon: Building2, roles: ['Admin'] },
+    { id: 'customers', label: 'Customer', icon: Users, roles: ['Admin'] },
+    { id: 'pos-transactions', label: 'Transaksi', icon: ShoppingCart, roles: ['Admin', 'Branch Manager'] },
+    { id: 'reporting-analytics', label: 'Laporan & Analisis', icon: PieChart, roles: ['Admin', 'Branch Manager'] },
+    { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText, roles: ['Admin'] },
+    { id: 'settings', label: 'Pengaturan', icon: Settings, roles: ['Admin', 'Branch Manager'], submenu: [
+      { id: 'company', label: 'Profil Perusahaan', icon: Building2, roles: ['Admin'] },
+      { id: 'roles', label: 'Peran Pengguna', icon: Users, roles: ['Admin'] },
+      { id: 'branch-profile', label: 'Profile Cabang', icon: Store, roles: ['Branch Manager'] },
     ]},
   ];
+
+  // Filter menu items based on user role
+  const filterMenuByRole = (items, userRole) => {
+    return items
+      .filter(item => item.roles.includes(userRole))
+      .map(item => {
+        if (item.submenu) {
+          const filteredSubmenu = item.submenu.filter(subItem => 
+            subItem.roles.includes(userRole)
+          );
+          return { ...item, submenu: filteredSubmenu };
+        }
+        return item;
+      });
+  };
+
+  const menuItems = currentUser ? filterMenuByRole(allMenuItems, currentUser.role?.name) : [];
 
   if (loading) {
     return (
