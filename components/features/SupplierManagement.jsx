@@ -330,7 +330,7 @@ const SupplierManagement = () => {
 
       </div>
 
-      {/* Add/Edit Supplier Dialog */}
+      {/* Dialogs */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
