@@ -1655,7 +1655,7 @@ export async function GET(request) {
     }
 
     // Purchase Orders - Get single PO with details
-    if (path.startsWith('purchase-orders/') && path.split('/').length === 2 && !path.includes('/')) {
+    if (path.startsWith('purchase-orders/') && path.split('/').length === 2 && !path.includes('/receive') && !path.includes('/update') && !path.includes('/delete')) {
       const poId = path.split('/')[1];
       const purchaseOrder = await db.collection('purchase_orders').findOne({ id: poId });
       
