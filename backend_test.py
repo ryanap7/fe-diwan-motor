@@ -147,35 +147,133 @@ class ProductManagementTester:
             self.log_result("Setup Test Data", False, f"Setup error: {str(e)}")
             return False
     
-    def test_authentication(self):
-        """Test authentication endpoints"""
-        print("\n=== Testing Authentication ===")
-        
-        # Test login with correct credentials
-        login_data = {"username": "admin", "password": "admin123"}
-        response = self.make_request("POST", "auth/login", login_data)
-        
-        if response is None:
-            self.log_test("Login Valid Credentials", False, "Request failed - no response")
-            return False
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "token" in data and "user" in data:
-                self.auth_token = data["token"]
-                user = data["user"]
-                self.log_test("Login Valid Credentials", True, 
-                            f"Login successful - User: {user.get('username')}, Role: {user.get('role', {}).get('name', 'N/A')}")
+    def test_product_crud_operations(self):
+        """Test Product CRUD Operations (FR-PRD-001)"""
+        try:
+            # Test 1: Create Product with all fields
+            product_data = {
+                "name": "Honda CBR 600RR Brake Pad",
+                "category_id": self.created_categories[0],
+                "brand_id": self.created_brands[0],
+                "compatible_models": "CBR 600RR 2013-2020",
+                "uom": "Set",
+                "purchase_price": 45.50,
+                "price_levels": {
+                    "retail": 89.99,
+                    "wholesale": 75.00,
+                    "member": 80.00
+                },
+                "technical_specs": "Organic brake pad compound, high temperature resistance",
+                "storage_location": "A1-B2-C3",
+                "tags": ["brake", "safety", "honda"],
+                "labels": ["bestseller", "premium"],
+                "stock_per_branch": {
+                    self.created_branches[0]: 25
+                },
+                "is_active": True
+            }
+            
+            response = requests.post(f"{self.base_url}/products/create", 
+                                   json=product_data, headers=self.get_headers())
+            
+            if response.status_code == 200:
+                product = response.json()
+                self.created_products.append(product['id'])
+                
+                # Verify all fields are saved correctly
+                if (product['name'] == product_data['name'] and 
+                    product['purchase_price'] == product_data['purchase_price'] and
+                    product['price_levels']['retail'] == product_data['price_levels']['retail']):
+                    
+                    self.log_result("Product CRUD - Create", True, 
+                                  f"Product created successfully with ID: {product['id']}", 
+                                  f"SKU: {product['sku']}, Name: {product['name']}")
+                else:
+                    self.log_result("Product CRUD - Create", False, 
+                                  "Product created but data mismatch", 
+                                  f"Expected: {product_data['name']}, Got: {product['name']}")
             else:
-                self.log_test("Login Valid Credentials", False, "Missing token or user in response", data)
+                self.log_result("Product CRUD - Create", False, 
+                              f"Failed to create product: {response.status_code}", 
+                              response.text)
                 return False
-        else:
-            self.log_test("Login Valid Credentials", False, f"Failed with status {response.status_code}", response.text)
+            
+            # Test 2: Read Product
+            response = requests.get(f"{self.base_url}/products/{product['id']}", 
+                                  headers=self.get_headers())
+            
+            if response.status_code == 200:
+                retrieved_product = response.json()
+                if retrieved_product['id'] == product['id']:
+                    self.log_result("Product CRUD - Read", True, 
+                                  f"Product retrieved successfully", 
+                                  f"Name: {retrieved_product['name']}")
+                else:
+                    self.log_result("Product CRUD - Read", False, 
+                                  "Product ID mismatch in retrieval")
+            else:
+                self.log_result("Product CRUD - Read", False, 
+                              f"Failed to retrieve product: {response.status_code}")
+            
+            # Test 3: Update Product
+            update_data = {
+                "name": "Honda CBR 600RR Premium Brake Pad",
+                "category_id": product_data['category_id'],
+                "brand_id": product_data['brand_id'],
+                "compatible_models": "CBR 600RR 2013-2021",
+                "uom": "Set",
+                "purchase_price": 48.00,
+                "price_levels": {
+                    "retail": 94.99,
+                    "wholesale": 78.00,
+                    "member": 83.00
+                },
+                "technical_specs": "Premium organic brake pad compound, enhanced heat dissipation",
+                "storage_location": "A1-B2-C4",
+                "tags": ["brake", "safety", "honda", "premium"],
+                "labels": ["bestseller", "premium", "updated"],
+                "stock_per_branch": product_data['stock_per_branch'],
+                "is_active": True
+            }
+            
+            response = requests.post(f"{self.base_url}/products/{product['id']}/update", 
+                                   json=update_data, headers=self.get_headers())
+            
+            if response.status_code == 200:
+                updated_product = response.json()
+                if updated_product['name'] == update_data['name']:
+                    self.log_result("Product CRUD - Update", True, 
+                                  f"Product updated successfully", 
+                                  f"New name: {updated_product['name']}")
+                else:
+                    self.log_result("Product CRUD - Update", False, 
+                                  "Product update failed - name not changed")
+            else:
+                self.log_result("Product CRUD - Update", False, 
+                              f"Failed to update product: {response.status_code}")
+            
+            # Test 4: Toggle Product Active Status
+            response = requests.post(f"{self.base_url}/products/{product['id']}/toggle", 
+                                   headers=self.get_headers())
+            
+            if response.status_code == 200:
+                toggled_product = response.json()
+                if toggled_product['is_active'] != product['is_active']:
+                    self.log_result("Product CRUD - Toggle", True, 
+                                  f"Product status toggled successfully", 
+                                  f"Active status: {toggled_product['is_active']}")
+                else:
+                    self.log_result("Product CRUD - Toggle", False, 
+                                  "Product toggle failed - status unchanged")
+            else:
+                self.log_result("Product CRUD - Toggle", False, 
+                              f"Failed to toggle product: {response.status_code}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Product CRUD Operations", False, f"CRUD test error: {str(e)}")
             return False
-        
-        # Test login with invalid credentials
-        invalid_login = {"username": "admin", "password": "wrongpassword"}
-        response = self.make_request("POST", "auth/login", invalid_login)
         
         if response and response.status_code == 401:
             self.log_test("Login Invalid Credentials", True, "Correctly rejected invalid credentials")
