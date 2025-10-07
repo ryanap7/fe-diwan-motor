@@ -143,9 +143,9 @@ const StockMovementManagement = () => {
 
   const resetFilters = () => {
     setFilters({
-      product_id: '',
-      branch_id: '',
-      movement_type: '',
+      product_id: 'all',
+      branch_id: 'all',
+      movement_type: 'all',
       start_date: '',
       end_date: '',
       search_query: ''
