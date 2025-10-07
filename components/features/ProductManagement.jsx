@@ -413,35 +413,48 @@ const ProductManagement = () => {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenDialog(product)}
-                      className="flex-1 hover:bg-blue-50"
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Ubah
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(product)}
-                      className={product.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
-                    >
-                      <Power className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setProductToDelete(product);
-                        setDeleteDialogOpen(true);
-                      }}
-                      className="hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDialog(product)}
+                        className="flex-1 hover:bg-blue-50"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Ubah
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProductForPromo(product);
+                          setPromoDialogOpen(true);
+                        }}
+                        className="hover:bg-orange-50 hover:text-orange-600"
+                      >
+                        <Percent className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleActive(product)}
+                        className={product.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
+                      >
+                        <Power className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setProductToDelete(product);
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
