@@ -392,8 +392,7 @@ const StockMovementManagement = () => {
           </Card>
         </TabsContent>
 
-        {/* Mutation Report and History Per Item tabs removed as requested */}
-      </Tabs>
+      </div>
     </div>
   );
 };
