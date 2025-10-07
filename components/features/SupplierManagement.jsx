@@ -366,19 +366,6 @@ const SupplierManagement = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => {
-                              setSelectedSupplier(supplier);
-                              setMappingDialogOpen(true);
-                            }}
-                            className="text-xs"
-                          >
-                            <Package className="w-3 h-3 mr-1" />
-                            Map
-                          </Button>
-                          
-                          <Button
-                            size="sm"
-                            variant="outline"
                             onClick={() => handleToggleActive(supplier)}
                             className={`text-xs ${supplier.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}`}
                           >
