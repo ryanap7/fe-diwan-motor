@@ -107,6 +107,7 @@ const App = () => {
       { id: 'brands', label: 'Brand/Merk', icon: Package },
       { id: 'products-list', label: 'Daftar Produk', icon: Package },
     ]},
+    { id: 'inventory', label: 'Inventory', icon: Warehouse },
     { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText },
     { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
       { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
