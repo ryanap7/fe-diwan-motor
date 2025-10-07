@@ -1522,8 +1522,9 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Status updated successfully', status: status });
     }
 
-    // Customers - Create (FR-CUS-001)
+    // Customers - Create (FR-CUS-001) (Admin only)
     if (path === 'customers/create') {
+      requireAdmin();
       const newCustomer = {
         id: uuidv4(),
         name: body.name,
