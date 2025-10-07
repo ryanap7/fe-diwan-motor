@@ -133,11 +133,11 @@ const App = () => {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Nama Pengguna</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder="Masukkan nama pengguna"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
