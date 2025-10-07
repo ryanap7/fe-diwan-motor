@@ -329,8 +329,7 @@ const SupplierManagement = () => {
           )}
         </TabsContent>
 
-        {/* Performance and Product Mapping tabs removed as requested */}
-      </Tabs>
+      </div>
 
       {/* Add/Edit Supplier Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
