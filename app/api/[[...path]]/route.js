@@ -1186,7 +1186,7 @@ export async function GET(request) {
     }
 
     // Products - Get single product with full details
-    if (path.startsWith('products/') && path.split('/').length === 2 && !path.includes('/')) {
+    if (path.startsWith('products/') && path.split('/').length === 2 && !path.includes('/update') && !path.includes('/toggle') && !path.includes('/delete') && !path.includes('/stock') && !path.includes('/promo') && !path.includes('/volume-discount')) {
       const productId = path.split('/')[1];
       const product = await db.collection('products').findOne({ id: productId });
       
