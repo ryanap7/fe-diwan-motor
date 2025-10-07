@@ -2,15 +2,39 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Store, Users, TrendingUp } from 'lucide-react';
+import { 
+  Building2, Store, Users, TrendingUp, Package, ShoppingCart, 
+  DollarSign, AlertTriangle, TrendingDown, Calendar, Boxes, UserCheck
+} from 'lucide-react';
 import axios from 'axios';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
+    // Revenue stats
+    todayRevenue: 0,
+    weekRevenue: 0,
+    monthRevenue: 0,
+    totalTransactions: 0,
+    todayTransactions: 0,
+    
+    // Product & Inventory stats
+    totalProducts: 0,
+    activeProducts: 0,
+    lowStockProducts: 0,
+    totalStockValue: 0,
+    
+    // Customer stats
+    totalCustomers: 0,
+    newCustomersThisMonth: 0,
+    
+    // Branch stats
     totalBranches: 0,
     activeBranches: 0,
-    totalRoles: 0,
-    companyName: 'Belum Diatur'
+    
+    // Top products
+    topProducts: [],
+    recentTransactions: [],
+    lowStockItems: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -23,20 +47,134 @@ const Dashboard = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [branchesRes, rolesRes, companyRes] = await Promise.all([
+      const [
+        branchesRes, 
+        productsRes, 
+        transactionsRes, 
+        customersRes,
+        inventoryRes
+      ] = await Promise.all([
         axios.get('/api/branches', { headers }),
-        axios.get('/api/roles', { headers }),
-        axios.get('/api/company', { headers })
+        axios.get('/api/products', { headers }),
+        axios.get('/api/transactions', { headers }),
+        axios.get('/api/customers', { headers }),
+        axios.get('/api/inventory', { headers })
       ]);
 
       const branches = branchesRes.data || [];
-      const activeBranches = branches.filter(b => b.is_active).length;
+      const products = productsRes.data || [];
+      const transactions = transactionsRes.data || [];
+      const customers = customersRes.data || [];
+      const inventory = inventoryRes.data || [];
+
+      // Calculate dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      // Revenue calculations
+      const todayTransactions = transactions.filter(t => {
+        const tDate = new Date(t.transaction_date);
+        tDate.setHours(0, 0, 0, 0);
+        return tDate.getTime() === today.getTime() && t.status === 'completed';
+      });
+      
+      const weekTransactions = transactions.filter(t => 
+        new Date(t.transaction_date) >= weekAgo && t.status === 'completed'
+      );
+      
+      const monthTransactions = transactions.filter(t => 
+        new Date(t.transaction_date) >= monthStart && t.status === 'completed'
+      );
+
+      const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.total, 0);
+      const weekRevenue = weekTransactions.reduce((sum, t) => sum + t.total, 0);
+      const monthRevenue = monthTransactions.reduce((sum, t) => sum + t.total, 0);
+
+      // Product stats
+      const activeProducts = products.filter(p => p.is_active).length;
+      
+      // Low stock calculation (less than 10 units)
+      const lowStockProducts = inventory.filter(inv => inv.quantity < 10).length;
+      
+      // Total stock value
+      const totalStockValue = inventory.reduce((sum, inv) => {
+        const product = products.find(p => p.id === inv.product_id);
+        const price = product?.purchase_price || 0;
+        return sum + (inv.quantity * price);
+      }, 0);
+
+      // Customer stats
+      const newCustomersThisMonth = customers.filter(c => 
+        new Date(c.created_at) >= monthStart
+      ).length;
+
+      // Top 5 products by sales
+      const productSales = {};
+      transactions.forEach(t => {
+        if (t.status === 'completed') {
+          t.items?.forEach(item => {
+            if (!productSales[item.product_id]) {
+              productSales[item.product_id] = {
+                product_name: item.product_name,
+                quantity: 0,
+                revenue: 0
+              };
+            }
+            productSales[item.product_id].quantity += item.quantity;
+            productSales[item.product_id].revenue += item.subtotal;
+          });
+        }
+      });
+      
+      const topProducts = Object.values(productSales)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
+
+      // Recent transactions (last 5)
+      const recentTransactions = transactions
+        .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
+        .slice(0, 5);
+
+      // Low stock items (lowest 5)
+      const lowStockItems = inventory
+        .filter(inv => inv.quantity < 10)
+        .map(inv => {
+          const product = products.find(p => p.id === inv.product_id);
+          return {
+            ...inv,
+            product_name: product?.name || 'Unknown',
+            sku: product?.sku || '-'
+          };
+        })
+        .sort((a, b) => a.quantity - b.quantity)
+        .slice(0, 5);
 
       setStats({
+        todayRevenue,
+        weekRevenue,
+        monthRevenue,
+        totalTransactions: transactions.filter(t => t.status === 'completed').length,
+        todayTransactions: todayTransactions.length,
+        
+        totalProducts: products.length,
+        activeProducts,
+        lowStockProducts,
+        totalStockValue,
+        
+        totalCustomers: customers.length,
+        newCustomersThisMonth,
+        
         totalBranches: branches.length,
-        activeBranches,
-        totalRoles: (rolesRes.data || []).length,
-        companyName: companyRes.data?.name || 'Belum Diatur'
+        activeBranches: branches.filter(b => b.is_active).length,
+        
+        topProducts,
+        recentTransactions,
+        lowStockItems
       });
     } catch (error) {
       console.error('Gagal mengambil data dashboard:', error);
