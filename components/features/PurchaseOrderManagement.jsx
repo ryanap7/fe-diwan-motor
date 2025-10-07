@@ -304,7 +304,7 @@ const PurchaseOrderManagement = () => {
                       <TableCell>{getStatusBadge(po.status)}</TableCell>
                       <TableCell>{po.items?.length || 0} item</TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
@@ -316,7 +316,28 @@ const PurchaseOrderManagement = () => {
                             <Eye className="w-3 h-3 mr-1" />
                             Lihat
                           </Button>
-                          {(po.status === 'approved' || po.status === 'ordered' || po.status === 'partial') && (
+                          
+                          {po.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700"
+                              onClick={() => handleUpdatePOStatus(po.id, 'approved')}
+                            >
+                              Setujui
+                            </Button>
+                          )}
+                          
+                          {po.status === 'approved' && (
+                            <Button
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700"
+                              onClick={() => handleUpdatePOStatus(po.id, 'ordered')}
+                            >
+                              Order
+                            </Button>
+                          )}
+                          
+                          {(po.status === 'ordered' || po.status === 'partial') && (
                             <Button
                               size="sm"
                               className="bg-green-600 hover:bg-green-700"
@@ -328,6 +349,16 @@ const PurchaseOrderManagement = () => {
                             >
                               <Truck className="w-3 h-3 mr-1" />
                               Terima
+                            </Button>
+                          )}
+                          
+                          {po.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleUpdatePOStatus(po.id, 'cancelled')}
+                            >
+                              Batal
                             </Button>
                           )}
                         </div>
