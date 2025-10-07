@@ -393,6 +393,7 @@ const App = () => {
             {activeMenu === 'stock-management' && <InventoryManagement />}
             {activeMenu === 'purchase-orders' && <PurchaseOrderManagement />}
             {activeMenu === 'stock-movements' && <StockMovementManagement />}
+            {activeMenu === 'suppliers' && <SupplierManagement />}
             {activeMenu === 'activity-logs' && <ActivityLogs />}
             {activeMenu === 'roles' && <RoleManagement />}
           </div>
