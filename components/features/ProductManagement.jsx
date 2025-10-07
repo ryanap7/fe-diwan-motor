@@ -142,13 +142,24 @@ const ProductManagement = () => {
       const headers = { Authorization: 'Bearer ' + token };
 
       const dataToSend = {
-        ...formData,
+        sku: formData.sku,
+        name: formData.name,
+        category_id: formData.category_id,
+        brand_id: formData.brand_id,
+        compatible_models: formData.compatible_models,
+        uom: formData.uom,
         purchase_price: parseFloat(formData.purchase_price) || 0,
-        retail_price: parseFloat(formData.retail_price) || 0,
-        wholesale_price: parseFloat(formData.wholesale_price) || 0,
-        member_price: parseFloat(formData.member_price) || 0,
+        price_levels: {
+          retail: parseFloat(formData.retail_price) || 0,
+          wholesale: parseFloat(formData.wholesale_price) || 0,
+          member: parseFloat(formData.member_price) || 0
+        },
+        barcode: formData.barcode,
         images: formData.images.filter(img => img.trim() !== ''),
-        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t !== '') : []
+        technical_specs: formData.specifications,
+        storage_location: formData.storage_location,
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t !== '') : [],
+        is_active: formData.is_active
       };
 
       if (editingProduct) {
