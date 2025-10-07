@@ -1313,6 +1313,46 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Goods received successfully', status: newStatus });
     }
 
+    // Purchase Orders - Update Status
+    if (path.startsWith('purchase-orders/') && path.includes('/update-status')) {
+      const poId = path.split('/')[1];
+      const { status } = body;
+      
+      const validStatuses = ['pending', 'approved', 'ordered', 'partial', 'completed', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+
+      const purchaseOrder = await db.collection('purchase_orders').findOne({ id: poId });
+      if (!purchaseOrder) {
+        return NextResponse.json({ error: 'Purchase Order not found' }, { status: 404 });
+      }
+
+      await db.collection('purchase_orders').updateOne(
+        { id: poId },
+        { 
+          $set: { 
+            status: status,
+            updated_at: new Date().toISOString()
+          }
+        }
+      );
+
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'UPDATE_STATUS',
+        entity_type: 'PURCHASE_ORDER',
+        entity_id: poId,
+        entity_name: purchaseOrder.po_number,
+        details: `Updated PO status from ${purchaseOrder.status} to ${status}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Status updated successfully', status: status });
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
