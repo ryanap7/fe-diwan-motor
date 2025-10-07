@@ -46,7 +46,33 @@ const PurchaseOrderManagement = () => {
 
   useEffect(() => {
     fetchPurchaseOrderData();
-  }, []);
+    
+    // Check for pre-selected product from Stock Management
+    const preSelectedProduct = localStorage.getItem('preSelectedProduct');
+    if (preSelectedProduct) {
+      // Find the product and auto-suggest PO
+      const product = products.find(p => p.id === preSelectedProduct);
+      if (product) {
+        const totalStock = Object.values(product.stock_per_branch || {})
+          .reduce((sum, stock) => sum + (parseInt(stock) || 0), 0);
+        
+        setPOFormData(prev => ({
+          ...prev,
+          items: [{
+            product_id: product.id,
+            product_name: product.name,
+            current_stock: totalStock,
+            min_stock: product.min_stock_level || 10,
+            suggested_qty: Math.max(50, (product.min_stock_level || 10) * 2)
+          }]
+        }));
+        setCreatePODialogOpen(true);
+        
+        // Clear the pre-selected product
+        localStorage.removeItem('preSelectedProduct');
+      }
+    }
+  }, [products]);
 
   const fetchPurchaseOrderData = async () => {
     try {
