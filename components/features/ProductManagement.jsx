@@ -218,10 +218,35 @@ const ProductManagement = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleImageChange = (index, value) => {
-    const newImages = [...formData.images];
-    newImages[index] = value;
-    setFormData(prev => ({ ...prev, images: newImages }));
+  const handleImageFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 3) {
+      toast.error('Maksimal 3 gambar');
+      return;
+    }
+    
+    // Convert files to base64
+    const readers = files.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    Promise.all(readers).then(base64Images => {
+      setFormData({ ...formData, images: base64Images, imageFiles: files });
+    }).catch(error => {
+      toast.error('Gagal membaca file gambar');
+      console.error(error);
+    });
+  };
+
+  const handleRemoveImage = (index) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    const newFiles = formData.imageFiles.filter((_, i) => i !== index);
+    setFormData({ ...formData, images: newImages, imageFiles: newFiles });
   };
 
   const getCategoryName = (categoryId) => {
