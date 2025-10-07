@@ -10,7 +10,7 @@ const Dashboard = () => {
     totalBranches: 0,
     activeBranches: 0,
     totalRoles: 0,
-    companyName: 'Not Set'
+    companyName: 'Belum Diatur'
   });
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +36,10 @@ const Dashboard = () => {
         totalBranches: branches.length,
         activeBranches,
         totalRoles: (rolesRes.data || []).length,
-        companyName: companyRes.data?.name || 'Not Set'
+        companyName: companyRes.data?.name || 'Belum Diatur'
       });
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('Gagal mengambil data dashboard:', error);
     } finally {
       setLoading(false);
     }
@@ -47,30 +47,30 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      title: 'Total Branches',
+      title: 'Total Cabang',
       value: stats.totalBranches,
-      description: `${stats.activeBranches} active`,
+      description: `${stats.activeBranches} aktif`,
       icon: Store,
       gradient: 'from-blue-500 to-cyan-500'
     },
     {
-      title: 'Active Branches',
+      title: 'Cabang Aktif',
       value: stats.activeBranches,
-      description: 'Currently operating',
+      description: 'Saat ini beroperasi',
       icon: TrendingUp,
       gradient: 'from-green-500 to-emerald-500'
     },
     {
-      title: 'User Roles',
+      title: 'Peran Pengguna',
       value: stats.totalRoles,
-      description: 'Defined roles',
+      description: 'Peran terdefinisi',
       icon: Users,
       gradient: 'from-purple-500 to-pink-500'
     },
     {
-      title: 'Company',
+      title: 'Perusahaan',
       value: stats.companyName.length > 15 ? stats.companyName.substring(0, 15) + '...' : stats.companyName,
-      description: 'Business profile',
+      description: 'Profil bisnis',
       icon: Building2,
       gradient: 'from-orange-500 to-red-500'
     }
@@ -101,9 +101,9 @@ const Dashboard = () => {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-10 rounded-full -ml-24 -mb-24"></div>
         <CardHeader className="relative z-10">
-          <CardTitle className="text-3xl font-bold">Welcome to Configuration Module</CardTitle>
+          <CardTitle className="text-3xl font-bold">Selamat Datang di Modul Konfigurasi</CardTitle>
           <CardDescription className="text-white/90 text-base mt-2">
-            Manage your motorbike store branches, company profile, and user roles from one place
+            Kelola cabang toko motor, profil perusahaan, dan peran pengguna dari satu tempat
           </CardDescription>
         </CardHeader>
       </Card>
@@ -142,8 +142,8 @@ const Dashboard = () => {
       {/* Quick Actions */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-xl">Quick Start Guide</CardTitle>
-          <CardDescription>Follow these steps to set up your system</CardDescription>
+          <CardTitle className="text-xl">Panduan Cepat</CardTitle>
+          <CardDescription>Ikuti langkah-langkah berikut untuk mengatur sistem Anda</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -152,9 +152,9 @@ const Dashboard = () => {
                 1
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Configure Company Profile</h4>
+                <h4 className="font-semibold text-gray-900 mb-1">Konfigurasi Profil Perusahaan</h4>
                 <p className="text-sm text-muted-foreground">
-                  Set up your business information including name, address, and contact details
+                  Atur informasi bisnis termasuk nama, alamat, dan detail kontak
                 </p>
               </div>
             </div>
@@ -163,9 +163,9 @@ const Dashboard = () => {
                 2
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Add Your Branches</h4>
+                <h4 className="font-semibold text-gray-900 mb-1">Tambahkan Cabang Anda</h4>
                 <p className="text-sm text-muted-foreground">
-                  Create and manage multiple branch locations with detailed information
+                  Buat dan kelola berbagai lokasi cabang dengan informasi lengkap
                 </p>
               </div>
             </div>
@@ -174,9 +174,9 @@ const Dashboard = () => {
                 3
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Define User Roles</h4>
+                <h4 className="font-semibold text-gray-900 mb-1">Tentukan Peran Pengguna</h4>
                 <p className="text-sm text-muted-foreground">
-                  Set up custom roles with specific permissions for your team members
+                  Atur peran khusus dengan izin spesifik untuk anggota tim Anda
                 </p>
               </div>
             </div>
