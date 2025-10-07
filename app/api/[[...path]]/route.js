@@ -638,6 +638,12 @@ export async function GET(request) {
       return NextResponse.json(sanitizedUsers);
     }
 
+    // Activity Logs - List all
+    if (path === 'activity-logs') {
+      const logs = await db.collection('activity_logs').find({}).sort({ timestamp: -1 }).limit(500).toArray();
+      return NextResponse.json(logs);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
