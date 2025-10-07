@@ -2083,6 +2083,80 @@ export async function GET(request) {
       return NextResponse.json(enhancedMappings);
     }
 
+    // Customers - List all (FR-CUS-001, FR-CUS-002)
+    if (path === 'customers') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      const query = {};
+      
+      // Filter by category (segmentation)
+      if (searchParams.get('category')) {
+        query.category = searchParams.get('category');
+      }
+      
+      // Filter by active status
+      if (searchParams.get('is_active') !== null) {
+        query.is_active = searchParams.get('is_active') === 'true';
+      }
+      
+      // Search by name, phone, or email
+      if (searchParams.get('search')) {
+        const searchTerm = searchParams.get('search');
+        query.$or = [
+          { name: { $regex: searchTerm, $options: 'i' } },
+          { phone: { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } }
+        ];
+      }
+      
+      const customers = await db.collection('customers').find(query).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(customers);
+    }
+
+    // Customers - Get single customer with details
+    if (path.startsWith('customers/') && path.split('/').length === 2 && !path.includes('/')) {
+      const customerId = path.split('/')[1];
+      const customer = await db.collection('customers').findOne({ id: customerId });
+      
+      if (!customer) {
+        return NextResponse.json(
+          { error: 'Customer not found' },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json(customer);
+    }
+
+    // Customers - Purchase History (FR-CUS-004)
+    if (path.startsWith('customers/') && path.includes('/history')) {
+      const customerId = path.split('/')[1];
+      
+      // For now, return mock data since we don't have sales module yet
+      // This will be replaced when sales/transactions module is implemented
+      const mockHistory = [
+        {
+          id: uuidv4(),
+          date: new Date().toISOString(),
+          invoice_number: 'INV-2024-001',
+          product_name: 'Ban Motor Tubeless',
+          quantity: 2,
+          total: 360000
+        },
+        {
+          id: uuidv4(),
+          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          invoice_number: 'INV-2024-002',
+          product_name: 'Oli Mesin',
+          quantity: 1,
+          total: 45000
+        }
+      ];
+      
+      return NextResponse.json(mockHistory);
+    }
+
     // Purchase Orders - List all (FR-INV-012)
     if (path === 'purchase-orders') {
       const url = new URL(request.url);
