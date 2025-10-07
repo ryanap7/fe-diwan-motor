@@ -249,6 +249,8 @@ const App = () => {
                     if (hasSubmenu) {
                       if (isSettingsMenu) {
                         setSettingsOpen(!settingsOpen);
+                      } else if (isProductsMenu) {
+                        setProductsOpen(!productsOpen);
                       }
                     } else {
                       setActiveMenu(item.id);
