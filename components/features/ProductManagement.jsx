@@ -147,9 +147,8 @@ const ProductManagement = () => {
         uom: formData.uom,
         purchase_price: parseFloat(formData.purchase_price) || 0,
         price_levels: {
-          retail: parseFloat(formData.retail_price) || 0,
-          wholesale: parseFloat(formData.wholesale_price) || 0,
-          member: parseFloat(formData.member_price) || 0
+          normal: parseFloat(formData.normal_price) || 0,
+          wholesale: parseFloat(formData.wholesale_price) || 0
         },
         barcode: formData.barcode,
         images: formData.images.filter(img => img.trim() !== ''),
