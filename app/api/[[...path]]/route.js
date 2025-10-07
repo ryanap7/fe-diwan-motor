@@ -733,9 +733,8 @@ export async function POST(request) {
         uom: body.uom,
         purchase_price: parseFloat(body.purchase_price) || 0,
         price_levels: {
-          retail: parseFloat(body.price_levels?.retail) || 0,
-          wholesale: parseFloat(body.price_levels?.wholesale) || 0,
-          member: parseFloat(body.price_levels?.member) || 0
+          normal: parseFloat(body.price_levels?.normal) || 0,
+          wholesale: parseFloat(body.price_levels?.wholesale) || 0
         },
         barcode: body.barcode,
         images: body.images || [],
