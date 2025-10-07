@@ -229,14 +229,17 @@ const App = () => {
             const Icon = item.icon;
             const isActive = activeMenu === item.id;
             const hasSubmenu = item.submenu && item.submenu.length > 0;
-            const [submenuOpen, setSubmenuOpen] = useState(false);
+            const isSettingsMenu = item.id === 'settings';
+            const submenuOpen = isSettingsMenu ? settingsOpen : false;
             
             return (
               <div key={item.id}>
                 <button
                   onClick={() => {
                     if (hasSubmenu) {
-                      setSubmenuOpen(!submenuOpen);
+                      if (isSettingsMenu) {
+                        setSettingsOpen(!settingsOpen);
+                      }
                     } else {
                       setActiveMenu(item.id);
                     }
