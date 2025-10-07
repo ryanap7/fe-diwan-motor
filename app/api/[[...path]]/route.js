@@ -1425,6 +1425,75 @@ export async function GET(request) {
         await db.collection('users').insertOne(adminUser);
       }
 
+      // Initialize default suppliers if none exist
+      const supplierCount = await db.collection('suppliers').countDocuments();
+      if (supplierCount === 0) {
+        const defaultSuppliers = [
+          {
+            id: uuidv4(),
+            name: 'PT Yamaha Motor Indonesia',
+            contact_person: 'Budi Santoso',
+            phone: '021-12345678',
+            email: 'budi@yamaha.co.id',
+            address: 'Jl. Raya Jakarta No. 123, Jakarta Selatan',
+            notes: 'Supplier resmi suku cadang Yamaha',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            name: 'CV Honda Parts Supplier',
+            contact_person: 'Siti Rahayu',
+            phone: '021-87654321',
+            email: 'siti@hondaparts.co.id',
+            address: 'Jl. Sudirman No. 456, Jakarta Pusat',
+            notes: 'Distributor suku cadang Honda terpercaya',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            name: 'Toko Sparepart Suzuki Jaya',
+            contact_person: 'Ahmad Wijaya',
+            phone: '021-11223344',
+            email: 'ahmad@suzukijaya.com',
+            address: 'Jl. Gatot Subroto No. 789, Jakarta Barat',
+            notes: 'Spesialis suku cadang Suzuki dan aksesoris motor',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            name: 'UD Kawasaki Motor Parts',
+            contact_person: 'Rina Kusuma',
+            phone: '021-55667788',
+            email: 'rina@kawasakiparts.net',
+            address: 'Jl. Thamrin No. 321, Jakarta Timur',
+            notes: 'Supplier suku cadang Kawasaki original dan KW',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: uuidv4(),
+            name: 'PT Universal Motor Parts',
+            contact_person: 'Dedi Kurniawan',
+            phone: '021-99887766',
+            email: 'dedi@universalparts.co.id',
+            address: 'Jl. Rasuna Said No. 654, Jakarta Selatan',
+            notes: 'Supplier multi-brand untuk berbagai merk motor',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+
+        await db.collection('suppliers').insertMany(defaultSuppliers);
+      }
+
       return NextResponse.json({ message: 'System initialized' });
     }
 
