@@ -563,6 +563,17 @@ export async function GET(request) {
       return NextResponse.json(roles);
     }
 
+    // Users - List all
+    if (path === 'users') {
+      const users = await db.collection('users').find({}).sort({ created_at: -1 }).toArray();
+      // Remove password from response
+      const sanitizedUsers = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      return NextResponse.json(sanitizedUsers);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
