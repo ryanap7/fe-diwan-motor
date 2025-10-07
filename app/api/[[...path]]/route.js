@@ -791,6 +791,12 @@ export async function GET(request) {
       return NextResponse.json(brands);
     }
 
+    // Products - List all
+    if (path === 'products') {
+      const products = await db.collection('products').find({}).sort({ created_at: -1 }).toArray();
+      return NextResponse.json(products);
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
