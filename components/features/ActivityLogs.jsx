@@ -34,6 +34,7 @@ const ActivityLogs = () => {
 
   useEffect(() => {
     applyFilters();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [logs, filters]);
 
   const fetchData = async () => {
