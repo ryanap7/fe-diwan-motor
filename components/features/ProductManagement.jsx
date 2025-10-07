@@ -763,52 +763,69 @@ const ProductManagement = () => {
                 onClick={() => {
                   setPromoDialogOpen(false);
                   setPromoFormData({
-                    name: '',
-                    normal_price: '',
-                    wholesale_price: '',
-                    start_date: '',
-                    end_date: '',
+                    discount_percentage: '',
                     is_active: true
                   });
                 }}
               >
                 Batal
               </Button>
+              
+              {selectedProductForPromo?.promo && selectedProductForPromo.promo.is_active && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token');
+                      await axios.post(`/api/products/${selectedProductForPromo.id}/promo`, {
+                        discount_percentage: 0,
+                        is_active: false
+                      }, {
+                        headers: { Authorization: 'Bearer ' + token }
+                      });
+                      toast.success('Promo dihapus!');
+                      fetchData();
+                      setPromoDialogOpen(false);
+                      setPromoFormData({
+                        discount_percentage: '',
+                        is_active: true
+                      });
+                    } catch (error) {
+                      toast.error('Gagal menghapus promo');
+                    }
+                  }}
+                  variant="outline"
+                  className="text-red-600 hover:bg-red-50"
+                >
+                  Hapus Promo
+                </Button>
+              )}
+              
               <Button
                 onClick={async () => {
                   try {
                     const token = localStorage.getItem('token');
                     await axios.post(`/api/products/${selectedProductForPromo.id}/promo`, {
-                      name: promoFormData.name,
-                      price_levels: {
-                        normal: parseFloat(promoFormData.normal_price) || 0,
-                        wholesale: parseFloat(promoFormData.wholesale_price) || 0
-                      },
-                      start_date: promoFormData.start_date,
-                      end_date: promoFormData.end_date,
+                      discount_percentage: parseFloat(promoFormData.discount_percentage) || 0,
                       is_active: promoFormData.is_active
                     }, {
                       headers: { Authorization: 'Bearer ' + token }
                     });
-                    toast.success('Promo berhasil ditambahkan!');
+                    toast.success('Promo berhasil disimpan!');
                     fetchData();
                     setPromoDialogOpen(false);
                     setPromoFormData({
-                      name: '',
-                      normal_price: '',
-                      wholesale_price: '',
-                      start_date: '',
-                      end_date: '',
+                      discount_percentage: '',
                       is_active: true
                     });
                   } catch (error) {
-                    toast.error('Gagal menambahkan promo');
+                    toast.error('Gagal menyimpan promo');
                   }
                 }}
                 className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                disabled={!promoFormData.discount_percentage || parseFloat(promoFormData.discount_percentage) <= 0}
               >
                 <Percent className="w-4 h-4 mr-2" />
-                Buat Promo
+                {selectedProductForPromo?.promo && selectedProductForPromo.promo.is_active ? 'Update Promo' : 'Aktifkan Promo'}
               </Button>
             </div>
           </div>
