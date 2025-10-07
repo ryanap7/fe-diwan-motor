@@ -7,20 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogBatal, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Edit, Trash2, UserCheck, Store, Shield, Loader2 } from 'lucide-react';
+import { Users, Plus, Ubah, Trash2, UserCheck, Store, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
+  const [pengguna, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [editingUser, setUbahingUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
@@ -28,7 +28,7 @@ const UserManagement = () => {
     role_id: '',
     branch_id: ''
   });
-  const [saving, setSaving] = useState(false);
+  const [saving, setMenyimpan... useState(false);
 
   useEffect(() => {
     fetchData();
@@ -39,17 +39,17 @@ const UserManagement = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [usersRes, branchesRes, rolesRes] = await Promise.all([
-        axios.get('/api/users', { headers }),
+      const [penggunaRes, branchesRes, rolesRes] = await Promise.all([
+        axios.get('/api/pengguna', { headers }),
         axios.get('/api/branches', { headers }),
         axios.get('/api/roles', { headers })
       ]);
 
-      setUsers(usersRes.data || []);
+      setUsers(penggunaRes.data || []);
       setBranches(branchesRes.data || []);
       setRoles(rolesRes.data || []);
     } catch (error) {
-      toast.error('Failed to load data');
+      toast.error('Gagal memuat data');
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ const UserManagement = () => {
 
   const handleOpenDialog = (user = null) => {
     if (user) {
-      setEditingUser(user);
+      setUbahingUser(user);
       setFormData({
         username: user.username,
         password: '',
@@ -65,7 +65,7 @@ const UserManagement = () => {
         branch_id: user.branch_id || ''
       });
     } else {
-      setEditingUser(null);
+      setUbahingUser(null);
       setFormData({
         username: '',
         password: '',
@@ -78,7 +78,7 @@ const UserManagement = () => {
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
-    setEditingUser(null);
+    setUbahingUser(null);
   };
 
   const handleSubmit = async (e) => {
@@ -86,21 +86,21 @@ const UserManagement = () => {
     
     // Validation
     if (!formData.username?.trim()) {
-      toast.error('Username is required');
+      toast.error('Nama pengguna wajib diisi');
       return;
     }
     
     if (!formData.role_id) {
-      toast.error('Please select a role');
+      toast.error('Silakan pilih peran');
       return;
     }
     
     if (!editingUser && !formData.password) {
-      toast.error('Password is required for new users');
+      toast.error('Kata sandi wajib diisi untuk pengguna baru');
       return;
     }
     
-    setSaving(true);
+    setMenyimpan...ue);
 
     try {
       const token = localStorage.getItem('token');
@@ -117,21 +117,21 @@ const UserManagement = () => {
         if (formData.password?.trim()) {
           dataToSend.password = formData.password;
         }
-        await axios.post(`/api/users/${editingUser.id}/update`, dataToSend, { headers });
-        toast.success('User updated successfully!');
+        await axios.post(`/api/pengguna/${editingUser.id}/update`, dataToSend, { headers });
+        toast.success('Pengguna berhasil diperbarui!');
       } else {
         dataToSend.password = formData.password;
-        await axios.post('/api/users/create', dataToSend, { headers });
-        toast.success('User created successfully!');
+        await axios.post('/api/pengguna/create', dataToSend, { headers });
+        toast.success('Pengguna berhasil dibuat!');
       }
 
       fetchData();
       handleCloseDialog();
     } catch (error) {
       console.error('User save error:', error);
-      toast.error(error.response?.data?.error || 'Failed to save user');
+      toast.error(error.response?.data?.error || 'Gagal menyimpan pengguna');
     } finally {
-      setSaving(false);
+      setMenyimpan...lse);
     }
   };
 
@@ -140,13 +140,13 @@ const UserManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`/api/users/${userToDelete.id}/delete`, {}, {
+      await axios.post(`/api/pengguna/${userToDelete.id}/delete`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('User deleted successfully!');
+      toast.success('Pengguna berhasil dihapus!');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to delete user');
+      toast.error(error.response?.data?.error || 'Gagal menghapus pengguna');
     } finally {
       setDeleteDialogOpen(false);
       setUserToDelete(null);
@@ -198,39 +198,39 @@ const UserManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Manage Users</h3>
-          <p className="text-sm text-muted-foreground">Total: {users.length} users</p>
+          <h3 className="text-lg font-semibold text-gray-900">Kelola Pengguna</h3>
+          <p className="text-sm text-muted-foreground">Total: {pengguna.length} pengguna</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
           className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add New User
+          Tambah Pengguna Baru
         </Button>
       </div>
 
       {/* Users Grid */}
-      {users.length === 0 ? (
+      {pengguna.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No users yet</h3>
-            <p className="text-muted-foreground mb-6">Start by adding your first user</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Belum ada pengguna</h3>
+            <p className="text-muted-foreground mb-6">Mulai dengan menambahkan pengguna pertama Anda</p>
             <Button
               onClick={() => handleOpenDialog()}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add First User
+              Tambah Pengguna Pertama
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {users.map((user) => {
+          {pengguna.map((user) => {
             const role = getRoleById(user.role_id);
             const branch = getBranchById(user.branch_id);
             
@@ -284,8 +284,8 @@ const UserManagement = () => {
                       onClick={() => handleOpenDialog(user)}
                       className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
                     >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit
+                      <Ubah className="w-3 h-3 mr-1" />
+                      Ubah
                     </Button>
                     <Button
                       variant="outline"
@@ -307,12 +307,12 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
+      {/* Add/Ubah Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl">
-              {editingUser ? 'Edit User' : 'Add New User'}
+              {editingUser ? 'Ubah Pengguna' : 'Tambah Pengguna Baru'}
             </DialogTitle>
             <DialogDescription>
               {editingUser ? 'Update user information and assignments' : 'Create a new user account'}
@@ -320,12 +320,12 @@ const UserManagement = () => {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username <span className="text-red-500">*</span></Label>
+              <Label htmlFor="username">Nama Pengguna <span className="text-red-500">*</span></Label>
               <Input
                 id="username"
                 value={formData.username}
                 onChange={(e) => handleChange('username', e.target.value)}
-                placeholder="Enter username"
+                placeholder="Masukkan nama pengguna"
                 required
                 disabled={editingUser}
               />
@@ -333,18 +333,18 @@ const UserManagement = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password">
-                Password {!editingUser && <span className="text-red-500">*</span>}
+                Kata Sandi {!editingUser && <span className="text-red-500">*</span>}
               </Label>
               <Input
                 id="password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
-                placeholder={editingUser ? 'Leave empty to keep current' : 'Enter password'}
+                placeholder={editingUser ? 'Kosongkan untuk mempertahankan yang lama' : 'Masukkan kata sandi'}
                 required={!editingUser}
               />
               {editingUser && (
-                <p className="text-xs text-muted-foreground">Leave empty to keep current password</p>
+                <p className="text-xs text-muted-foreground">Kosongkan untuk mempertahankan yang lama password</p>
               )}
             </div>
 
@@ -356,7 +356,7 @@ const UserManagement = () => {
                 required
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
+                  <SelectValue placeholder="Pilih peran" />
                 </SelectTrigger>
                 <SelectContent>
                   {roles.map((role) => (
@@ -370,7 +370,7 @@ const UserManagement = () => {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-xs text-blue-900">
-                <strong>💡 Info:</strong> To assign Branch Managers and Cashiers to branches, go to <strong>Branches</strong> menu and click the <strong>"Assign"</strong> button on each branch card.
+                <strong>💡 Info:</strong> To assign Branch Managers and Cashiers to branches, go to <strong>Branches</strong> dan klik tombol <strong>"Assign"</strong> pada setiap kartu cabang.
               </p>
             </div>
 
@@ -381,7 +381,7 @@ const UserManagement = () => {
                 onClick={handleCloseDialog}
                 disabled={saving}
               >
-                Cancel
+                Batal
               </Button>
               <Button
                 type="submit"
@@ -391,10 +391,10 @@ const UserManagement = () => {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
+                    Menyimpan...
                   </>
                 ) : (
-                  editingUser ? 'Update User' : 'Create User'
+                  editingUser ? 'Perbarui Pengguna' : 'Buat Pengguna'
                 )}
               </Button>
             </div>
@@ -406,19 +406,19 @@ const UserManagement = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the user <strong>{userToDelete?.username}</strong>.
-              This action cannot be undone.
+              Ini akan menghapus pengguna secara permanen <strong>{userToDelete?.username}</strong>.
+              Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogBatal>Batal</AlertDialogBatal>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete User
+              Hapus Pengguna
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
