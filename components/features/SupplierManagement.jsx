@@ -188,12 +188,7 @@ const SupplierManagement = () => {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="list">Daftar Supplier</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="list" className="space-y-4">
+      <div className="space-y-4">
           {/* Search */}
           <Card>
             <CardContent className="pt-6">
