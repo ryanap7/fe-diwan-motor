@@ -152,7 +152,7 @@ const ActivityLogs = () => {
 
   if (loading) {
     return (
-      <Card className=\"border-0 shadow-lg\">
+      <Card className="border-0 shadow-lg">
         <CardContent className=\"pt-6\">
           <div className=\"space-y-4\">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -185,7 +185,7 @@ const ActivityLogs = () => {
       </div>
 
       {/* Filters */}
-      <Card className=\"border-0 shadow-lg\">
+      <Card className="border-0 shadow-lg">
         <CardHeader className=\"pb-4\">
           <div className=\"flex items-center gap-2\">
             <Filter className=\"w-5 h-5 text-blue-600\" />
@@ -301,7 +301,7 @@ const ActivityLogs = () => {
 
       {/* Activity Logs List */}
       {filteredLogs.length === 0 ? (
-        <Card className=\"border-0 shadow-lg\">
+        <Card className="border-0 shadow-lg">
           <CardContent className=\"pt-12 pb-12 text-center\">
             <div className=\"w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4\">
               <FileText className=\"w-8 h-8 text-blue-600\" />
