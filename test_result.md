@@ -227,15 +227,18 @@ backend:
 
   - task: "Tag/Label System (FR-PRD-006)"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented tag and label system for product filtering and categorization."
+        - working: true
+        - agent: "testing"
+        - comment: "Tag/Label system working correctly. Products can be created with tags and labels arrays. Tags are used for filtering via GET /api/products?tags=tag1,tag2. Both tags and labels are properly stored and retrieved with product data."
 
   - task: "Product Bundling (FR-PRD-007)"
     implemented: true
