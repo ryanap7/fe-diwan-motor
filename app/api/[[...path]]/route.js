@@ -2200,28 +2200,82 @@ export async function GET(request) {
     if (path.startsWith('customers/') && path.includes('/history')) {
       const customerId = path.split('/')[1];
       
-      // For now, return mock data since we don't have sales module yet
-      // This will be replaced when sales/transactions module is implemented
-      const mockHistory = [
-        {
-          id: uuidv4(),
-          date: new Date().toISOString(),
-          invoice_number: 'INV-2024-001',
-          product_name: 'Ban Motor Tubeless',
-          quantity: 2,
-          total: 360000
-        },
-        {
-          id: uuidv4(),
-          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          invoice_number: 'INV-2024-002',
-          product_name: 'Oli Mesin',
-          quantity: 1,
-          total: 45000
-        }
-      ];
+      // Get actual transactions for this customer
+      const transactions = await db.collection('transactions')
+        .find({ customer_id: customerId })
+        .sort({ transaction_date: -1 })
+        .toArray();
       
-      return NextResponse.json(mockHistory);
+      return NextResponse.json(transactions);
+    }
+
+    // POS Transactions - List all (FR-POS)
+    if (path === 'transactions') {
+      const url = new URL(request.url);
+      const searchParams = url.searchParams;
+      
+      const query = {};
+      
+      // Filter by branch
+      if (searchParams.get('branch_id')) {
+        query.branch_id = searchParams.get('branch_id');
+      }
+      
+      // Filter by status
+      if (searchParams.get('status')) {
+        query.status = searchParams.get('status');
+      }
+      
+      // Filter by payment method
+      if (searchParams.get('payment_method')) {
+        query.payment_method = searchParams.get('payment_method');
+      }
+      
+      // Filter by cashier
+      if (searchParams.get('cashier_id')) {
+        query.cashier_id = searchParams.get('cashier_id');
+      }
+      
+      // Filter by date range
+      if (searchParams.get('date_from')) {
+        query.transaction_date = { $gte: new Date(searchParams.get('date_from')).toISOString() };
+      }
+      if (searchParams.get('date_to')) {
+        const dateTo = new Date(searchParams.get('date_to'));
+        dateTo.setHours(23, 59, 59, 999);
+        query.transaction_date = { ...query.transaction_date, $lte: dateTo.toISOString() };
+      }
+      
+      // Search by invoice or customer name
+      if (searchParams.get('search')) {
+        const searchTerm = searchParams.get('search');
+        query.$or = [
+          { invoice_number: { $regex: searchTerm, $options: 'i' } },
+          { customer_name: { $regex: searchTerm, $options: 'i' } }
+        ];
+      }
+      
+      const transactions = await db.collection('transactions')
+        .find(query)
+        .sort({ transaction_date: -1 })
+        .toArray();
+      
+      return NextResponse.json(transactions);
+    }
+
+    // POS Transactions - Get single transaction detail
+    if (path.startsWith('transactions/') && path.split('/').length === 2) {
+      const transactionId = path.split('/')[1];
+      const transaction = await db.collection('transactions').findOne({ id: transactionId });
+      
+      if (!transaction) {
+        return NextResponse.json(
+          { error: 'Transaction not found' },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json(transaction);
     }
 
     // Purchase Orders - List all (FR-INV-012)
