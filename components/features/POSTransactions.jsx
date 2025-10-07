@@ -359,14 +359,12 @@ const POSTransactions = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[140px]">Invoice</TableHead>
-                      <TableHead className="w-[150px]">Tanggal</TableHead>
-                      <TableHead className="w-[120px]">Cabang</TableHead>
-                      <TableHead className="w-[100px]">Kasir</TableHead>
-                      <TableHead className="w-[150px]">Customer</TableHead>
-                      <TableHead className="w-[120px] text-right">Total</TableHead>
-                      <TableHead className="w-[120px]">Pembayaran</TableHead>
-                      <TableHead className="w-[100px]">Status</TableHead>
-                      <TableHead className="w-[120px] text-center">Aksi</TableHead>
+                      <TableHead className="w-[160px]">Tanggal</TableHead>
+                      <TableHead className="w-[140px]">Cabang</TableHead>
+                      <TableHead className="w-[120px]">Kasir</TableHead>
+                      <TableHead className="w-[180px]">Customer</TableHead>
+                      <TableHead className="w-[140px] text-right">Total</TableHead>
+                      <TableHead className="w-[100px] text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -397,12 +395,6 @@ const POSTransactions = () => {
                         </TableCell>
                         <TableCell className="text-right font-semibold">
                           {formatCurrency(transaction.total)}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {getPaymentMethodLabel(transaction.payment_method)}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(transaction.status)}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 justify-center">
