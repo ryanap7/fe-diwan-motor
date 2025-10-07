@@ -93,9 +93,12 @@ const App = () => {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'company', label: 'Company Profile', icon: Building2 },
     { id: 'branches', label: 'Branches', icon: Store },
-    { id: 'roles', label: 'User Roles', icon: Users },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings, submenu: [
+      { id: 'company', label: 'Company Profile', icon: Building2 },
+      { id: 'roles', label: 'User Roles', icon: Users },
+    ]},
   ];
 
   if (loading) {
