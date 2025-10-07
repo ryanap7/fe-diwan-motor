@@ -301,45 +301,6 @@ const POSTransactions = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={filters.status || 'all'}
-                onValueChange={(value) => handleFilterChange('status', value === 'all' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="completed">Selesai</SelectItem>
-                  <SelectItem value="refunded">Refund</SelectItem>
-                  <SelectItem value="returned">Return</SelectItem>
-                  <SelectItem value="cancelled">Batal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Metode Bayar</Label>
-              <Select
-                value={filters.payment_method || 'all'}
-                onValueChange={(value) => handleFilterChange('payment_method', value === 'all' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Semua metode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Metode</SelectItem>
-                  <SelectItem value="cash">Tunai</SelectItem>
-                  <SelectItem value="debit_card">Kartu Debit</SelectItem>
-                  <SelectItem value="credit_card">Kartu Kredit</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
-                  <SelectItem value="ewallet">E-Wallet</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label>Kasir</Label>
               <Select
                 value={filters.cashier_id || 'all'}
