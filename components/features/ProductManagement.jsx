@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Package, Plus, Edit, Trash2, Power, Loader2, Search, Image as ImageIcon, Tag } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, Power, Loader2, Search, Image as ImageIcon, Tag, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
