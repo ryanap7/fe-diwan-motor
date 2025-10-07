@@ -2287,6 +2287,12 @@ export async function GET(request) {
       return NextResponse.json(transactions);
     }
 
+    // Inventory - Get all inventory (for dashboard)
+    if (path === 'inventory') {
+      const inventory = await db.collection('inventory').find({}).toArray();
+      return NextResponse.json(inventory);
+    }
+
     // POS Transactions - List all (FR-POS)
     if (path === 'transactions') {
       const url = new URL(request.url);
