@@ -20,8 +20,14 @@ const BranchManagement = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [staffDialogOpen, setStaffDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
   const [branchToDelete, setBranchToDelete] = useState(null);
+  const [branchForStaffAssignment, setBranchForStaffAssignment] = useState(null);
+  const [staffAssignment, setStaffAssignment] = useState({
+    manager_id: '',
+    cashier_id: ''
+  });
   const [formData, setFormData] = useState({
     code: '',
     name: '',
