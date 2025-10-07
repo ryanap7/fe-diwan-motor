@@ -2669,8 +2669,9 @@ export async function GET(request) {
       });
     }
 
-    // Suppliers - List all
+    // Suppliers - List all (Admin only)
     if (path === 'suppliers') {
+      requireAdmin();
       const suppliers = await db.collection('suppliers').find({}).sort({ created_at: -1 }).toArray();
       return NextResponse.json(suppliers);
     }
