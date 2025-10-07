@@ -173,7 +173,7 @@ const App = () => {
             </form>
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                Default credentials: <span className="font-semibold">admin / admin123</span>
+                Kredensial default: <span className="font-semibold">admin / admin123</span>
               </p>
             </div>
           </CardContent>
