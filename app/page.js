@@ -94,12 +94,12 @@ const App = () => {
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'branches', label: 'Branches', icon: Store },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'settings', label: 'Settings', icon: Settings, submenu: [
-      { id: 'company', label: 'Company Profile', icon: Building2 },
-      { id: 'roles', label: 'User Roles', icon: Users },
+    { id: 'dashboard', label: 'Beranda', icon: BarChart3 },
+    { id: 'branches', label: 'Cabang', icon: Store },
+    { id: 'users', label: 'Pengguna', icon: Users },
+    { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
+      { id: 'company', label: 'Profil Perusahaan', icon: Building2 },
+      { id: 'roles', label: 'Peran Pengguna', icon: Users },
     ]},
   ];
 
