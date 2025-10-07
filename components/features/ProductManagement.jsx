@@ -553,21 +553,21 @@ const ProductManagement = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Harga Retail <span className="text-red-500">*</span></Label>
+                <Label>Harga Normal <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
-                  value={formData.retail_price}
-                  onChange={(e) => handleChange('retail_price', e.target.value)}
+                  value={formData.normal_price}
+                  onChange={(e) => handleChange('normal_price', e.target.value)}
                   placeholder="0"
                   required
                 />
-                {formData.purchase_price && formData.retail_price && (
+                {formData.purchase_price && formData.normal_price && (
                   <p className="text-xs text-green-600">
-                    Margin: {calculateMargin(formData.purchase_price, formData.retail_price)}%
+                    Margin: {calculateMargin(formData.purchase_price, formData.normal_price)}%
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label>Harga Grosir</Label>
                 <Input
                   type="number"
@@ -575,15 +575,7 @@ const ProductManagement = () => {
                   onChange={(e) => handleChange('wholesale_price', e.target.value)}
                   placeholder="0"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Harga Member</Label>
-                <Input
-                  type="number"
-                  value={formData.member_price}
-                  onChange={(e) => handleChange('member_price', e.target.value)}
-                  placeholder="0"
-                />
+                <p className="text-xs text-muted-foreground">Harga khusus untuk pembelian grosir</p>
               </div>
             </div>
 
