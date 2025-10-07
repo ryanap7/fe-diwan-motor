@@ -365,15 +365,9 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Product CRUD Operations (FR-PRD-001)"
-    - "Automatic SKU/Barcode Generation (FR-PRD-002)"
-    - "Multiple Price Levels (FR-PRD-008)"
-    - "Margin Analysis (FR-PRD-011)"
-    - "Time-based Pricing/Promotions (FR-PRD-009)"
-    - "Volume Discount Rules (FR-PRD-010)"
+  current_focus: []
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
