@@ -356,6 +356,9 @@ const App = () => {
             {activeMenu === 'company' && <CompanyProfile />}
             {activeMenu === 'branches' && <BranchManagement />}
             {activeMenu === 'users' && <UserManagement />}
+            {activeMenu === 'categories' && <CategoryManagement />}
+            {activeMenu === 'brands' && <BrandManagement />}
+            {activeMenu === 'products-list' && <ProductManagement />}
             {activeMenu === 'activity-logs' && <ActivityLogs />}
             {activeMenu === 'roles' && <RoleManagement />}
           </div>
