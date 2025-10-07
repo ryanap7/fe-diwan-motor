@@ -1193,8 +1193,9 @@ export async function POST(request) {
       return NextResponse.json(newSupplier);
     }
 
-    // Suppliers - Update (FR-SUP-001)
+    // Suppliers - Update (FR-SUP-001) (Admin only)
     if (path.startsWith('suppliers/') && path.includes('/update')) {
+      requireAdmin();
       const supplierId = path.split('/')[1];
       const updates = {
         name: body.name,
