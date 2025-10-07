@@ -23,6 +23,7 @@ import StockMovementManagement from '@/components/features/StockMovementManageme
 import SupplierManagement from '@/components/features/SupplierManagement';
 import CustomerManagement from '@/components/features/CustomerManagement';
 import POSTransactions from '@/components/features/POSTransactions';
+import ReportingAnalytics from '@/components/features/ReportingAnalytics';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
