@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
+"""
+Comprehensive Backend Testing for Product Management Module
+Tests all product endpoints including CRUD operations, margin analysis, 
+promotional pricing, volume discounts, and stock management.
+"""
 
 import requests
 import json
-import sys
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
 # Configuration
 BASE_URL = "https://motoparts-pos.preview.emergentagent.com/api"
-HEADERS = {"Content-Type": "application/json"}
+AUTH_USERNAME = "admin"
+AUTH_PASSWORD = "admin123"
 
-class MotorbikeAPITester:
+class ProductManagementTester:
     def __init__(self):
         self.base_url = BASE_URL
         self.headers = HEADERS.copy()
