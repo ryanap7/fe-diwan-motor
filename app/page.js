@@ -124,10 +124,10 @@ const App = () => {
               </div>
             </div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Motorbike POS
+              POS Motor
             </CardTitle>
             <CardDescription className="text-base">
-              Configuration & Management System
+              Sistem Konfigurasi & Manajemen
             </CardDescription>
           </CardHeader>
           <CardContent>
