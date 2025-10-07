@@ -1785,6 +1785,85 @@ export async function GET(request) {
         await db.collection('suppliers').insertMany(defaultSuppliers);
       }
 
+      // Initialize default customers if none exist
+      const customerCount = await db.collection('customers').countDocuments();
+      if (customerCount === 0) {
+        const defaultCustomers = [
+          { 
+            id: uuidv4(), 
+            name: 'Budi Santoso', 
+            phone: '081234567890', 
+            email: 'budi@email.com', 
+            address: 'Jl. Merdeka No. 123, Jakarta', 
+            category: 'retail', 
+            notes: 'Pelanggan setia',
+            is_active: true, 
+            total_purchases: 5, 
+            total_spent: 750000, 
+            last_purchase: new Date().toISOString(),
+            created_at: new Date().toISOString() 
+          },
+          { 
+            id: uuidv4(), 
+            name: 'PT. Bengkel Jaya', 
+            phone: '021-98765432', 
+            email: 'bengkel@jaya.com', 
+            address: 'Jl. Industri No. 45, Bekasi', 
+            category: 'wholesale', 
+            notes: 'Bengkel resmi',
+            is_active: true, 
+            total_purchases: 12, 
+            total_spent: 2400000, 
+            last_purchase: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() 
+          },
+          { 
+            id: uuidv4(), 
+            name: 'Siti Nurhaliza', 
+            phone: '087654321098', 
+            email: 'siti@email.com', 
+            address: 'Jl. Sudirman No. 789, Bandung', 
+            category: 'vip', 
+            notes: 'VIP customer',
+            is_active: true, 
+            total_purchases: 25, 
+            total_spent: 5200000, 
+            last_purchase: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() 
+          },
+          { 
+            id: uuidv4(), 
+            name: 'Ahmad Rahman', 
+            phone: '089876543210', 
+            email: '', 
+            address: 'Jl. Raya No. 321, Surabaya', 
+            category: 'retail', 
+            notes: '',
+            is_active: true, 
+            total_purchases: 2, 
+            total_spent: 180000, 
+            last_purchase: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() 
+          },
+          { 
+            id: uuidv4(), 
+            name: 'CV. Motor Sport', 
+            phone: '024-1122334', 
+            email: 'info@motorsport.com', 
+            address: 'Jl. Pemuda No. 567, Semarang', 
+            category: 'wholesale', 
+            notes: 'Dealer motor sport',
+            is_active: false, 
+            total_purchases: 8, 
+            total_spent: 1650000, 
+            last_purchase: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString() 
+          }
+        ];
+
+        await db.collection('customers').insertMany(defaultCustomers);
+      }
+
       return NextResponse.json({ message: 'System initialized' });
     }
 
