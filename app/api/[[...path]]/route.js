@@ -97,6 +97,16 @@ export async function POST(request) {
         ? await db.collection('branches').findOne({ id: user.branch_id })
         : null;
 
+      // Log login activity
+      await logActivity(db, {
+        user_id: user.id,
+        username: user.username,
+        action: 'login',
+        entity_type: 'auth',
+        details: `User ${user.username} berhasil login`,
+        ip_address: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+      });
+
       return NextResponse.json({
         token,
         user: {
