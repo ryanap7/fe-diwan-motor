@@ -1617,8 +1617,9 @@ export async function POST(request) {
       return NextResponse.json(updatedCustomer);
     }
 
-    // Customers - Delete
+    // Customers - Delete (Admin only)
     if (path.startsWith('customers/') && path.includes('/delete')) {
+      requireAdmin();
       const customerId = path.split('/')[1];
       const customer = await db.collection('customers').findOne({ id: customerId });
       
