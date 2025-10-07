@@ -2441,8 +2441,22 @@ export async function GET(request) {
       );
     }
 
+    // Fetch user's role for authorization checks
+    const userRole = await db.collection('roles').findOne({ id: currentUser.role_id });
+    const isAdmin = userRole?.name === 'Admin';
+    const isBranchManager = userRole?.name === 'Branch Manager';
+
+    // Helper function to check admin access
+    const requireAdmin = () => {
+      if (!isAdmin) {
+        throw new Error('Admin access required');
+      }
+    };
+
     // Company Profile
     if (path === 'company') {
+      // Only admins can access company profile
+      requireAdmin();
       const company = await db.collection('company').findOne({});
       
       if (!company) {
