@@ -1202,8 +1202,52 @@ export async function GET(request) {
       return NextResponse.json(enhancedProducts);
     }
 
+    // Products - Margin Analysis Report (FR-PRD-011)
+    if (path === 'products/margin-report') {
+      const products = await db.collection('products').find({ is_active: true }).toArray();
+      
+      const marginReport = products.map(product => {
+        const margins = calculateMargin(product);
+        const totalStock = Object.values(product.stock_per_branch || {}).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0);
+        
+        return {
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+          purchase_price: product.purchase_price,
+          margins: margins,
+          total_stock: totalStock,
+          stock_value: (product.purchase_price || 0) * totalStock
+        };
+      });
+      
+      // Calculate summary statistics
+      const totalProducts = marginReport.length;
+      const totalStockValue = marginReport.reduce((sum, item) => sum + item.stock_value, 0);
+      const averageMargins = {};
+      
+      ['retail', 'wholesale', 'member'].forEach(level => {
+        const marginsForLevel = marginReport
+          .map(item => item.margins[level]?.margin_percentage)
+          .filter(margin => margin !== undefined);
+        
+        if (marginsForLevel.length > 0) {
+          averageMargins[level] = marginsForLevel.reduce((sum, margin) => sum + margin, 0) / marginsForLevel.length;
+        }
+      });
+      
+      return NextResponse.json({
+        products: marginReport,
+        summary: {
+          total_products: totalProducts,
+          total_stock_value: totalStockValue,
+          average_margins: averageMargins
+        }
+      });
+    }
+
     // Products - Get single product with full details
-    if (path.startsWith('products/') && path.split('/').length === 2 && !path.includes('/update') && !path.includes('/toggle') && !path.includes('/delete') && !path.includes('/stock') && !path.includes('/promo') && !path.includes('/volume-discount')) {
+    if (path.startsWith('products/') && path.split('/').length === 2 && !path.includes('/update') && !path.includes('/toggle') && !path.includes('/delete') && !path.includes('/stock') && !path.includes('/promo') && !path.includes('/volume-discount') && !path.includes('margin-report')) {
       const productId = path.split('/')[1];
       const product = await db.collection('products').findOne({ id: productId });
       
