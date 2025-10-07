@@ -87,24 +87,7 @@ const StockMovementManagement = () => {
     }
   };
 
-  const fetchMutationReport = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams();
-      
-      if (filters.start_date) params.append('start_date', filters.start_date);
-      if (filters.end_date) params.append('end_date', filters.end_date);
-      if (filters.branch_id) params.append('branch_id', filters.branch_id);
-
-      const response = await axios.get(`/api/inventory/mutation-report?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      setMutationReport(response.data || []);
-    } catch (error) {
-      toast.error('Gagal memuat laporan mutasi stok');
-    }
-  };
+  // Removed unused function: fetchMutationReport
 
   const getMovementIcon = (type) => {
     const iconConfig = {
