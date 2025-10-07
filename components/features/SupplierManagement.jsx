@@ -262,8 +262,6 @@ const SupplierManagement = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="list">Daftar Supplier</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="mapping">Product Mapping</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
