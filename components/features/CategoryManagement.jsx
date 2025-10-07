@@ -145,7 +145,7 @@ const CategoryManagement = () => {
   const getCategoryPath = (category) => {
     if (!category.parent_id) return category.name;
     const parent = categories.find(c => c.id === category.parent_id);
-    return parent ? `${parent.name} > ${category.name}` : category.name;
+    return parent ? ${parent.name} > ${category.name}` : category.name;
   };
 
   const renderCategoryTree = () => {
