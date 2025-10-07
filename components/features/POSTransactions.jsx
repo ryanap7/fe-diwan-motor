@@ -71,10 +71,6 @@ const POSTransactions = () => {
       filtered = filtered.filter(t => t.branch_id === filters.branch_id);
     }
 
-    if (filters.cashier_id) {
-      filtered = filtered.filter(t => t.cashier_id === filters.cashier_id);
-    }
-
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(t => 
