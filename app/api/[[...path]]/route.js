@@ -1158,8 +1158,9 @@ export async function POST(request) {
       });
     }
 
-    // Suppliers - Create (FR-SUP-001)
+    // Suppliers - Create (FR-SUP-001) (Admin only)
     if (path === 'suppliers/create') {
+      requireAdmin();
       const newSupplier = {
         id: uuidv4(),
         name: body.name,
