@@ -252,23 +252,6 @@ const App = () => {
           </div>
         </div>
 
-        {/* User Info */}
-        {sidebarOpen && (
-          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50 animate-in fade-in-50 slide-in-from-left-5 duration-300">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
-                {currentUser?.username?.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{currentUser?.username}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {currentUser?.role?.name}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Menu */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
