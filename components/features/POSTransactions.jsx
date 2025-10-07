@@ -124,27 +124,11 @@ const POSTransactions = () => {
   };
 
   const getStatusBadge = (status) => {
-    const config = {
-      completed: { label: 'Selesai', color: 'bg-green-500 text-white' },
-      refunded: { label: 'Refund', color: 'bg-red-500 text-white' },
-      returned: { label: 'Return', color: 'bg-orange-500 text-white' },
-      cancelled: { label: 'Batal', color: 'bg-gray-500 text-white' }
-    };
-    
-    const cfg = config[status] || config.completed;
-    return <Badge className={cfg.color}>{cfg.label}</Badge>;
+    return <Badge className="bg-green-500 text-white">Selesai</Badge>;
   };
 
   const getPaymentMethodLabel = (method) => {
-    const labels = {
-      cash: 'Tunai',
-      debit_card: 'Kartu Debit',
-      credit_card: 'Kartu Kredit',
-      transfer: 'Transfer',
-      ewallet: 'E-Wallet',
-      credit: 'Kredit'
-    };
-    return labels[method] || method;
+    return 'Tunai';
   };
 
   const formatDate = (timestamp) => {
