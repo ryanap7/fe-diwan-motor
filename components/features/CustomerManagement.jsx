@@ -158,43 +158,14 @@ const CustomerManagement = () => {
     }
   };
 
-  const getCategoryBadge = (category) => {
-    const categoryConfig = {
-      retail: { label: 'Retail', variant: 'default', icon: ShoppingBag, color: 'bg-blue-100 text-blue-800' },
-      wholesale: { label: 'Wholesale', variant: 'secondary', icon: Store, color: 'bg-green-100 text-green-800' },
-      vip: { label: 'VIP', variant: 'destructive', icon: Crown, color: 'bg-purple-100 text-purple-800' }
-    };
-    
-    const config = categoryConfig[category] || categoryConfig.retail;
-    const Icon = config.icon;
-    
-    return (
-      <Badge className={config.color}>
-        <Icon className="w-3 h-3 mr-1" />
-        {config.label}
-      </Badge>
-    );
-  };
-
   const filteredCustomers = customers.filter(customer => {
     const matchSearch = searchQuery === '' || 
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchCategory = filterCategory === 'all' || customer.category === filterCategory;
-    
-    return matchSearch && matchCategory;
+    return matchSearch;
   });
-
-  // Get customer statistics
-  const customerStats = {
-    total: customers.length,
-    retail: customers.filter(c => c.category === 'retail').length,
-    wholesale: customers.filter(c => c.category === 'wholesale').length,
-    vip: customers.filter(c => c.category === 'vip').length,
-    active: customers.filter(c => c.is_active).length
-  };
 
   if (loading) {
     return (
