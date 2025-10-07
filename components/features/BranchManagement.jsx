@@ -243,6 +243,168 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
     );
   }
 
+  // If profile mode and has branch, show edit form directly
+  if (isProfileMode && branches.length > 0) {
+    const branch = branches[0];
+    const { manager, cashier } = getBranchUsers(branch.id);
+    
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Profile Cabang Saya</h3>
+          <p className="text-sm text-muted-foreground">Edit informasi cabang tempat Anda bekerja</p>
+        </div>
+
+        {/* Edit Form Card */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                <Store className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl">Informasi Cabang</CardTitle>
+                <CardDescription>Perbarui detail cabang Anda</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleSave();
+            }} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="code">Kode Cabang</Label>
+                  <Input
+                    id="code"
+                    value={formData.code || branch.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="Contoh: JKT01"
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nama Cabang *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name || branch.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Nama cabang"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Alamat</Label>
+                <Textarea
+                  id="address"
+                  value={formData.address || branch.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Alamat lengkap cabang"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Nomor Telepon</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone || branch.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Nomor telepon"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email || branch.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Email cabang"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="operating_hours">Jam Operasional</Label>
+                <Input
+                  id="operating_hours"
+                  value={formData.operating_hours || branch.operating_hours}
+                  onChange={(e) => setFormData({ ...formData, operating_hours: e.target.value })}
+                  placeholder="Contoh: Senin-Sabtu 08:00-17:00"
+                />
+              </div>
+
+              {/* Staff Information (Read-only) */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Staff Cabang:</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <User className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">Manager</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {manager ? manager.username : <span className="text-gray-400 italic">Belum ditugaskan</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <User className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">Kasir</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {cashier ? cashier.username : <span className="text-gray-400 italic">Belum ditugaskan</span>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    'Simpan Perubahan'
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFormData({
+                      code: branch.code,
+                      name: branch.name,
+                      address: branch.address,
+                      phone: branch.phone,
+                      email: branch.email,
+                      operating_hours: branch.operating_hours
+                    });
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
