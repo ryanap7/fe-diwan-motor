@@ -1666,6 +1666,24 @@ export async function GET(request) {
       });
     }
 
+    // Reset all data and initialize with realistic dummy data
+    if (path === 'init/reset-data') {
+      // Clear all collections
+      await db.collection('branches').deleteMany({});
+      await db.collection('categories').deleteMany({});
+      await db.collection('brands').deleteMany({});
+      await db.collection('products').deleteMany({});
+      await db.collection('inventory').deleteMany({});
+      await db.collection('customers').deleteMany({});
+      await db.collection('transactions').deleteMany({});
+      await db.collection('purchase_orders').deleteMany({});
+      await db.collection('stock_movements').deleteMany({});
+      await db.collection('users').deleteMany({ username: { $ne: 'admin' } });
+      
+      // Reinitialize with realistic data - will be done in init endpoint
+      return NextResponse.json({ message: 'Data cleared. Please call /api/init to reinitialize.' });
+    }
+
     // Initialize system roles and admin user if not exists
     if (path === 'init') {
       const rolesCount = await db.collection('roles').countDocuments();
