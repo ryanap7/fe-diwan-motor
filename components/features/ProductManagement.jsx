@@ -225,8 +225,8 @@ const ProductManagement = () => {
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchCategory = filterCategory === '' || product.category_id === filterCategory;
-    const matchBrand = filterBrand === '' || product.brand_id === filterBrand;
+    const matchCategory = filterCategory === 'all' || product.category_id === filterCategory;
+    const matchBrand = filterBrand === 'all' || product.brand_id === filterBrand;
 
     return matchSearch && matchCategory && matchBrand;
   });
