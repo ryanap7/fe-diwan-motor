@@ -1139,6 +1139,180 @@ export async function POST(request) {
       });
     }
 
+    // Suppliers - Create (for Purchase Orders)
+    if (path === 'suppliers/create') {
+      const newSupplier = {
+        id: uuidv4(),
+        name: body.name,
+        contact_person: body.contact_person || '',
+        phone: body.phone || '',
+        email: body.email || '',
+        address: body.address || '',
+        notes: body.notes || '',
+        is_active: body.is_active !== undefined ? body.is_active : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('suppliers').insertOne(newSupplier);
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'CREATE',
+        entity_type: 'SUPPLIER',
+        entity_id: newSupplier.id,
+        entity_name: newSupplier.name,
+        details: `Created supplier: ${newSupplier.name}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(newSupplier);
+    }
+
+    // Purchase Orders - Create (FR-INV-010)
+    if (path === 'purchase-orders/create') {
+      const { supplier_id, branch_id, expected_date, notes, items } = body;
+      
+      // Generate PO number
+      const poCount = await db.collection('purchase_orders').countDocuments();
+      const poNumber = `PO${new Date().getFullYear()}${String(poCount + 1).padStart(6, '0')}`;
+
+      const newPO = {
+        id: uuidv4(),
+        po_number: poNumber,
+        supplier_id: supplier_id,
+        branch_id: branch_id,
+        expected_date: expected_date || null,
+        status: 'pending', // pending, approved, ordered, partial, completed, cancelled
+        notes: notes || '',
+        items: items.map(item => ({
+          product_id: item.product_id,
+          product_name: item.product_name,
+          ordered_qty: parseInt(item.suggested_qty) || 0,
+          received_qty: 0,
+          unit_price: 0 // Can be updated later
+        })),
+        total_items: items.length,
+        created_by: currentUser.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await db.collection('purchase_orders').insertOne(newPO);
+      
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'CREATE',
+        entity_type: 'PURCHASE_ORDER',
+        entity_id: newPO.id,
+        entity_name: newPO.po_number,
+        details: `Created PO ${newPO.po_number} with ${items.length} items`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json(newPO);
+    }
+
+    // Purchase Orders - Receive Goods (FR-INV-011)
+    if (path.startsWith('purchase-orders/') && path.includes('/receive')) {
+      const poId = path.split('/')[1];
+      const { items } = body; // items with receive_now quantities
+      
+      const purchaseOrder = await db.collection('purchase_orders').findOne({ id: poId });
+      if (!purchaseOrder) {
+        return NextResponse.json({ error: 'Purchase Order not found' }, { status: 404 });
+      }
+
+      // Update received quantities and product stock
+      const updatedItems = [...purchaseOrder.items];
+      let allItemsComplete = true;
+      
+      for (const receiveItem of items) {
+        if (receiveItem.receive_now > 0) {
+          // Find the item in PO
+          const itemIndex = updatedItems.findIndex(item => item.product_id === receiveItem.product_id);
+          if (itemIndex >= 0) {
+            updatedItems[itemIndex].received_qty = (updatedItems[itemIndex].received_qty || 0) + receiveItem.receive_now;
+            
+            // Update product stock in branch
+            const product = await db.collection('products').findOne({ id: receiveItem.product_id });
+            if (product) {
+              const updatedStockPerBranch = { ...product.stock_per_branch };
+              updatedStockPerBranch[purchaseOrder.branch_id] = (parseInt(updatedStockPerBranch[purchaseOrder.branch_id]) || 0) + receiveItem.receive_now;
+
+              await db.collection('products').updateOne(
+                { id: receiveItem.product_id },
+                { $set: { stock_per_branch: updatedStockPerBranch, updated_at: new Date().toISOString() } }
+              );
+
+              // Log stock movement
+              const receiveLog = {
+                id: uuidv4(),
+                type: 'RECEIVE',
+                product_id: receiveItem.product_id,
+                branch_id: purchaseOrder.branch_id,
+                quantity: receiveItem.receive_now,
+                po_id: poId,
+                po_number: purchaseOrder.po_number,
+                user_id: currentUser.id,
+                username: currentUser.username,
+                timestamp: new Date().toISOString()
+              };
+              
+              await db.collection('stock_movements').insertOne(receiveLog);
+            }
+          }
+        }
+      }
+
+      // Check if all items are fully received
+      for (const item of updatedItems) {
+        if ((item.received_qty || 0) < item.ordered_qty) {
+          allItemsComplete = false;
+          break;
+        }
+      }
+
+      // Update PO status
+      const hasPartialReceived = updatedItems.some(item => (item.received_qty || 0) > 0);
+      let newStatus = 'ordered';
+      
+      if (allItemsComplete) {
+        newStatus = 'completed';
+      } else if (hasPartialReceived) {
+        newStatus = 'partial';
+      }
+
+      await db.collection('purchase_orders').updateOne(
+        { id: poId },
+        { 
+          $set: { 
+            items: updatedItems, 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          }
+        }
+      );
+
+      // Log activity
+      await logActivity(db, {
+        user_id: currentUser.id,
+        username: currentUser.username,
+        action: 'RECEIVE_GOODS',
+        entity_type: 'PURCHASE_ORDER',
+        entity_id: poId,
+        entity_name: purchaseOrder.po_number,
+        details: `Received goods for PO ${purchaseOrder.po_number} - Status: ${newStatus}`,
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+
+      return NextResponse.json({ message: 'Goods received successfully', status: newStatus });
+    }
+
     return NextResponse.json(
       { error: 'Endpoint not found' },
       { status: 404 }
