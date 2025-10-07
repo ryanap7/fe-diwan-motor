@@ -276,7 +276,7 @@ const StockMovementManagement = () => {
                       <SelectValue placeholder="Semua Tipe" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Semua Tipe</SelectItem>
+                      <SelectItem value="all">Semua Tipe</SelectItem>
                       <SelectItem value="TRANSFER">Transfer</SelectItem>
                       <SelectItem value="ADJUSTMENT">Penyesuaian</SelectItem>
                       <SelectItem value="OPNAME">Stock Opname</SelectItem>
