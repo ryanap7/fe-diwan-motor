@@ -2057,6 +2057,114 @@ export async function GET(request) {
         await db.collection('transactions').insertMany(defaultTransactions);
       }
 
+      // Initialize purchase orders
+      const poCount = await db.collection('purchase_orders').countDocuments();
+      if (poCount === 0) {
+        const suppliers = await db.collection('suppliers').find({}).toArray();
+        const products = await db.collection('products').find({}).toArray();
+        const branches = await db.collection('branches').find({}).toArray();
+        const users = await db.collection('users').find({}).toArray();
+
+        const purchaseOrders = [];
+        const statuses = ['pending', 'approved', 'ordered', 'partial', 'completed'];
+        
+        for (let i = 0; i < 15; i++) {
+          const supplier = suppliers[Math.floor(Math.random() * suppliers.length)];
+          const branch = branches[Math.floor(Math.random() * branches.length)];
+          const user = users[Math.floor(Math.random() * users.length)];
+          
+          const itemCount = Math.floor(Math.random() * 4) + 2;
+          const items = [];
+          let totalAmount = 0;
+          
+          for (let j = 0; j < itemCount; j++) {
+            const product = products[Math.floor(Math.random() * products.length)];
+            const quantity = Math.floor(Math.random() * 20) + 10;
+            const price = product.purchase_price || 100000;
+            const subtotal = quantity * price;
+            
+            items.push({
+              product_id: product.id,
+              product_name: product.name,
+              sku: product.sku,
+              quantity_ordered: quantity,
+              quantity_received: i < 10 ? quantity : Math.floor(quantity * 0.7),
+              price: price,
+              subtotal: subtotal
+            });
+            
+            totalAmount += subtotal;
+          }
+          
+          const orderDate = new Date(Date.now() - (i * 2 * 24 * 60 * 60 * 1000));
+          const status = statuses[Math.min(i % 5, statuses.length - 1)];
+          
+          purchaseOrders.push({
+            id: uuidv4(),
+            po_number: `PO-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}-${String(1000 + i).slice(-3)}`,
+            supplier_id: supplier.id,
+            supplier_name: supplier.name,
+            branch_id: branch.id,
+            branch_name: branch.name,
+            order_date: orderDate.toISOString(),
+            expected_date: new Date(orderDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            status: status,
+            items: items,
+            total_amount: totalAmount,
+            notes: `PO untuk restocking ${branch.name}`,
+            created_by: user.id,
+            created_by_name: user.username,
+            created_at: orderDate.toISOString(),
+            updated_at: orderDate.toISOString()
+          });
+        }
+        
+        await db.collection('purchase_orders').insertMany(purchaseOrders);
+      }
+
+      // Initialize stock movements
+      const movementCount = await db.collection('stock_movements').countDocuments();
+      if (movementCount === 0) {
+        const products = await db.collection('products').find({}).toArray();
+        const branches = await db.collection('branches').find({}).toArray();
+        const users = await db.collection('users').find({}).toArray();
+
+        const movements = [];
+        const types = ['in', 'out', 'transfer', 'adjustment'];
+        const reasons = ['Penerimaan barang', 'Penjualan', 'Transfer antar cabang', 'Koreksi stok', 'Retur', 'Stock opname'];
+        
+        for (let i = 0; i < 30; i++) {
+          const product = products[Math.floor(Math.random() * products.length)];
+          const branch = branches[Math.floor(Math.random() * branches.length)];
+          const user = users[Math.floor(Math.random() * users.length)];
+          const type = types[Math.floor(Math.random() * types.length)];
+          const quantity = Math.floor(Math.random() * 20) + 5;
+          
+          movements.push({
+            id: uuidv4(),
+            product_id: product.id,
+            product_name: product.name,
+            sku: product.sku,
+            branch_id: branch.id,
+            branch_name: branch.name,
+            type: type,
+            quantity: quantity,
+            previous_stock: Math.floor(Math.random() * 50) + 10,
+            new_stock: Math.floor(Math.random() * 50) + 10,
+            reference_type: type === 'transfer' ? 'Transfer' : type === 'in' ? 'Purchase Order' : 'Transaction',
+            reference_id: `REF-${uuidv4().substring(0, 8)}`,
+            reason: reasons[Math.floor(Math.random() * reasons.length)],
+            notes: '',
+            performed_by: user.id,
+            performed_by_name: user.username,
+            movement_date: new Date(Date.now() - (i * 12 * 60 * 60 * 1000)).toISOString(),
+            created_at: new Date(Date.now() - (i * 12 * 60 * 60 * 1000)).toISOString()
+          });
+        }
+        
+        await db.collection('stock_movements').insertMany(movements);
+      }
+
       return NextResponse.json({ message: 'System initialized' });
     }
 
