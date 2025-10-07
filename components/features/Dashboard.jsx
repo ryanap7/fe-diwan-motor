@@ -268,18 +268,20 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader className="pb-3">
-              <div className="h-4 bg-gray-200 rounded w-24"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-20"></div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-3">
+                <div className="h-4 bg-gray-200 rounded w-24"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-20"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -287,92 +289,192 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white overflow-hidden relative">
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-10 rounded-full -ml-24 -mb-24"></div>
         <CardHeader className="relative z-10">
-          <CardTitle className="text-3xl font-bold">Selamat Datang di Modul Konfigurasi</CardTitle>
+          <CardTitle className="text-3xl font-bold">Dashboard POS & Inventory</CardTitle>
           <CardDescription className="text-white/90 text-base mt-2">
-            Kelola cabang toko motor, profil perusahaan, dan peran pengguna dari satu tempat
+            Ringkasan bisnis toko motor Anda - Pendapatan, Stok, dan Performa Penjualan
           </CardDescription>
         </CardHeader>
       </Card>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card
-              key={index}
-              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
-            >
-              <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500`}></div>
-              <CardHeader className="pb-3 relative">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {stat.title}
-                  </CardTitle>
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className="w-5 h-5 text-white" />
+      {/* Main Revenue Stats */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Performa Penjualan</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {mainStatCards.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card
+                key={index}
+                className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
+              >
+                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500`}></div>
+                <CardHeader className="pb-3 relative">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </CardTitle>
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="relative">
-                <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {stat.value}
-                </div>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardHeader>
+                <CardContent className="relative">
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {stat.value}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl">Panduan Cepat</CardTitle>
-          <CardDescription>Ikuti langkah-langkah berikut untuk mengatur sistem Anda</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100 hover:border-blue-300 transition-colors duration-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
-                1
+      {/* Secondary Stats */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistik Inventory & Customer</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {secondaryStatCards.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card
+                key={index}
+                className={`border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group ${stat.alert ? 'ring-2 ring-yellow-400' : ''}`}
+              >
+                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500`}></div>
+                <CardHeader className="pb-3 relative">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </CardTitle>
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="relative">
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {stat.value}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Section - 3 Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Products */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-600" />
+              Produk Terlaris
+            </CardTitle>
+            <CardDescription>5 produk dengan penjualan tertinggi</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.topProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Belum ada data penjualan</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.topProducts.map((product, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500' : 
+                        index === 1 ? 'bg-gray-400' : 
+                        index === 2 ? 'bg-orange-600' : 'bg-blue-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{product.product_name}</p>
+                        <p className="text-xs text-muted-foreground">{product.quantity} unit terjual</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-sm text-green-600">{formatCurrency(product.revenue)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Konfigurasi Profil Perusahaan</h4>
-                <p className="text-sm text-muted-foreground">
-                  Atur informasi bisnis termasuk nama, alamat, dan detail kontak
-                </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Transactions */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-blue-600" />
+              Transaksi Terbaru
+            </CardTitle>
+            <CardDescription>5 transaksi terakhir</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.recentTransactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Belum ada transaksi</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.recentTransactions.map((transaction, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div>
+                      <p className="font-medium text-sm">{transaction.invoice_number}</p>
+                      <p className="text-xs text-muted-foreground">{transaction.customer_name}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(transaction.transaction_date)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-sm text-green-600">{formatCurrency(transaction.total)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100 hover:border-green-300 transition-colors duration-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
-                2
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Low Stock Alert */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-600" />
+              Stok Menipis
+            </CardTitle>
+            <CardDescription>Produk yang perlu di-restock</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.lowStockItems.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-green-600 font-medium">✓ Semua stok aman</p>
+                <p className="text-xs text-muted-foreground">Tidak ada produk yang stoknya menipis</p>
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Tambahkan Cabang Anda</h4>
-                <p className="text-sm text-muted-foreground">
-                  Buat dan kelola berbagai lokasi cabang dengan informasi lengkap
-                </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.lowStockItems.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div>
+                      <p className="font-medium text-sm">{item.product_name}</p>
+                      <p className="text-xs text-muted-foreground">{item.sku}</p>
+                      <p className="text-xs text-muted-foreground">{item.branch_name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-orange-600">{item.quantity}</p>
+                      <p className="text-xs text-muted-foreground">unit</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100 hover:border-purple-300 transition-colors duration-200">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
-                3
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">Tentukan Peran Pengguna</h4>
-                <p className="text-sm text-muted-foreground">
-                  Atur peran khusus dengan izin spesifik untuk anggota tim Anda
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
