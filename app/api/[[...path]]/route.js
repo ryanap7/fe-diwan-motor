@@ -1530,7 +1530,6 @@ export async function POST(request) {
         phone: body.phone || '',
         email: body.email || '',
         address: body.address || '',
-        category: body.category || 'retail',
         notes: body.notes || '',
         is_active: body.is_active,
         updated_at: new Date().toISOString()
@@ -1547,7 +1546,7 @@ export async function POST(request) {
         entity_type: 'CUSTOMER',
         entity_id: customerId,
         entity_name: customer.name,
-        details: `Updated customer: ${customer.name} (${customer.category})`,
+        details: `Updated customer: ${customer.name}`,
         ip_address: request.headers.get('x-forwarded-for') || 'unknown'
       });
 
