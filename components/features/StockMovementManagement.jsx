@@ -72,9 +72,9 @@ const StockMovementManagement = () => {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       
-      if (filters.product_id) params.append('product_id', filters.product_id);
-      if (filters.branch_id) params.append('branch_id', filters.branch_id);
-      if (filters.movement_type) params.append('type', filters.movement_type);
+      if (filters.product_id && filters.product_id !== 'all') params.append('product_id', filters.product_id);
+      if (filters.branch_id && filters.branch_id !== 'all') params.append('branch_id', filters.branch_id);
+      if (filters.movement_type && filters.movement_type !== 'all') params.append('type', filters.movement_type);
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
 
