@@ -72,6 +72,70 @@ async function logActivity(db, data) {
   }
 }
 
+// Helper function for margin analysis (FR-PRD-011)
+function calculateMargin(product) {
+  const purchasePrice = parseFloat(product.purchase_price) || 0;
+  const margins = {};
+  
+  if (product.price_levels) {
+    Object.keys(product.price_levels).forEach(level => {
+      const sellingPrice = parseFloat(product.price_levels[level]) || 0;
+      if (sellingPrice > 0 && purchasePrice > 0) {
+        const margin = sellingPrice - purchasePrice;
+        const marginPercentage = (margin / sellingPrice) * 100;
+        margins[level] = {
+          selling_price: sellingPrice,
+          purchase_price: purchasePrice,
+          margin_amount: margin,
+          margin_percentage: marginPercentage
+        };
+      }
+    });
+  }
+  
+  return margins;
+}
+
+// Helper function to get current pricing including promotions (FR-PRD-009)
+function getCurrentPricing(product) {
+  const now = new Date();
+  let activePricing = product.price_levels;
+  
+  // Check for active promotional pricing
+  if (product.promotional_pricing && product.promotional_pricing.length > 0) {
+    const activePromo = product.promotional_pricing.find(promo => {
+      if (!promo.is_active) return false;
+      const startDate = new Date(promo.start_date);
+      const endDate = new Date(promo.end_date);
+      return now >= startDate && now <= endDate;
+    });
+    
+    if (activePromo) {
+      activePricing = activePromo.price_levels;
+    }
+  }
+  
+  return activePricing;
+}
+
+// Helper function to calculate volume discount (FR-PRD-010)
+function calculateVolumeDiscount(product, quantity) {
+  if (!product.volume_discounts || product.volume_discounts.length === 0) {
+    return null;
+  }
+  
+  // Find the highest applicable discount
+  const applicableDiscounts = product.volume_discounts
+    .filter(discount => discount.is_active && quantity >= discount.min_quantity)
+    .sort((a, b) => b.min_quantity - a.min_quantity);
+  
+  if (applicableDiscounts.length === 0) {
+    return null;
+  }
+  
+  return applicableDiscounts[0];
+}
+
 export async function POST(request) {
   try {
     const { db } = await connectToDatabase();
