@@ -418,8 +418,9 @@ export async function POST(request) {
       });
     }
 
-    // Roles - Create
+    // Roles - Create (Admin only)
     if (path === 'roles/create') {
+      requireAdmin();
       const newRole = {
         id: uuidv4(),
         ...body,
@@ -431,8 +432,9 @@ export async function POST(request) {
       return NextResponse.json(newRole);
     }
 
-    // Roles - Update
+    // Roles - Update (Admin only)
     if (path.startsWith('roles/') && path.includes('/update')) {
+      requireAdmin();
       const roleId = path.split('/')[1];
       const updates = { ...body };
       delete updates.id;
@@ -449,8 +451,9 @@ export async function POST(request) {
       return NextResponse.json(role);
     }
 
-    // Roles - Delete
+    // Roles - Delete (Admin only)
     if (path.startsWith('roles/') && path.includes('/delete')) {
+      requireAdmin();
       const roleId = path.split('/')[1];
       
       const role = await db.collection('roles').findOne({ id: roleId });
@@ -465,8 +468,9 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Role deleted successfully' });
     }
 
-    // Users - Create
+    // Users - Create (Admin only)
     if (path === 'users/create') {
+      requireAdmin();
       const { username } = body;
       
       const existingUser = await db.collection('users').findOne({ username });
