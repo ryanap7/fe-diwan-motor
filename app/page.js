@@ -14,6 +14,9 @@ import RoleManagement from '@/components/features/RoleManagement';
 import Dashboard from '@/components/features/Dashboard';
 import UserManagement from '@/components/features/UserManagement';
 import ActivityLogs from '@/components/features/ActivityLogs';
+import CategoryManagement from '@/components/features/CategoryManagement';
+import BrandManagement from '@/components/features/BrandManagement';
+import ProductManagement from '@/components/features/ProductManagement';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
