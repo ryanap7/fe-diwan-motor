@@ -236,7 +236,7 @@ const StockMovementManagement = () => {
                       <SelectValue placeholder="Semua Produk" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Semua Produk</SelectItem>
+                      <SelectItem value="all">Semua Produk</SelectItem>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={product.id}>
                           {product.sku} - {product.name}
