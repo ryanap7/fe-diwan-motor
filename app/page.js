@@ -223,27 +223,71 @@ const App = () => {
         )}
 
         {/* Menu */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeMenu === item.id;
+            const hasSubmenu = item.submenu && item.submenu.length > 0;
+            const [submenuOpen, setSubmenuOpen] = useState(false);
+            
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveMenu(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md transform scale-105'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'animate-in zoom-in-50 duration-300' : ''}`} />
-                {sidebarOpen && (
-                  <span className="font-medium animate-in fade-in-50 slide-in-from-left-5 duration-300">
-                    {item.label}
-                  </span>
+              <div key={item.id}>
+                <button
+                  onClick={() => {
+                    if (hasSubmenu) {
+                      setSubmenuOpen(!submenuOpen);
+                    } else {
+                      setActiveMenu(item.id);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md transform scale-105'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'animate-in zoom-in-50 duration-300' : ''}`} />
+                  {sidebarOpen && (
+                    <span className="font-medium flex-1 text-left animate-in fade-in-50 slide-in-from-left-5 duration-300">
+                      {item.label}
+                    </span>
+                  )}
+                  {sidebarOpen && hasSubmenu && (
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${submenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+                
+                {/* Submenu */}
+                {hasSubmenu && submenuOpen && sidebarOpen && (
+                  <div className="ml-4 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                    {item.submenu.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const isSubActive = activeMenu === subItem.id;
+                      return (
+                        <button
+                          key={subItem.id}
+                          onClick={() => setActiveMenu(subItem.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ${
+                            isSubActive
+                              ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-sm'
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <SubIcon className="w-4 h-4" />
+                          <span className="text-sm font-medium">{subItem.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </nav>
