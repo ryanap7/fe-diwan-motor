@@ -138,6 +138,21 @@ const PurchaseOrderManagement = () => {
     }
   };
 
+  // Update PO status
+  const handleUpdatePOStatus = async (poId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`/api/purchase-orders/${poId}/update-status`, { status: newStatus }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Status PO berhasil diubah menjadi ${newStatus}!`);
+      fetchPurchaseOrderData();
+    } catch (error) {
+      toast.error('Gagal mengubah status PO');
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       'pending': { label: 'Menunggu', variant: 'secondary', icon: Clock },
