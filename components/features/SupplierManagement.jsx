@@ -43,13 +43,7 @@ const SupplierManagement = () => {
     is_active: true
   });
 
-  const [mappingData, setMappingData] = useState({
-    product_ids: [],
-    lead_time_days: '',
-    unit_price: '',
-    minimum_order: '',
-    notes: ''
-  });
+  // Mapping data state removed
 
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
