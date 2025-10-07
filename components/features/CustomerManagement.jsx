@@ -5,16 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   Users, Plus, Edit, Trash2, Power, Loader2, Search, 
-  Crown, ShoppingBag, Store, Phone, Mail, MapPin, 
-  Calendar, TrendingUp, Package
+  Phone, Mail, MapPin, Calendar, TrendingUp, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -22,7 +19,6 @@ import axios from 'axios';
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('list');
   
   // Dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,13 +36,11 @@ const CustomerManagement = () => {
     phone: '',
     email: '',
     address: '',
-    category: 'retail', // retail, wholesale, vip
     notes: '',
     is_active: true
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('all');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
