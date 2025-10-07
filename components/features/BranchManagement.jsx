@@ -163,6 +163,60 @@ const BranchManagement = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleOpenStaffDialog = (branch) => {
+    const { manager, cashier } = getBranchUsers(branch.id);
+    setBranchForStaffAssignment(branch);
+    setStaffAssignment({
+      manager_id: manager?.id || '',
+      cashier_id: cashier?.id || ''
+    });
+    setStaffDialogOpen(true);
+  };
+
+  const handleCloseStaffDialog = () => {
+    setStaffDialogOpen(false);
+    setBranchForStaffAssignment(null);
+  };
+
+  const handleStaffAssignmentSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Update users with new branch assignments
+      await axios.post('/api/branches/assign-staff', {
+        branch_id: branchForStaffAssignment.id,
+        manager_id: staffAssignment.manager_id || null,
+        cashier_id: staffAssignment.cashier_id || null
+      }, { headers });
+
+      toast.success('Staff assigned successfully!');
+      fetchBranches();
+      handleCloseStaffDialog();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to assign staff');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getAvailableManagers = () => {
+    const managerRole = roles.find(r => r.name === 'Branch Manager');
+    if (!managerRole) return [];
+    
+    return users.filter(u => u.role_id === managerRole.id);
+  };
+
+  const getAvailableCashiers = () => {
+    const cashierRole = roles.find(r => r.name === 'Cashier');
+    if (!cashierRole) return [];
+    
+    return users.filter(u => u.role_id === cashierRole.id);
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
