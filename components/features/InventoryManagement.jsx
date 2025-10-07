@@ -380,25 +380,7 @@ const InventoryManagement = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="tracking">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Barcode className="w-5 h-5" />
-                Batch & Serial Number Tracking
-              </CardTitle>
-              <CardDescription>
-                Tracking batch number dan tanggal kadaluarsa produk
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-muted-foreground">Fitur batch tracking akan segera tersedia</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Tracking tab removed as requested */}
       </Tabs>
 
       {/* Stock Transfer Dialog */}
