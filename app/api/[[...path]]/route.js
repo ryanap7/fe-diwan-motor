@@ -1228,8 +1228,9 @@ export async function POST(request) {
       return NextResponse.json(supplier);
     }
 
-    // Suppliers - Toggle Active
+    // Suppliers - Toggle Active (Admin only)
     if (path.startsWith('suppliers/') && path.includes('/toggle')) {
+      requireAdmin();
       const supplierId = path.split('/')[1];
       const supplier = await db.collection('suppliers').findOne({ id: supplierId });
       
