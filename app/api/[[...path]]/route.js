@@ -1857,6 +1857,84 @@ export async function GET(request) {
         await db.collection('customers').insertMany(defaultCustomers);
       }
 
+      // Initialize default transactions if none exist
+      const transactionCount = await db.collection('transactions').countDocuments();
+      if (transactionCount === 0) {
+        const branches = await db.collection('branches').find({}).toArray();
+        const products = await db.collection('products').find({}).toArray();
+        const customers = await db.collection('customers').find({}).toArray();
+        const users = await db.collection('users').find({}).toArray();
+        
+        const defaultTransactions = [];
+        
+        // Generate 20 sample transactions
+        for (let i = 0; i < 20; i++) {
+          const randomBranch = branches[Math.floor(Math.random() * branches.length)];
+          const randomCashier = users[Math.floor(Math.random() * users.length)];
+          const randomCustomer = i % 3 === 0 ? customers[Math.floor(Math.random() * customers.length)] : null;
+          
+          // Random number of items (1-4)
+          const itemCount = Math.floor(Math.random() * 4) + 1;
+          const items = [];
+          let subtotal = 0;
+          
+          for (let j = 0; j < itemCount; j++) {
+            const randomProduct = products[Math.floor(Math.random() * products.length)];
+            const quantity = Math.floor(Math.random() * 3) + 1;
+            const price = randomProduct.price_levels?.normal || 100000;
+            const itemSubtotal = price * quantity;
+            
+            items.push({
+              product_id: randomProduct.id,
+              product_name: randomProduct.name,
+              sku: randomProduct.sku,
+              quantity: quantity,
+              price: price,
+              discount: 0,
+              subtotal: itemSubtotal
+            });
+            
+            subtotal += itemSubtotal;
+          }
+          
+          const discount = i % 5 === 0 ? Math.floor(subtotal * 0.1) : 0; // 10% discount on some
+          const tax = 0; // No tax for now
+          const total = subtotal - discount + tax;
+          
+          const paymentMethods = ['cash', 'debit_card', 'credit_card', 'transfer', 'ewallet'];
+          const statuses = ['completed', 'completed', 'completed', 'completed', 'refunded'];
+          
+          const transactionDate = new Date(Date.now() - (i * 3 * 60 * 60 * 1000)); // Every 3 hours back
+          
+          defaultTransactions.push({
+            id: uuidv4(),
+            invoice_number: `INV-${transactionDate.getFullYear()}${String(transactionDate.getMonth() + 1).padStart(2, '0')}${String(transactionDate.getDate()).padStart(2, '0')}-${String(1000 + i).slice(-3)}`,
+            branch_id: randomBranch.id,
+            branch_name: randomBranch.name,
+            cashier_id: randomCashier.id,
+            cashier_name: randomCashier.username,
+            customer_id: randomCustomer?.id || null,
+            customer_name: randomCustomer?.name || 'Walk-in Customer',
+            customer_phone: randomCustomer?.phone || '',
+            transaction_date: transactionDate.toISOString(),
+            items: items,
+            subtotal: subtotal,
+            discount: discount,
+            tax: tax,
+            total: total,
+            payment_method: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
+            payment_amount: total + (i % 3 === 0 ? Math.floor(Math.random() * 50000) : 0), // Some with change
+            change_amount: i % 3 === 0 ? Math.floor(Math.random() * 50000) : 0,
+            status: statuses[Math.floor(Math.random() * statuses.length)],
+            notes: i % 7 === 0 ? 'Transaksi dengan diskon spesial' : '',
+            created_at: transactionDate.toISOString(),
+            updated_at: transactionDate.toISOString()
+          });
+        }
+        
+        await db.collection('transactions').insertMany(defaultTransactions);
+      }
+
       return NextResponse.json({ message: 'System initialized' });
     }
 
