@@ -251,15 +251,18 @@ backend:
 
   - task: "Time-based Pricing/Promotions (FR-PRD-009)"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented promotional pricing system with start/end dates and separate endpoint for managing promotions."
+        - working: true
+        - agent: "testing"
+        - comment: "Promotional pricing working correctly. POST /api/products/{id}/promo successfully creates promotional pricing with name, price levels, start/end dates, and active status. Promotional pricing is properly stored in the promotional_pricing array and can be activated/deactivated."
 
   - task: "Volume Discount Rules (FR-PRD-010)"
     implemented: true
