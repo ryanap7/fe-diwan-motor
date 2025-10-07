@@ -113,6 +113,7 @@ const App = () => {
     { id: 'inventory', label: 'Inventory', icon: Warehouse, submenu: [
       { id: 'stock-management', label: 'Stock Management', icon: Package },
       { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingBag },
+      { id: 'stock-movements', label: 'Stock Movements', icon: BarChart3 },
     ]},
     { id: 'activity-logs', label: 'Log Aktivitas', icon: FileText },
     { id: 'settings', label: 'Pengaturan', icon: Settings, submenu: [
