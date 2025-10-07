@@ -856,29 +856,23 @@ export async function POST(request) {
       return NextResponse.json(updatedProduct);
     }
 
-    // Products - Add/Update Promotional Pricing (FR-PRD-009)
+    // Products - Set/Update Promo Percentage (FR-PRD-009)
     if (path.startsWith('products/') && path.includes('/promo')) {
       const productId = path.split('/')[1];
-      const { name, price_levels, start_date, end_date, is_active } = body;
+      const { discount_percentage, is_active } = body;
       
       const product = await db.collection('products').findOne({ id: productId });
-      const promotionalPricing = [...(product.promotional_pricing || [])];
       
-      const newPromo = {
-        id: uuidv4(),
-        name,
-        price_levels,
-        start_date,
-        end_date,
+      // Simple promo structure - just discount percentage that can be changed anytime
+      const promoData = {
+        discount_percentage: parseFloat(discount_percentage) || 0,
         is_active: is_active !== undefined ? is_active : true,
-        created_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
-      
-      promotionalPricing.push(newPromo);
 
       await db.collection('products').updateOne(
         { id: productId },
-        { $set: { promotional_pricing: promotionalPricing, updated_at: new Date().toISOString() } }
+        { $set: { promo: promoData, updated_at: new Date().toISOString() } }
       );
 
       const updatedProduct = await db.collection('products').findOne({ id: productId });
@@ -887,11 +881,11 @@ export async function POST(request) {
       await logActivity(db, {
         user_id: currentUser.id,
         username: currentUser.username,
-        action: 'ADD_PROMO',
+        action: 'UPDATE_PROMO',
         entity_type: 'PRODUCT',
         entity_id: productId,
         entity_name: updatedProduct.name,
-        details: `Added promotional pricing: ${name}`,
+        details: `Updated promo: ${discount_percentage}% discount, active: ${is_active}`,
         ip_address: request.headers.get('x-forwarded-for') || 'unknown'
       });
 
