@@ -2160,17 +2160,12 @@ export async function GET(request) {
       return NextResponse.json(enhancedMappings);
     }
 
-    // Customers - List all (FR-CUS-001, FR-CUS-002)
+    // Customers - List all (FR-CUS-001)
     if (path === 'customers') {
       const url = new URL(request.url);
       const searchParams = url.searchParams;
       
       const query = {};
-      
-      // Filter by category (segmentation)
-      if (searchParams.get('category')) {
-        query.category = searchParams.get('category');
-      }
       
       // Filter by active status
       if (searchParams.get('is_active') !== null) {
