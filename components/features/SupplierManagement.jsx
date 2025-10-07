@@ -329,7 +329,6 @@ const SupplierManagement = () => {
 
       </div>
 
-      {/* Dialogs */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
