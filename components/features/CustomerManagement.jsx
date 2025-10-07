@@ -209,24 +209,23 @@ const CustomerManagement = () => {
         </CardContent>
       </Card>
 
-          {/* Customer Cards */}
-          <div className="grid grid-cols-1 gap-4">
-            {filteredCustomers.map((customer) => (
-              <Card key={customer.id} className={`${!customer.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    {/* Customer Info */}
-                    <div className="lg:col-span-6">
-                      <div className="flex items-start gap-3">
-                        <Users className="w-8 h-8 text-blue-500 mt-1" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold text-lg">{customer.name}</h4>
-                            {getCategoryBadge(customer.category)}
-                            {!customer.is_active && (
-                              <Badge variant="destructive">Nonaktif</Badge>
-                            )}
-                          </div>
+      {/* Customer Cards */}
+      <div className="grid grid-cols-1 gap-4">
+        {filteredCustomers.map((customer) => (
+          <Card key={customer.id} className={`${!customer.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Customer Info */}
+                <div className="lg:col-span-6">
+                  <div className="flex items-start gap-3">
+                    <Users className="w-8 h-8 text-blue-500 mt-1" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-lg">{customer.name}</h4>
+                        {!customer.is_active && (
+                          <Badge variant="destructive">Nonaktif</Badge>
+                        )}
+                      </div>
                           
                           <div className="space-y-1 text-sm">
                             {customer.phone && (
