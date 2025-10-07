@@ -225,29 +225,13 @@ const RoleManagement = () => {
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleOpenDialog(role)}
-                  disabled={role.is_system}
-                  className="flex-1 hover:bg-purple-50 hover:border-purple-300 transition-colors duration-200 disabled:opacity-50"
-                >
-                  <Edit className="w-3 h-3 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setRoleToDelete(role);
-                    setDeleteDialogOpen(true);
-                  }}
-                  disabled={role.is_system}
-                  className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+              <div className="pt-4">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-center">
+                  <p className="text-xs text-gray-600">
+                    <Shield className="w-3 h-3 inline mr-1" />
+                    System Role - Read Only
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
