@@ -14,7 +14,7 @@ import { Store, Plus, Edit, Trash2, Power, MapPin, Phone, User, Loader2, UserChe
 import { toast } from 'sonner';
 import axios from 'axios';
 
-const BranchManagement = () => {
+const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
   const [branches, setBranches] = useState([]);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -38,6 +38,9 @@ const BranchManagement = () => {
     operating_hours: ''
   });
   const [saving, setSaving] = useState(false);
+  
+  // Determine if user is a branch manager viewing their profile
+  const isProfileMode = viewMode === 'profile' && currentUser;
 
   useEffect(() => {
     fetchBranches();
@@ -54,7 +57,14 @@ const BranchManagement = () => {
         axios.get('/api/roles', { headers })
       ]);
       
-      setBranches(branchesRes.data || []);
+      let branchData = branchesRes.data || [];
+      
+      // Filter to only show user's branch if in profile mode
+      if (isProfileMode && currentUser?.branch_id) {
+        branchData = branchData.filter(b => b.id === currentUser.branch_id);
+      }
+      
+      setBranches(branchData);
       setUsers(usersRes.data || []);
       setRoles(rolesRes.data || []);
     } catch (error) {
