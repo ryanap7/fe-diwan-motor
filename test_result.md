@@ -296,15 +296,18 @@ backend:
 
   - task: "Stock Management per Branch"
     implemented: true
-    working: "NA"
+    working: true
     file: "app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented stock per branch system with dedicated endpoint for updating stock quantities and total stock calculations."
+        - working: true
+        - agent: "testing"
+        - comment: "Stock management per branch working correctly. POST /api/products/{id}/stock successfully updates stock quantities for specific branches. Stock per branch is properly stored and total stock calculations work correctly across all product endpoints."
 
   - task: "Product Search and Filtering"
     implemented: true
