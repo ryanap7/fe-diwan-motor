@@ -1496,7 +1496,6 @@ export async function POST(request) {
         phone: body.phone || '',
         email: body.email || '',
         address: body.address || '',
-        category: body.category || 'retail', // retail, wholesale, vip
         notes: body.notes || '',
         is_active: body.is_active !== undefined ? body.is_active : true,
         total_purchases: 0,
@@ -1516,7 +1515,7 @@ export async function POST(request) {
         entity_type: 'CUSTOMER',
         entity_id: newCustomer.id,
         entity_name: newCustomer.name,
-        details: `Created customer: ${newCustomer.name} (${newCustomer.category})`,
+        details: `Created customer: ${newCustomer.name}`,
         ip_address: request.headers.get('x-forwarded-for') || 'unknown'
       });
 
