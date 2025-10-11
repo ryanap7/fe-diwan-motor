@@ -170,7 +170,7 @@ const CustomerManagement = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-center">
+        <div className="text-center animate-pulse">
           <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p>Memuat data customer...</p>
         </div>
@@ -180,7 +180,7 @@ const CustomerManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Customer</h3>
           <p className="text-sm text-muted-foreground">Manajemen data pelanggan</p>
@@ -198,7 +198,7 @@ const CustomerManagement = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
             <Input
               placeholder="Cari customer (nama, telepon, email)..."
               value={searchQuery}
@@ -214,14 +214,14 @@ const CustomerManagement = () => {
         {filteredCustomers.map((customer) => (
           <Card key={customer.id} className={`${!customer.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                 {/* Customer Info */}
                 <div className="lg:col-span-6">
                   <div className="flex items-start gap-3">
-                    <Users className="w-8 h-8 text-blue-500 mt-1" />
+                    <Users className="w-8 h-8 mt-1 text-blue-500" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg">{customer.name}</h4>
+                        <h4 className="text-lg font-semibold">{customer.name}</h4>
                         {!customer.is_active && (
                           <Badge variant="destructive">Nonaktif</Badge>
                         )}
@@ -336,7 +336,7 @@ const CustomerManagement = () => {
         <Card>
           <CardContent className="pt-12 pb-12 text-center">
             <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
               Tidak ada customer ditemukan
             </h3>
             <p className="text-muted-foreground">
@@ -358,7 +358,7 @@ const CustomerManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nama Customer <span className="text-red-500">*</span></Label>
               <Input
@@ -453,7 +453,7 @@ const CustomerManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 mt-4">
+          <div className="mt-4 space-y-4">
             {customerHistory.length > 0 ? (
               <Table>
                 <TableHeader>
@@ -480,7 +480,7 @@ const CustomerManagement = () => {
                 </TableBody>
               </Table>
             ) : (
-              <div className="text-center py-8">
+              <div className="py-8 text-center">
                 <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                 <p className="text-muted-foreground">Belum ada riwayat pembelian</p>
               </div>

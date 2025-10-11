@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,17 +18,18 @@ const InventoryManagement = () => {
   const [products, setProducts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
-  
+
   // Dialog states
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [opnameDialogOpen, setOpnameDialogOpen] = useState(false);
-  
+
   // Selected data
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState('all');
-  
+
   // Form states
   const [transferData, setTransferData] = useState({
     product_id: '',
@@ -36,7 +38,7 @@ const InventoryManagement = () => {
     quantity: '',
     notes: ''
   });
-  
+
   const [adjustmentData, setAdjustmentData] = useState({
     product_id: '',
     branch_id: '',
@@ -84,13 +86,13 @@ const InventoryManagement = () => {
 
   // Filter products based on search and branch
   const filteredProducts = products.filter(product => {
-    const matchSearch = searchQuery === '' || 
+    const matchSearch = searchQuery === '' ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchBranch = selectedBranch === 'all' || 
+
+    const matchBranch = selectedBranch === 'all' ||
       (product.stock_per_branch && Object.keys(product.stock_per_branch).includes(selectedBranch));
-    
+
     return matchSearch && matchBranch;
   });
 
@@ -101,7 +103,7 @@ const InventoryManagement = () => {
       await axios.post('/api/inventory/transfer', transferData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Transfer stok berhasil!');
       fetchInventoryData();
       setTransferDialogOpen(false);
@@ -124,7 +126,7 @@ const InventoryManagement = () => {
       await axios.post('/api/inventory/adjustment', adjustmentData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       toast.success('Penyesuaian stok berhasil!');
       fetchInventoryData();
       setAdjustmentDialogOpen(false);
@@ -227,7 +229,7 @@ const InventoryManagement = () => {
             {filteredProducts.map((product) => {
               const totalStock = getTotalStock(product);
               const isLowStock = totalStock < 10; // Configurable threshold
-              
+
               return (
                 <Card key={product.id} className={`${isLowStock ? 'border-orange-200 bg-orange-50' : ''}`}>
                   <CardContent className="pt-6">
@@ -236,8 +238,8 @@ const InventoryManagement = () => {
                       <div className="lg:col-span-4">
                         <div className="flex items-start gap-3">
                           {product.images && product.images[0] && (
-                            <img 
-                              src={product.images[0]} 
+                            <img
+                              src={product.images[0]}
                               alt={product.name}
                               className="w-16 h-16 object-cover rounded border"
                               onError={(e) => {
@@ -362,22 +364,16 @@ const InventoryManagement = () => {
                             Sisa: {getTotalStock(product)} unit
                           </p>
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="bg-orange-500 hover:bg-orange-600"
                           onClick={() => {
                             // Store product info for PO creation
                             localStorage.setItem('preSelectedProduct', product.id);
-                            
-                            // Navigate to Purchase Orders
-                            const event = new CustomEvent('navigateToMenu', { 
-                              detail: { 
-                                menuId: 'purchase-orders',
-                                productId: product.id 
-                              } 
-                            });
-                            window.dispatchEvent(event);
-                            
+
+                            // Navigate to Purchase Orders using Next.js router
+                            router.push('/purchase-orders');
+
                             // Show success message
                             toast.success(`Navigating to create PO for ${product.name}`);
                           }}
@@ -387,7 +383,7 @@ const InventoryManagement = () => {
                       </div>
                     </div>
                   ))}
-                
+
                 {filteredProducts.filter(product => getTotalStock(product) < 10).length === 0 && (
                   <div className="text-center py-8">
                     <Package className="w-12 h-12 mx-auto mb-4 text-green-500" />
@@ -414,8 +410,8 @@ const InventoryManagement = () => {
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>Produk</Label>
-              <Select 
-                value={transferData.product_id} 
+              <Select
+                value={transferData.product_id}
                 onValueChange={(value) => setTransferData(prev => ({ ...prev, product_id: value }))}
               >
                 <SelectTrigger>
@@ -434,8 +430,8 @@ const InventoryManagement = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Dari Cabang</Label>
-                <Select 
-                  value={transferData.from_branch_id} 
+                <Select
+                  value={transferData.from_branch_id}
                   onValueChange={(value) => setTransferData(prev => ({ ...prev, from_branch_id: value }))}
                 >
                   <SelectTrigger>
@@ -453,8 +449,8 @@ const InventoryManagement = () => {
 
               <div className="space-y-2">
                 <Label>Ke Cabang</Label>
-                <Select 
-                  value={transferData.to_branch_id} 
+                <Select
+                  value={transferData.to_branch_id}
                   onValueChange={(value) => setTransferData(prev => ({ ...prev, to_branch_id: value }))}
                 >
                   <SelectTrigger>
@@ -514,8 +510,8 @@ const InventoryManagement = () => {
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>Produk</Label>
-              <Select 
-                value={adjustmentData.product_id} 
+              <Select
+                value={adjustmentData.product_id}
                 onValueChange={(value) => setAdjustmentData(prev => ({ ...prev, product_id: value }))}
               >
                 <SelectTrigger>
@@ -533,8 +529,8 @@ const InventoryManagement = () => {
 
             <div className="space-y-2">
               <Label>Cabang</Label>
-              <Select 
-                value={adjustmentData.branch_id} 
+              <Select
+                value={adjustmentData.branch_id}
                 onValueChange={(value) => setAdjustmentData(prev => ({ ...prev, branch_id: value }))}
               >
                 <SelectTrigger>
@@ -552,8 +548,8 @@ const InventoryManagement = () => {
 
             <div className="space-y-2">
               <Label>Tipe Penyesuaian</Label>
-              <Select 
-                value={adjustmentData.adjustment_type} 
+              <Select
+                value={adjustmentData.adjustment_type}
                 onValueChange={(value) => setAdjustmentData(prev => ({ ...prev, adjustment_type: value }))}
               >
                 <SelectTrigger>
@@ -579,8 +575,8 @@ const InventoryManagement = () => {
 
             <div className="space-y-2">
               <Label>Alasan</Label>
-              <Select 
-                value={adjustmentData.reason} 
+              <Select
+                value={adjustmentData.reason}
                 onValueChange={(value) => setAdjustmentData(prev => ({ ...prev, reason: value }))}
               >
                 <SelectTrigger>
