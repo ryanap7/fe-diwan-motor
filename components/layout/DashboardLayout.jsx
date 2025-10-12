@@ -13,6 +13,7 @@ const DashboardLayout = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [ngrokError, setNgrokError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -32,22 +33,75 @@ const DashboardLayout = ({ children }) => {
         return;
       }
 
-      const response = await axios.get('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
+      // Check if user data is already in localStorage from login
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
+        setLoading(false);
+        return;
+      }
+
+      // If not, fetch from API
+      const response = await axios.get('/api/auth/profile', {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true',
+          'User-Agent': 'NextJS-Dashboard/1.0'
+        }
       });
       
-      setCurrentUser(response.data.user);
+      // Handle response structure {success, data}
+      if (response.data.success && response.data.data) {
+        setCurrentUser(response.data.data);
+        localStorage.setItem('user', JSON.stringify(response.data.data));
+      } else {
+        throw new Error('Invalid response format');
+      }
+      
       setLoading(false);
     } catch (error) {
+      console.error('Auth check failed:', error);
+      
+      // Handle ngrok specific errors
+      if (error.code === 'ERR_NGROK_6024' || error.message.includes('ngrok')) {
+        console.error('Ngrok connection error detected');
+        setNgrokError(true);
+        setLoading(false);
+        return;
+      }
+      
       removeAuthToken();
+      localStorage.removeItem('user');
       router.push('/login');
     }
   };
 
-  const handleLogout = () => {
-    removeAuthToken();
-    toast.success('Logged out successfully');
-    router.push('/login');
+  const handleRetryConnection = async () => {
+    setNgrokError(false);
+    setLoading(true);
+    await checkAuth();
+  };
+
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        await axios.post('/api/auth/logout', { refreshToken }, {
+          headers: { 
+            Authorization: `Bearer ${getAuthToken()}`,
+            'ngrok-skip-browser-warning': 'true',
+            'User-Agent': 'NextJS-Dashboard/1.0'
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Logout API call failed:', error);
+    } finally {
+      removeAuthToken();
+      localStorage.removeItem('user');
+      toast.success('Logged out successfully');
+      router.push('/login');
+    }
   };
 
   // Define all menu items with role-based access control
@@ -56,48 +110,48 @@ const DashboardLayout = ({ children }) => {
       id: 'dashboard', 
       label: 'Beranda', 
       icon: BarChart3, 
-      roles: ['Admin', 'Branch Manager'], 
+      roles: ['ADMIN', 'BRANCH_MANAGER'], 
       href: '/dashboard' 
     },
     { 
       id: 'branches', 
       label: 'Cabang', 
       icon: Store, 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       href: '/branches' 
     },
     { 
       id: 'users', 
       label: 'Pengguna', 
       icon: Users, 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       href: '/users' 
     },
     { 
       id: 'products', 
       label: 'Produk', 
       icon: Package, 
-      roles: ['Admin', 'Branch Manager'], 
+      roles: ['ADMIN', 'BRANCH_MANAGER'], 
       submenu: [
         { 
           id: 'categories', 
           label: 'Kategori', 
           icon: ShoppingBag, 
-          roles: ['Admin', 'Branch Manager'], 
+          roles: ['ADMIN', 'BRANCH_MANAGER'], 
           href: '/categories' 
         },
         { 
           id: 'brands', 
           label: 'Brand/Merk', 
           icon: Package, 
-          roles: ['Admin', 'Branch Manager'], 
+          roles: ['ADMIN', 'BRANCH_MANAGER'], 
           href: '/brands' 
         },
         { 
           id: 'products-list', 
           label: 'Daftar Produk', 
           icon: Package, 
-          roles: ['Admin', 'Branch Manager'], 
+          roles: ['ADMIN', 'BRANCH_MANAGER'], 
           href: '/products' 
         },
       ]
@@ -106,27 +160,27 @@ const DashboardLayout = ({ children }) => {
       id: 'inventory', 
       label: 'Inventory', 
       icon: Warehouse, 
-      roles: ['Admin', 'Branch Manager'], 
+      roles: ['ADMIN', 'BRANCH_MANAGER'], 
       submenu: [
         { 
           id: 'stock-management', 
           label: 'Stock Management', 
           icon: Package, 
-          roles: ['Admin', 'Branch Manager'], 
+          roles: ['ADMIN', 'BRANCH_MANAGER'], 
           href: '/inventory' 
         },
         { 
           id: 'purchase-orders', 
           label: 'Purchase Orders', 
           icon: ShoppingBag, 
-          roles: ['Admin', 'Branch Manager'], 
+          roles: ['ADMIN', 'BRANCH_MANAGER'], 
           href: '/purchase-orders' 
         },
         { 
           id: 'stock-movements', 
           label: 'Stock Movements', 
           icon: BarChart3, 
-          roles: ['Admin', 'Branch Manager'], 
+          roles: ['ADMIN', 'BRANCH_MANAGER'], 
           href: '/stock-movements' 
         },
       ]
@@ -135,55 +189,55 @@ const DashboardLayout = ({ children }) => {
       id: 'suppliers', 
       label: 'Supplier', 
       icon: Building2, 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       href: '/suppliers' 
     },
     { 
       id: 'customers', 
       label: 'Customer', 
       icon: Users, 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       href: '/customers' 
     },
     { 
       id: 'pos-transactions', 
       label: 'Transaksi', 
       icon: ShoppingCart, 
-      roles: ['Admin', 'Branch Manager'], 
+      roles: ['ADMIN', 'BRANCH_MANAGER'], 
       href: '/transactions' 
     },
     { 
       id: 'reporting-analytics', 
       label: 'Laporan & Analisis', 
       icon: PieChart, 
-      roles: ['Admin', 'Branch Manager'], 
+      roles: ['ADMIN', 'BRANCH_MANAGER'], 
       href: '/reports' 
     },
     { 
       id: 'activity-logs', 
       label: 'Log Aktivitas', 
       icon: FileText, 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       href: '/activity-logs' 
     },
     { 
       id: 'settings', 
       label: 'Pengaturan', 
       icon: Settings, 
-      roles: ['Admin', 'Branch Manager'], 
+      roles: ['ADMIN', 'BRANCH_MANAGER'], 
       submenu: [
         { 
           id: 'company', 
           label: 'Profil Perusahaan', 
           icon: Building2, 
-          roles: ['Admin'], 
+          roles: ['ADMIN'], 
           href: '/company' 
         },
         { 
           id: 'roles', 
           label: 'Peran Pengguna', 
           icon: Users, 
-          roles: ['Admin'], 
+          roles: ['ADMIN'], 
           href: '/roles' 
         },
       ]
@@ -205,7 +259,7 @@ const DashboardLayout = ({ children }) => {
       });
   };
 
-  const menuItems = currentUser ? filterMenuByRole(allMenuItems, currentUser.role?.name) : [];
+  const menuItems = currentUser ? filterMenuByRole(allMenuItems, currentUser.role) : [];
 
   // Get current page title based on pathname
   const getCurrentPageTitle = () => {
@@ -239,6 +293,49 @@ const DashboardLayout = ({ children }) => {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="animate-pulse">
           <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (ngrokError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-orange-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Ngrok Connection Error</h2>
+          <p className="text-gray-600 mb-4">Unable to connect to the API server. This might be due to:</p>
+          <ul className="text-left text-sm text-gray-500 mb-6 space-y-1">
+            <li>• Ngrok tunnel has expired or been terminated</li>
+            <li>• Ngrok browser warning (click "Visit Site" to bypass)</li>
+            <li>• API server is not running on the backend</li>
+            <li>• NEXT_PUBLIC_API_URL environment variable needs updating</li>
+            <li>• Network connection issues</li>
+          </ul>
+          <div className="text-xs text-gray-400 mb-4">
+            Current API URL: {process.env.NEXT_PUBLIC_API_URL || 'Not configured'}
+          </div>
+          <Button 
+            onClick={handleRetryConnection} 
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          >
+            Retry Connection
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-pink-600 rounded-full mx-auto mb-4"></div>
+          <p>User data not found. Redirecting to login...</p>
         </div>
       </div>
     );

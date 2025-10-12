@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Package, Plus, Edit, Trash2, Power, Loader2, Search, Image as ImageIcon, Tag, Percent } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { productsAPI, categoriesAPI, brandsAPI, branchesAPI, stockAPI } from '@/lib/api';
 
 const UOM_OPTIONS = ['Pcs', 'Unit', 'Box', 'Lusin', 'Karton', 'Kg', 'Liter', 'Meter', 'Set'];
 
@@ -62,22 +62,20 @@ const ProductManagement = () => {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: 'Bearer ' + token };
-
       const [productsRes, categoriesRes, brandsRes, branchesRes] = await Promise.all([
-        axios.get('/api/products', { headers }),
-        axios.get('/api/categories', { headers }),
-        axios.get('/api/brands', { headers }),
-        axios.get('/api/branches', { headers })
+        productsAPI.getAll(),
+        categoriesAPI.getAll(),
+        brandsAPI.getAll(),
+        branchesAPI.getAll()
       ]);
 
-      setProducts(productsRes.data || []);
-      setCategories(categoriesRes.data || []);
-      setBrands(brandsRes.data || []);
-      setBranches(branchesRes.data || []);
+      setProducts(productsRes || []);
+      setCategories(categoriesRes || []);
+      setBrands(brandsRes || []);
+      setBranches(branchesRes || []);
     } catch (error) {
-      toast.error('Gagal memuat data');
+      console.error('Gagal memuat data:', error);
+      toast.error('Gagal memuat data: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -87,22 +85,22 @@ const ProductManagement = () => {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        sku: product.sku,
-        name: product.name,
-        category_id: product.category_id || '',
+        sku: product.sku || '',
+        name: product.nama || '', // mapping dari 'nama' ke 'name' untuk form
+        category_id: product.kategori_id || '', // mapping dari 'kategori_id'
         brand_id: product.brand_id || '',
         compatible_models: product.compatible_models || '',
         uom: product.uom || 'Pcs',
         purchase_price: product.purchase_price || '',
-        normal_price: product.price_levels?.normal || '',
-        wholesale_price: product.price_levels?.wholesale || '',
+        normal_price: product.harga || '', // mapping dari 'harga'
+        wholesale_price: product.wholesale_price || '',
         barcode: product.barcode || '',
         images: product.images || [],
         imageFiles: [],
-        specifications: product.technical_specs || '',
+        specifications: product.deskripsi || '', // mapping dari 'deskripsi'
         storage_location: product.storage_location || '',
         tags: product.tags ? product.tags.join(', ') : '',
-        is_active: product.is_active
+        is_active: product.is_active !== undefined ? product.is_active : true
       });
     } else {
       setEditingProduct(null);
@@ -147,38 +145,37 @@ const ProductManagement = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: 'Bearer ' + token };
 
+      // Struktur data sesuai API2.md
       const dataToSend = {
         sku: formData.sku,
-        name: formData.name,
-        category_id: formData.category_id,
-        brand_id: formData.brand_id,
+        nama: formData.name, // menggunakan 'nama' sesuai API2.md
+        kategori_id: parseInt(formData.category_id) || null, // menggunakan 'kategori_id'
+        brand_id: parseInt(formData.brand_id) || null,
         compatible_models: formData.compatible_models,
         uom: formData.uom,
+        harga: parseFloat(formData.normal_price) || 0, // harga dasar
         purchase_price: parseFloat(formData.purchase_price) || 0,
-        price_levels: {
-          normal: parseFloat(formData.normal_price) || 0,
-          wholesale: parseFloat(formData.wholesale_price) || 0
-        },
+        wholesale_price: parseFloat(formData.wholesale_price) || 0, // harga grosir terpisah
         barcode: formData.barcode,
         images: formData.images.filter(img => img.trim() !== ''),
-        technical_specs: formData.specifications,
+        deskripsi: formData.specifications, // menggunakan 'deskripsi'
         storage_location: formData.storage_location,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t !== '') : [],
         is_active: formData.is_active
       };
 
       if (editingProduct) {
-        await axios.post('/api/products/' + editingProduct.id + '/update', dataToSend, { headers });
+        await productsAPI.update(editingProduct.id, dataToSend);
         toast.success('Produk berhasil diperbarui!');
       } else {
-        await axios.post('/api/products/create', dataToSend, { headers });
+        await productsAPI.create(dataToSend);
         toast.success('Produk berhasil dibuat!');
       }
 
       fetchData();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Gagal menyimpan produk');
+      toast.error(error.response?.data?.error || error.message || 'Gagal menyimpan produk');
     } finally {
       setSaving(false);
     }
@@ -186,15 +183,12 @@ const ProductManagement = () => {
 
   const handleToggleActive = async (product) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/products/' + product.id + '/toggle', {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
+      await productsAPI.toggleActive(product.id);
       const message = product.is_active ? 'dinonaktifkan' : 'diaktifkan';
       toast.success('Produk ' + message + '!');
       fetchData();
     } catch (error) {
-      toast.error('Gagal mengubah status produk');
+      toast.error('Gagal mengubah status produk: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -202,14 +196,11 @@ const ProductManagement = () => {
     if (!productToDelete) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/products/' + productToDelete.id + '/delete', {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
+      await productsAPI.delete(productToDelete.id);
       toast.success('Produk berhasil dihapus!');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Gagal menghapus produk');
+      toast.error(error.response?.data?.error || error.message || 'Gagal menghapus produk');
     } finally {
       setDeleteDialogOpen(false);
       setProductToDelete(null);
@@ -393,7 +384,7 @@ const ProductManagement = () => {
                         {product.sku}
                       </Badge>
                       <h3 className="text-lg font-bold text-gray-900 line-clamp-2 mb-1">
-                        {product.name}
+                        {product.nama || product.name}
                       </h3>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                         <span>{getCategoryName(product.category_id)}</span>
@@ -835,12 +826,9 @@ const ProductManagement = () => {
                 <Button
                   onClick={async () => {
                     try {
-                      const token = localStorage.getItem('token');
-                      await axios.post(`/api/products/${selectedProductForPromo.id}/promo`, {
+                      await productsAPI.updatePromo(selectedProductForPromo.id, {
                         discount_percentage: 0,
                         is_active: false
-                      }, {
-                        headers: { Authorization: 'Bearer ' + token }
                       });
                       toast.success('Promo dihapus!');
                       fetchData();
@@ -850,7 +838,7 @@ const ProductManagement = () => {
                         is_active: true
                       });
                     } catch (error) {
-                      toast.error('Gagal menghapus promo');
+                      toast.error('Gagal menghapus promo: ' + (error.response?.data?.error || error.message));
                     }
                   }}
                   variant="outline"
@@ -863,12 +851,9 @@ const ProductManagement = () => {
               <Button
                 onClick={async () => {
                   try {
-                    const token = localStorage.getItem('token');
-                    await axios.post(`/api/products/${selectedProductForPromo.id}/promo`, {
+                    await productsAPI.updatePromo(selectedProductForPromo.id, {
                       discount_percentage: parseFloat(promoFormData.discount_percentage) || 0,
                       is_active: promoFormData.is_active
-                    }, {
-                      headers: { Authorization: 'Bearer ' + token }
                     });
                     toast.success('Promo berhasil disimpan!');
                     fetchData();

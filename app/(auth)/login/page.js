@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { authAPI } from '@/lib/api';
 import { setAuthToken, getAuthToken } from '@/lib/auth';
 
 export default function LoginPage() {
@@ -18,17 +18,6 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Initialize system
-    const initializeSystem = async () => {
-      try {
-        await axios.get('/api/init');
-      } catch (error) {
-        console.error('System initialization error:', error);
-      }
-    };
-
-    initializeSystem();
-
     // Check if already authenticated
     const token = getAuthToken();
     if (token) {
@@ -41,16 +30,27 @@ export default function LoginPage() {
     setLoginLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/login', {
-        username,
-        password
+      const response = await authAPI.login({
+        username: username,
+        password: password
       });
 
-      setAuthToken(response.data.token);
-      toast.success('Login berhasil!');
-      router.push('/dashboard');
+      // Response structure: {success, data: {accessToken, refreshToken, user}}
+      if (response.success && response.data) {
+        setAuthToken(response.data.accessToken, response.data.refreshToken);
+        
+        // Store user info from login response
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+        
+        toast.success('Login berhasil!');
+        router.push('/dashboard');
+      } else {
+        toast.error('Login response format tidak valid');
+      }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Login gagal');
+      toast.error(error.response?.data?.error || error.message || 'Login gagal');
     } finally {
       setLoginLoading(false);
     }

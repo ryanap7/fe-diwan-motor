@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Store, Plus, Edit, Trash2, Power, MapPin, Phone, User, Loader2, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { branchesAPI, usersAPI, rolesAPI } from '@/lib/api';
 
 const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
   const [branches, setBranches] = useState([]);
@@ -33,9 +33,21 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
     code: '',
     name: '',
     address: '',
+    city: '',
+    province: '',
+    postalCode: '',
     phone: '',
     email: '',
-    operating_hours: ''
+    operatingHours: {
+      monday: { open: '08:00', close: '17:00', closed: false },
+      tuesday: { open: '08:00', close: '17:00', closed: false },
+      wednesday: { open: '08:00', close: '17:00', closed: false },
+      thursday: { open: '08:00', close: '17:00', closed: false },
+      friday: { open: '08:00', close: '17:00', closed: false },
+      saturday: { open: '09:00', close: '15:00', closed: false },
+      sunday: { open: '00:00', close: '00:00', closed: true }
+    },
+    notes: ''
   });
   const [saving, setSaving] = useState(false);
   
@@ -48,16 +60,43 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
 
   const fetchBranches = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
+      console.log('BranchManagement - Starting to fetch data...');
       
-      const [branchesRes, usersRes, rolesRes] = await Promise.all([
-        axios.get('/api/branches', { headers }),
-        axios.get('/api/users', { headers }),
-        axios.get('/api/roles', { headers })
+      const [branchesRes, usersRes] = await Promise.all([
+        branchesAPI.getAll(),
+        usersAPI.getAll()
       ]);
       
-      let branchData = branchesRes.data || [];
+      // Safely extract data from API response with multiple format support
+      const extractArrayData = (response) => {
+        // Handle direct array
+        if (Array.isArray(response)) return response;
+        
+        // Handle API3.md structure: { data: { branches: [...] } }
+        if (response?.data?.branches && Array.isArray(response.data.branches)) {
+          return response.data.branches;
+        }
+        
+        // Handle API3.md structure for users: { data: { users: [...] } }
+        if (response?.data?.users && Array.isArray(response.data.users)) {
+          return response.data.users;
+        }
+        
+        // Handle legacy structure: { data: [...] }
+        if (response?.data && Array.isArray(response.data)) return response.data;
+        
+        // Handle success wrapper: { success: true, data: [...] }
+        if (response?.success && Array.isArray(response.data)) return response.data;
+        
+        console.warn('Unexpected API response structure:', response);
+        return [];
+      };
+      
+      let branchData = extractArrayData(branchesRes);
+      const userData = extractArrayData(usersRes);
+      
+      console.log('BranchManagement - Raw API Response:', { branchesRes, usersRes });
+      console.log('BranchManagement - Extracted Data:', { branchData, userData });
       
       // Filter to only show user's branch if in profile mode
       if (isProfileMode && currentUser?.branch_id) {
@@ -65,16 +104,45 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
       }
       
       setBranches(branchData);
-      setUsers(usersRes.data || []);
-      setRoles(rolesRes.data || []);
+      setUsers(userData);
+      
+      // Hardcoded roles sesuai API3.md
+      setRoles([
+        { id: 'ADMIN', name: 'Admin' },
+        { id: 'BRANCH_MANAGER', name: 'Branch Manager' },
+        { id: 'CASHIER', name: 'Cashier' }
+      ]);
     } catch (error) {
-      toast.error('Failed to load branches');
+      console.error('Failed to load branches:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Set empty state on error
+      setBranches([]);
+      setUsers([]);
+      
+      toast.error('Failed to load branches: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
   };
   
   const getBranchUsers = (branchId) => {
+    // Cari branch dari data yang sudah dimuat
+    const branch = branches.find(b => b.id === branchId);
+    
+    if (branch) {
+      // API3.md sudah menyediakan data manager dan cashier secara langsung
+      return {
+        manager: branch.manager || null,
+        cashier: branch.cashier || null
+      };
+    }
+    
+    // Fallback ke cara lama jika data tidak tersedia
     const branchUsers = users.filter(u => u.branch_id === branchId);
     const managerRole = roles.find(r => r.name === 'Branch Manager');
     const cashierRole = roles.find(r => r.name === 'Cashier');
@@ -113,21 +181,18 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
       if (editingBranch) {
-        await axios.post(`/api/branches/${editingBranch.id}/update`, formData, { headers });
+        await branchesAPI.update(editingBranch.id, formData);
         toast.success('Branch updated successfully!');
       } else {
-        await axios.post('/api/branches/create', formData, { headers });
+        await branchesAPI.create(formData);
         toast.success('Branch created successfully!');
       }
 
       fetchBranches();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to save branch');
+      toast.error(error.response?.data?.error || error.message || 'Failed to save branch');
     } finally {
       setSaving(false);
     }
@@ -135,14 +200,21 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
 
   const handleToggleActive = async (branch) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/branches/${branch.id}/toggle`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(`Branch ${branch.is_active ? 'deactivated' : 'activated'} successfully!`);
+      if (branch.isActive) {
+        const reason = prompt('Please enter reason for deactivation:');
+        if (reason) {
+          await branchesAPI.deactivate(branch.id, reason);
+          toast.success('Branch deactivated successfully!');
+        } else {
+          return;
+        }
+      } else {
+        await branchesAPI.activate(branch.id);
+        toast.success('Branch activated successfully!');
+      }
       fetchBranches();
     } catch (error) {
-      toast.error('Failed to toggle branch status');
+      toast.error('Failed to toggle branch status: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -150,14 +222,11 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
     if (!branchToDelete) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/branches/${branchToDelete.id}/delete`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await branchesAPI.delete(branchToDelete.id);
       toast.success('Branch deleted successfully!');
       fetchBranches();
     } catch (error) {
-      toast.error('Failed to delete branch');
+      toast.error('Failed to delete branch: ' + (error.response?.data?.error || error.message));
     } finally {
       setDeleteDialogOpen(false);
       setBranchToDelete(null);
@@ -188,21 +257,24 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      // Update users with new branch assignments
-      await axios.post('/api/branches/assign-staff', {
-        branch_id: branchForStaffAssignment.id,
-        manager_id: staffAssignment.manager_id || null,
-        cashier_id: staffAssignment.cashier_id || null
-      }, { headers });
+      // Assign manager and cashier separately using API3.md endpoints
+      if (staffAssignment.manager_id) {
+        await branchesAPI.assignManager(branchForStaffAssignment.id, {
+          userId: staffAssignment.manager_id
+        });
+      }
+      
+      if (staffAssignment.cashier_id) {
+        await branchesAPI.assignCashier(branchForStaffAssignment.id, {
+          userId: staffAssignment.cashier_id
+        });
+      }
 
       toast.success('Staff assigned successfully!');
       fetchBranches();
       handleCloseStaffDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to assign staff');
+      toast.error(error.response?.data?.message || error.message || 'Failed to assign staff');
     } finally {
       setSaving(false);
     }
@@ -224,12 +296,12 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader>
-              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2 mt-2"></div>
+              <div className="w-3/4 h-6 bg-gray-200 rounded"></div>
+              <div className="w-1/2 h-4 mt-2 bg-gray-200 rounded"></div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -260,7 +332,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
         <Card className="border-0 shadow-lg">
           <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+              <div className="flex items-center justify-center w-12 h-12 shadow-md bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
                 <Store className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -274,7 +346,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               e.preventDefault();
               handleSave();
             }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="code">Kode Cabang</Label>
                   <Input
@@ -309,7 +381,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Nomor Telepon</Label>
                   <Input
@@ -342,24 +414,24 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               </div>
 
               {/* Staff Information (Read-only) */}
-              <div className="border-t pt-4 mt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Staff Cabang:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="pt-4 mt-4 border-t">
+                <h4 className="mb-3 text-sm font-semibold text-gray-700">Staff Cabang:</h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex items-center gap-3 p-3 border border-blue-200 rounded-lg bg-blue-50">
                     <User className="w-5 h-5 text-blue-600" />
                     <div>
                       <p className="text-xs font-medium text-gray-600">Manager</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {manager ? manager.username : <span className="text-gray-400 italic">Belum ditugaskan</span>}
+                        {manager ? (manager.fullName || manager.username || manager.name) : <span className="italic text-gray-400">Belum ditugaskan</span>}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-3 p-3 border border-green-200 rounded-lg bg-green-50">
                     <User className="w-5 h-5 text-green-600" />
                     <div>
                       <p className="text-xs font-medium text-gray-600">Kasir</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {cashier ? cashier.username : <span className="text-gray-400 italic">Belum ditugaskan</span>}
+                        {cashier ? (cashier.fullName || cashier.username || cashier.name) : <span className="italic text-gray-400">Belum ditugaskan</span>}
                       </p>
                     </div>
                   </div>
@@ -370,7 +442,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  className="flex-1 text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   {saving ? (
                     <>
@@ -408,7 +480,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
             {isProfileMode ? 'Profile Cabang Saya' : 'Manage Branches'}
@@ -420,7 +492,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
         {!isProfileMode && (
           <Button
             onClick={() => handleOpenDialog()}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add New Branch
@@ -429,17 +501,17 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
       </div>
 
       {/* Branches Grid */}
-      {branches.length === 0 ? (
+      {!Array.isArray(branches) || branches.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Store className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No branches yet</h3>
-            <p className="text-muted-foreground mb-6">Start by adding your first branch location</p>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">No branches yet</h3>
+            <p className="mb-6 text-muted-foreground">Start by adding your first branch location</p>
             <Button
               onClick={() => handleOpenDialog()}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add First Branch
@@ -447,49 +519,53 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {branches.map((branch) => {
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.isArray(branches) && branches.map((branch) => {
             const { manager, cashier } = getBranchUsers(branch.id);
             
             return (
               <Card
                 key={branch.id}
-                className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
+                className="overflow-hidden transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 group"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-500 opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                <CardHeader className="pb-3 relative">
+                <div className="absolute top-0 right-0 w-32 h-32 -mt-16 -mr-16 transition-transform duration-500 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 opacity-5 group-hover:scale-150"></div>
+                <CardHeader className="relative pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge
                           variant="outline"
-                          className="font-mono text-xs bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200"
+                          className="font-mono text-xs border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50"
                         >
                           {branch.code}
                         </Badge>
                         <Badge
-                          variant={branch.is_active ? 'default' : 'secondary'}
-                          className={branch.is_active ? 'bg-green-500 hover:bg-green-600' : ''}
+                          variant={branch.status === 'ACTIVE' ? 'default' : 'secondary'}
+                          className={
+                            branch.status === 'ACTIVE' ? 'bg-green-500 hover:bg-green-600' :
+                            branch.status === 'PENDING' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                            branch.status === 'DRAFT' ? 'bg-gray-500 hover:bg-gray-600' : ''
+                          }
                         >
-                          {branch.is_active ? 'Active' : 'Inactive'}
+                          {branch.status || 'Unknown'}
                         </Badge>
                       </div>
-                      <CardTitle className="text-xl mb-1">{branch.name}</CardTitle>
+                      <CardTitle className="mb-1 text-xl">{branch.name}</CardTitle>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3 relative">
+                <CardContent className="relative space-y-3">
                   <div className="flex items-start gap-2 text-sm text-muted-foreground">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>{branch.address || 'No address'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4 flex-shrink-0" />
+                    <Phone className="flex-shrink-0 w-4 h-4" />
                     <span>{branch.phone || 'No phone'}</span>
                   </div>
                   
                   {/* Assigned Staff Section */}
-                  <div className="border-t pt-3 mt-3">
+                  <div className="pt-3 mt-3 border-t">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-gray-700">Assigned Staff:</p>
                       {!isProfileMode && (
@@ -506,25 +582,25 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <User className="w-4 h-4 flex-shrink-0 text-blue-600" />
-                        <span className="font-medium text-xs text-gray-600">Manager:</span>
+                        <User className="flex-shrink-0 w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-medium text-gray-600">Manager:</span>
                         {manager ? (
-                          <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">
-                            {manager.username}
+                          <Badge variant="outline" className="text-xs border-blue-200 bg-blue-50">
+                            {manager.fullName || manager.username || manager.name}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                          <span className="text-xs italic text-gray-400">Not assigned</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <User className="w-4 h-4 flex-shrink-0 text-green-600" />
-                        <span className="font-medium text-xs text-gray-600">Cashier:</span>
+                        <User className="flex-shrink-0 w-4 h-4 text-green-600" />
+                        <span className="text-xs font-medium text-gray-600">Cashier:</span>
                         {cashier ? (
-                          <Badge variant="outline" className="text-xs bg-green-50 border-green-200">
-                            {cashier.username}
+                          <Badge variant="outline" className="text-xs border-green-200 bg-green-50">
+                            {cashier.fullName || cashier.username || cashier.name}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-gray-400 italic">Not assigned</span>
+                          <span className="text-xs italic text-gray-400">Not assigned</span>
                         )}
                       </div>
                     </div>
@@ -532,12 +608,12 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
 
                   {/* Action buttons - only show for admin */}
                   {!isProfileMode && (
-                    <div className="pt-4 flex gap-2">
+                    <div className="flex gap-2 pt-4">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleOpenDialog(branch)}
-                        className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                        className="flex-1 transition-colors duration-200 hover:bg-blue-50 hover:border-blue-300"
                       >
                         <Edit className="w-3 h-3 mr-1" />
                         Edit
@@ -547,13 +623,13 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                         size="sm"
                         onClick={() => handleToggleActive(branch)}
                         className={`flex-1 transition-colors duration-200 ${
-                          branch.is_active
+                          branch.isActive
                             ? 'hover:bg-orange-50 hover:border-orange-300'
                             : 'hover:bg-green-50 hover:border-green-300'
                         }`}
                       >
                         <Power className="w-3 h-3 mr-1" />
-                        {branch.is_active ? 'Disable' : 'Enable'}
+                        {branch.isActive ? 'Deactivate' : 'Activate'}
                       </Button>
                       <Button
                         variant="outline"
@@ -562,7 +638,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                           setBranchToDelete(branch);
                           setDeleteDialogOpen(true);
                         }}
-                        className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200"
+                        className="transition-colors duration-200 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>
@@ -576,7 +652,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleOpenDialog(branch)}
-                        className="w-full hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                        className="w-full transition-colors duration-200 hover:bg-blue-50 hover:border-blue-300"
                       >
                         <Edit className="w-3 h-3 mr-1" />
                         Lihat Detail
@@ -601,7 +677,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               {editingBranch ? 'Update branch information' : 'Fill in the details for the new branch'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="code">Branch Code <span className="text-red-500">*</span></Label>
@@ -682,7 +758,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {saving ? (
                   <>
@@ -707,7 +783,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               Assign Branch Manager and Cashier to <strong>{branchForStaffAssignment?.name}</strong>
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleStaffAssignmentSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleStaffAssignmentSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="manager">Branch Manager</Label>
               <Select
@@ -766,7 +842,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
               <p className="text-xs text-blue-900">
                 <strong>💡 Info:</strong> Assigning a user who is already assigned to another branch will automatically unassign them from the previous branch.
               </p>
@@ -784,7 +860,7 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {saving ? (
                   <>
