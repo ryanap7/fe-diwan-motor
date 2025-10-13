@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Package, Plus, Edit, Trash2, Power, Loader2, Search, Image as ImageIcon, Tag, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { productsAPI, categoriesAPI, brandsAPI, branchesAPI, stockAPI } from '@/lib/api';
+import { setDevToken } from '@/lib/dev-token';
 
 const UOM_OPTIONS = ['Pcs', 'Unit', 'Box', 'Lusin', 'Karton', 'Kg', 'Liter', 'Meter', 'Set'];
 
@@ -38,25 +39,38 @@ const ProductManagement = () => {
   
   const [formData, setFormData] = useState({
     sku: '',
-    name: '',
-    category_id: '',
-    brand_id: '',
-    compatible_models: '',
-    uom: 'Pcs',
-    purchase_price: '',
-    normal_price: '',
-    wholesale_price: '',
     barcode: '',
-    images: [],
-    imageFiles: [],
-    specifications: '',
-    storage_location: '',
+    name: '',
+    description: '',
+    categoryId: '',
+    brandId: '',
+    unit: 'PCS',
+    compatibleModels: '',
+    purchasePrice: '',
+    sellingPrice: '',
+    wholesalePrice: '',
+    minStock: '',
+    weight: '',
+    dimensions: {
+      length: '',
+      width: '',
+      height: ''
+    },
+    specifications: {},
+    storageLocation: '',
     tags: '',
-    is_active: true
+    images: [],
+    mainImage: '',
+    isActive: true,
+    isFeatured: false
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Set development token if not already set
+    if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
+      setDevToken();
+    }
     fetchData();
   }, []);
 
@@ -69,13 +83,20 @@ const ProductManagement = () => {
         branchesAPI.getAll()
       ]);
 
-      setProducts(productsRes || []);
-      setCategories(categoriesRes || []);
-      setBrands(brandsRes || []);
-      setBranches(branchesRes || []);
+      // Handle API response structure - categories and brands have nested data structure
+      setProducts(productsRes?.success ? (productsRes.data?.products || productsRes.data || []) : (productsRes || []));
+      setCategories(categoriesRes?.success ? (categoriesRes.data?.categories || categoriesRes.data || []) : (categoriesRes || []));
+      setBrands(brandsRes?.success ? (brandsRes.data?.brands || brandsRes.data || []) : (brandsRes || []));
+      setBranches(branchesRes?.success ? (branchesRes.data?.branches || branchesRes.data || []) : (branchesRes || []));
     } catch (error) {
       console.error('Gagal memuat data:', error);
       toast.error('Gagal memuat data: ' + (error.response?.data?.error || error.message));
+      
+      // Set default empty arrays on error
+      setProducts([]);
+      setCategories([]);
+      setBrands([]);
+      setBranches([]);
     } finally {
       setLoading(false);
     }
@@ -86,41 +107,59 @@ const ProductManagement = () => {
       setEditingProduct(product);
       setFormData({
         sku: product.sku || '',
-        name: product.nama || '', // mapping dari 'nama' ke 'name' untuk form
-        category_id: product.kategori_id || '', // mapping dari 'kategori_id'
-        brand_id: product.brand_id || '',
-        compatible_models: product.compatible_models || '',
-        uom: product.uom || 'Pcs',
-        purchase_price: product.purchase_price || '',
-        normal_price: product.harga || '', // mapping dari 'harga'
-        wholesale_price: product.wholesale_price || '',
         barcode: product.barcode || '',
+        name: product.name || '',
+        description: product.description || '',
+        categoryId: product.categoryId || product.category?.id || '',
+        brandId: product.brandId || product.brand?.id || '',
+        unit: product.unit || 'PCS',
+        compatibleModels: product.compatibleModels || '',
+        purchasePrice: product.purchasePrice || '',
+        sellingPrice: product.sellingPrice || '',
+        wholesalePrice: product.wholesalePrice || '',
+        minStock: product.minStock || '',
+        weight: product.weight || '',
+        dimensions: {
+          length: product.dimensions?.length || '',
+          width: product.dimensions?.width || '',
+          height: product.dimensions?.height || ''
+        },
+        specifications: product.specifications || {},
+        storageLocation: product.storageLocation || '',
+        tags: product.tags || '',
         images: product.images || [],
-        imageFiles: [],
-        specifications: product.deskripsi || '', // mapping dari 'deskripsi'
-        storage_location: product.storage_location || '',
-        tags: product.tags ? product.tags.join(', ') : '',
-        is_active: product.is_active !== undefined ? product.is_active : true
+        mainImage: product.mainImage || '',
+        isActive: product.isActive !== undefined ? product.isActive : true,
+        isFeatured: product.isFeatured !== undefined ? product.isFeatured : false
       });
     } else {
       setEditingProduct(null);
       setFormData({
         sku: '',
-        name: '',
-        category_id: '',
-        brand_id: '',
-        compatible_models: '',
-        uom: 'Pcs',
-        purchase_price: '',
-        normal_price: '',
-        wholesale_price: '',
         barcode: '',
-        images: [],
-        imageFiles: [],
-        specifications: '',
-        storage_location: '',
+        name: '',
+        description: '',
+        categoryId: '',
+        brandId: '',
+        unit: 'PCS',
+        compatibleModels: '',
+        purchasePrice: '',
+        sellingPrice: '',
+        wholesalePrice: '',
+        minStock: '',
+        weight: '',
+        dimensions: {
+          length: '',
+          width: '',
+          height: ''
+        },
+        specifications: {},
+        storageLocation: '',
         tags: '',
-        is_active: true
+        images: [],
+        mainImage: '',
+        isActive: true,
+        isFeatured: false
       });
     }
     setDialogOpen(true);
@@ -142,27 +181,53 @@ const ProductManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: 'Bearer ' + token };
-
-      // Struktur data sesuai API2.md
+      // Struktur data sesuai API3_productcustomer.md
       const dataToSend = {
         sku: formData.sku,
-        nama: formData.name, // menggunakan 'nama' sesuai API2.md
-        kategori_id: parseInt(formData.category_id) || null, // menggunakan 'kategori_id'
-        brand_id: parseInt(formData.brand_id) || null,
-        compatible_models: formData.compatible_models,
-        uom: formData.uom,
-        harga: parseFloat(formData.normal_price) || 0, // harga dasar
-        purchase_price: parseFloat(formData.purchase_price) || 0,
-        wholesale_price: parseFloat(formData.wholesale_price) || 0, // harga grosir terpisah
         barcode: formData.barcode,
-        images: formData.images.filter(img => img.trim() !== ''),
-        deskripsi: formData.specifications, // menggunakan 'deskripsi'
-        storage_location: formData.storage_location,
-        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t !== '') : [],
-        is_active: formData.is_active
+        name: formData.name,
+        description: formData.description,
+        categoryId: formData.categoryId,
+        brandId: formData.brandId,
+        unit: formData.unit,
+        compatibleModels: formData.compatibleModels,
+        purchasePrice: parseFloat(formData.purchasePrice) || 0,
+        sellingPrice: parseFloat(formData.sellingPrice) || 0,
+        wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
+        minStock: parseInt(formData.minStock) || 0,
+        specifications: typeof formData.specifications === 'string' 
+          ? { description: formData.specifications }
+          : formData.specifications,
+        storageLocation: formData.storageLocation,
+        tags: formData.tags,
+        images: formData.images.filter(img => img && img.trim() !== ''),
+        isActive: formData.isActive,
+        isFeatured: formData.isFeatured
       };
+
+      // Only include mainImage if it has a valid value (not empty string)
+      if (formData.mainImage && formData.mainImage.trim() !== '') {
+        dataToSend.mainImage = formData.mainImage;
+      }
+
+      // Only include dimensions if they have valid values (> 0)
+      const length = parseFloat(formData.dimensions.length) || 0;
+      const width = parseFloat(formData.dimensions.width) || 0;
+      const height = parseFloat(formData.dimensions.height) || 0;
+      
+      if (length > 0 || width > 0 || height > 0) {
+        dataToSend.dimensions = {
+          length: Math.max(length, 0.1),  // Minimum 0.1 to avoid validation error
+          width: Math.max(width, 0.1),   
+          height: Math.max(height, 0.1)  
+        };
+      }
+
+      // Only include weight if it has a valid value (> 0)
+      const weight = parseFloat(formData.weight) || 0;
+      if (weight > 0) {
+        dataToSend.weight = weight;
+      }
 
       if (editingProduct) {
         await productsAPI.update(editingProduct.id, dataToSend);
@@ -183,9 +248,10 @@ const ProductManagement = () => {
 
   const handleToggleActive = async (product) => {
     try {
-      await productsAPI.toggleActive(product.id);
-      const message = product.is_active ? 'dinonaktifkan' : 'diaktifkan';
-      toast.success('Produk ' + message + '!');
+      const newActiveStatus = !product.isActive;
+      await productsAPI.toggleActive(product.id, newActiveStatus);
+      const message = newActiveStatus ? 'diaktifkan' : 'dinonaktifkan';
+      toast.success('Produk berhasil ' + message + '!');
       fetchData();
     } catch (error) {
       toast.error('Gagal mengubah status produk: ' + (error.response?.data?.error || error.message));
@@ -243,29 +309,31 @@ const ProductManagement = () => {
   };
 
   const getCategoryName = (categoryId) => {
+    if (!Array.isArray(categories)) return '-';
     const cat = categories.find(c => c.id === categoryId);
     return cat ? cat.name : '-';
   };
 
   const getBrandName = (brandId) => {
+    if (!Array.isArray(brands)) return '-';
     const brand = brands.find(b => b.id === brandId);
     return brand ? brand.name : '-';
   };
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = Array.isArray(products) ? products.filter(product => {
     const matchSearch = searchQuery === '' || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase());
+      (product.name && product.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.sku && product.sku.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    const matchCategory = filterCategory === 'all' || product.category_id === filterCategory;
-    const matchBrand = filterBrand === 'all' || product.brand_id === filterBrand;
+    const matchCategory = filterCategory === 'all' || product.categoryId === filterCategory || product.category?.id === filterCategory;
+    const matchBrand = filterBrand === 'all' || product.brandId === filterBrand || product.brand?.id === filterBrand;
 
     return matchSearch && matchCategory && matchBrand;
-  });
+  }) : [];
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="pt-6">
@@ -279,14 +347,14 @@ const ProductManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Produk</h3>
           <p className="text-sm text-muted-foreground">Total: {filteredProducts.length} produk</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
         >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Produk
@@ -295,9 +363,9 @@ const ProductManagement = () => {
 
       <Card className="border-0 shadow-lg">
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
               <Input
                 placeholder="Cari produk (nama/SKU)..."
                 value={searchQuery}
@@ -311,7 +379,7 @@ const ProductManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Kategori</SelectItem>
-                {categories.map((cat) => (
+                {Array.isArray(categories) && categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -322,7 +390,7 @@ const ProductManagement = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Brand</SelectItem>
-                {brands.map((brand) => (
+                {Array.isArray(brands) && brands.map((brand) => (
                   <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -334,19 +402,19 @@ const ProductManagement = () => {
       {filteredProducts.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Package className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
               {products.length === 0 ? 'Belum ada produk' : 'Tidak ada produk yang cocok'}
             </h3>
-            <p className="text-muted-foreground mb-6">
+            <p className="mb-6 text-muted-foreground">
               {products.length === 0 ? 'Mulai dengan menambahkan produk pertama Anda' : 'Coba ubah filter atau kata kunci pencarian'}
             </p>
             {products.length === 0 && (
               <Button
                 onClick={() => handleOpenDialog()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Tambah Produk Pertama
@@ -355,7 +423,7 @@ const ProductManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredProducts.map((product) => {
             const margin = calculateMargin(product.purchase_price, product.price_levels?.normal);
             const mainImage = product.images && product.images.length > 0 ? product.images[0] : null;
@@ -363,14 +431,14 @@ const ProductManagement = () => {
             return (
               <Card
                 key={product.id}
-                className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                className="overflow-hidden transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1"
               >
                 {mainImage && (
-                  <div className="h-40 bg-gray-100 relative overflow-hidden">
+                  <div className="relative h-40 overflow-hidden bg-gray-100">
                     <img 
                       src={mainImage} 
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="object-cover w-full h-full"
                       onError={(e) => {
                         e.target.style.display = 'none';
                       }}
@@ -380,39 +448,39 @@ const ProductManagement = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <Badge variant="outline" className="text-xs mb-2">
+                      <Badge variant="outline" className="mb-2 text-xs">
                         {product.sku}
                       </Badge>
-                      <h3 className="text-lg font-bold text-gray-900 line-clamp-2 mb-1">
-                        {product.nama || product.name}
+                      <h3 className="mb-1 text-lg font-bold text-gray-900 line-clamp-2">
+                        {product.name}
                       </h3>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                        <span>{getCategoryName(product.category_id)}</span>
+                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                        <span>{product.category?.name || 'No Category'}</span>
                         <span>•</span>
-                        <span>{getBrandName(product.brand_id)}</span>
+                        <span>{product.brand?.name || 'No Brand'}</span>
                       </div>
                     </div>
-                    <Badge variant={product.is_active ? 'default' : 'secondary'} className={product.is_active ? 'bg-green-500' : ''}>
-                      {product.is_active ? 'Aktif' : 'Nonaktif'}
+                    <Badge variant={product.isActive ? 'default' : 'secondary'} className={product.isActive ? 'bg-green-500' : ''}>
+                      {product.isActive ? 'Aktif' : 'Nonaktif'}
                     </Badge>
                   </div>
 
-                  <div className="space-y-2 mb-3 border-t pt-3">
+                  <div className="pt-3 mb-3 space-y-2 border-t">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Harga Normal:</span>
-                      <span className="font-semibold">Rp {product.price_levels?.normal?.toLocaleString('id-ID') || '0'}</span>
+                      <span className="text-muted-foreground">Harga Jual:</span>
+                      <span className="font-semibold">Rp {product.sellingPrice?.toLocaleString('id-ID') || '0'}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Harga Grosir:</span>
-                      <span>Rp {product.price_levels?.wholesale?.toLocaleString('id-ID') || '0'}</span>
+                      <span>Rp {product.wholesalePrice?.toLocaleString('id-ID') || '0'}</span>
                     </div>
                     {product.promo && product.promo.is_active && product.promo.discount_percentage > 0 && (
                       <div className="flex justify-between text-xs">
-                        <span className="text-orange-500 font-medium">🎉 Promo Diskon!</span>
-                        <span className="text-orange-600 font-bold">{product.promo.discount_percentage}% OFF</span>
+                        <span className="font-medium text-orange-500">🎉 Promo Diskon!</span>
+                        <span className="font-bold text-orange-600">{product.promo.discount_percentage}% OFF</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-xs pt-2 border-t">
+                    <div className="flex justify-between pt-2 text-xs border-t">
                       <span className="text-muted-foreground">Margin:</span>
                       <span className={parseFloat(margin) > 20 ? 'text-green-600 font-semibold' : 'text-orange-600'}>
                         {margin}%
@@ -422,17 +490,29 @@ const ProductManagement = () => {
 
                   {product.tags && product.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
-                      {product.tags.slice(0, 3).map((tag, idx) => (
+                      {(typeof product.tags === 'string' 
+                        ? product.tags.split(',').slice(0, 3) 
+                        : Array.isArray(product.tags) 
+                          ? product.tags.slice(0, 3) 
+                          : []
+                      ).map((tag, idx) => (
                         <Badge key={idx} variant="outline" className="text-xs bg-blue-50">
                           <Tag className="w-2 h-2 mr-1" />
-                          {tag}
+                          {typeof tag === 'string' ? tag.trim() : tag}
                         </Badge>
                       ))}
-                      {product.tags.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{product.tags.length - 3}
-                        </Badge>
-                      )}
+                      {(() => {
+                        const tagsArray = typeof product.tags === 'string' 
+                          ? product.tags.split(',').filter(t => t.trim()) 
+                          : Array.isArray(product.tags) 
+                            ? product.tags 
+                            : [];
+                        return tagsArray.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{tagsArray.length - 3}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -508,7 +588,7 @@ const ProductManagement = () => {
               {editingProduct ? 'Perbarui informasi produk' : 'Buat produk baru dengan detail lengkap'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>SKU/Part Number <span className="text-red-500">*</span></Label>
@@ -542,12 +622,12 @@ const ProductManagement = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Kategori <span className="text-red-500">*</span></Label>
-                <Select value={formData.category_id} onValueChange={(value) => handleChange('category_id', value)} required>
+                <Select value={formData.categoryId} onValueChange={(value) => handleChange('categoryId', value)} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih kategori" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
+                    {Array.isArray(categories) && categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -555,20 +635,20 @@ const ProductManagement = () => {
               </div>
               <div className="space-y-2">
                 <Label>Brand <span className="text-red-500">*</span></Label>
-                <Select value={formData.brand_id} onValueChange={(value) => handleChange('brand_id', value)} required>
+                <Select value={formData.brandId} onValueChange={(value) => handleChange('brandId', value)} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih brand" />
                   </SelectTrigger>
                   <SelectContent>
-                    {brands.map((brand) => (
+                    {Array.isArray(brands) && brands.map((brand) => (
                       <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>UOM</Label>
-                <Select value={formData.uom} onValueChange={(value) => handleChange('uom', value)}>
+                <Label>Unit</Label>
+                <Select value={formData.unit} onValueChange={(value) => handleChange('unit', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -584,45 +664,45 @@ const ProductManagement = () => {
             <div className="space-y-2">
               <Label>Model Kendaraan Compatible</Label>
               <Input
-                value={formData.compatible_models}
-                onChange={(e) => handleChange('compatible_models', e.target.value)}
+                value={formData.compatibleModels}
+                onChange={(e) => handleChange('compatibleModels', e.target.value)}
                 placeholder="contoh: Yamaha R15, Honda CBR150R, Suzuki GSX-R150"
               />
               <p className="text-xs text-muted-foreground">Pisahkan dengan koma untuk multiple model</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-gray-50">
               <div className="space-y-2">
                 <Label>Harga Beli <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
-                  value={formData.purchase_price}
-                  onChange={(e) => handleChange('purchase_price', e.target.value)}
+                  value={formData.purchasePrice}
+                  onChange={(e) => handleChange('purchasePrice', e.target.value)}
                   placeholder="0"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>Harga Normal <span className="text-red-500">*</span></Label>
+                <Label>Harga Jual <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
-                  value={formData.normal_price}
-                  onChange={(e) => handleChange('normal_price', e.target.value)}
+                  value={formData.sellingPrice}
+                  onChange={(e) => handleChange('sellingPrice', e.target.value)}
                   placeholder="0"
                   required
                 />
-                {formData.purchase_price && formData.normal_price && (
+                {formData.purchasePrice && formData.sellingPrice && (
                   <p className="text-xs text-green-600">
-                    Margin: {calculateMargin(formData.purchase_price, formData.normal_price)}%
+                    Margin: {calculateMargin(formData.purchasePrice, formData.sellingPrice)}%
                   </p>
                 )}
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="col-span-2 space-y-2">
                 <Label>Harga Grosir</Label>
                 <Input
                   type="number"
-                  value={formData.wholesale_price}
-                  onChange={(e) => handleChange('wholesale_price', e.target.value)}
+                  value={formData.wholesalePrice}
+                  onChange={(e) => handleChange('wholesalePrice', e.target.value)}
                   placeholder="0"
                 />
                 <p className="text-xs text-muted-foreground">Harga khusus untuk pembelian grosir</p>
@@ -651,12 +731,12 @@ const ProductManagement = () => {
                       <img 
                         src={img} 
                         alt={`Preview ${index + 1}`} 
-                        className="w-full h-24 object-cover rounded border"
+                        className="object-cover w-full h-24 border rounded"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute flex items-center justify-center w-5 h-5 text-white transition-opacity bg-red-500 rounded-full opacity-0 top-1 right-1 group-hover:opacity-100"
                       >
                         ×
                       </button>
@@ -666,35 +746,70 @@ const ProductManagement = () => {
               )}
             </div>
 
+            <div className="space-y-2">
+              <Label>Deskripsi Produk</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => handleChange('description', e.target.value)}
+                placeholder="Deskripsi detail produk..."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Spesifikasi Teknis</Label>
-                <Textarea
-                  value={formData.specifications}
-                  onChange={(e) => handleChange('specifications', e.target.value)}
-                  placeholder="Detail spesifikasi produk..."
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
               <div className="space-y-2">
                 <Label>Lokasi Penyimpanan</Label>
                 <Input
-                  value={formData.storage_location}
-                  onChange={(e) => handleChange('storage_location', e.target.value)}
+                  value={formData.storageLocation}
+                  onChange={(e) => handleChange('storageLocation', e.target.value)}
                   placeholder="contoh: Rak A-3, Gudang Utama"
                 />
-                <Label className="flex items-center gap-2 mt-4">
-                  <Tag className="w-4 h-4" />
-                  Tags/Label
-                </Label>
-                <Input
-                  value={formData.tags}
-                  onChange={(e) => handleChange('tags', e.target.value)}
-                  placeholder="contoh: promo, best seller, new arrival"
-                />
-                <p className="text-xs text-muted-foreground">Pisahkan dengan koma</p>
               </div>
+              <div className="space-y-2">
+                <Label>Min Stock</Label>
+                <Input
+                  type="number"
+                  value={formData.minStock}
+                  onChange={(e) => handleChange('minStock', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Tag className="w-4 h-4" />
+                Tags/Label
+              </Label>
+              <Input
+                value={formData.tags}
+                onChange={(e) => handleChange('tags', e.target.value)}
+                placeholder="contoh: promo, best seller, new arrival"
+              />
+              <p className="text-xs text-muted-foreground">Pisahkan dengan koma untuk multiple tags</p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={formData.isActive}
+                onChange={(e) => handleChange('isActive', e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="isActive">Produk Aktif</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isFeatured"
+                checked={formData.isFeatured}
+                onChange={(e) => handleChange('isFeatured', e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="isFeatured">Produk Unggulan</Label>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
@@ -709,16 +824,8 @@ const ProductManagement = () => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Menyimpan...
-                  </>
-                ) : (
-                  editingProduct ? 'Perbarui Produk' : 'Buat Produk'
-                )}
+                {saving ? 'Menyimpan...' : editingProduct ? 'Update' : 'Simpan'}
               </Button>
             </div>
           </form>
@@ -750,7 +857,7 @@ const ProductManagement = () => {
       <Dialog open={promoDialogOpen} onOpenChange={setPromoDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-xl">
               <Percent className="w-5 h-5 text-orange-500" />
               Atur Promo untuk {selectedProductForPromo?.name}
             </DialogTitle>
@@ -759,8 +866,8 @@ const ProductManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 mt-4">
-            <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200">
+          <div className="mt-4 space-y-6">
+            <div className="p-6 border border-orange-200 rounded-lg bg-gradient-to-r from-orange-50 to-red-50">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-lg font-semibold">Diskon Persentase</Label>
@@ -780,8 +887,8 @@ const ProductManagement = () => {
                 </div>
 
                 {promoFormData.discount_percentage > 0 && selectedProductForPromo && (
-                  <div className="mt-4 p-3 bg-white rounded border">
-                    <p className="text-sm font-medium mb-2">Preview Harga Setelah Diskon:</p>
+                  <div className="p-3 mt-4 bg-white border rounded">
+                    <p className="mb-2 text-sm font-medium">Preview Harga Setelah Diskon:</p>
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span>Harga Normal:</span>
@@ -866,7 +973,7 @@ const ProductManagement = () => {
                     toast.error('Gagal menyimpan promo');
                   }
                 }}
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                className="text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
                 disabled={!promoFormData.discount_percentage || parseFloat(promoFormData.discount_percentage) <= 0}
               >
                 <Percent className="w-4 h-4 mr-2" />

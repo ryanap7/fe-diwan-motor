@@ -14,10 +14,13 @@ import {
   Building2, Plus, Edit, Trash2, Power, Loader2, Search, 
   MapPin, Phone, Mail
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { suppliersAPI } from '@/lib/api';
+import { setDevToken } from '@/lib/dev-token';
 
 const SupplierManagement = () => {
+  const { toast } = useToast();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -31,14 +34,14 @@ const SupplierManagement = () => {
   
   const [formData, setFormData] = useState({
     name: '',
-    contact_person: '',
+    contactPerson: '',
     phone: '',
     email: '',
     address: '',
-    payment_terms: '',
-    delivery_terms: '',
+    paymentTerms: '',
+    deliveryTerms: '',
     notes: '',
-    is_active: true
+    isActive: true
   });
 
   // Mapping data state removed
@@ -47,18 +50,27 @@ const SupplierManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setDevToken(); // Setup development token
     fetchSupplierData();
   }, []);
 
   const fetchSupplierData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const suppliersRes = await axios.get('/api/suppliers', { headers });
-      setSuppliers(suppliersRes.data || []);
+      setLoading(true);
+      const response = await suppliersAPI.getAll();
+      if (response.success) {
+        setSuppliers(response.data.suppliers || []);
+      } else {
+        throw new Error(response.error || 'Failed to fetch suppliers');
+      }
     } catch (error) {
-      toast.error('Gagal memuat data supplier');
+      console.error('Error fetching suppliers:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data supplier: " + error.message,
+        variant: "destructive",
+      });
+      setSuppliers([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -73,27 +85,27 @@ const SupplierManagement = () => {
       setEditingSupplier(supplier);
       setFormData({
         name: supplier.name || '',
-        contact_person: supplier.contact_person || '',
+        contactPerson: supplier.contactPerson || '',
         phone: supplier.phone || '',
         email: supplier.email || '',
         address: supplier.address || '',
-        payment_terms: supplier.payment_terms || '',
-        delivery_terms: supplier.delivery_terms || '',
+        paymentTerms: supplier.paymentTerms || '',
+        deliveryTerms: supplier.deliveryTerms || '',
         notes: supplier.notes || '',
-        is_active: supplier.is_active !== undefined ? supplier.is_active : true
+        isActive: supplier.isActive !== undefined ? supplier.isActive : true
       });
     } else {
       setEditingSupplier(null);
       setFormData({
         name: '',
-        contact_person: '',
+        contactPerson: '',
         phone: '',
         email: '',
         address: '',
-        payment_terms: '',
-        delivery_terms: '',
+        paymentTerms: '',
+        deliveryTerms: '',
         notes: '',
-        is_active: true
+        isActive: true
       });
     }
     setDialogOpen(true);
@@ -104,24 +116,49 @@ const SupplierManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // Convert form data to API structure
+      const supplierData = {
+        name: formData.name,
+        contactPerson: formData.contactPerson,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        paymentTerms: formData.paymentTerms,
+        deliveryTerms: formData.deliveryTerms,
+        notes: formData.notes,
+        isActive: formData.isActive
+      };
       
       if (editingSupplier) {
-        await axios.post(`/api/suppliers/${editingSupplier.id}/update`, formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Supplier berhasil diperbarui!');
+        const response = await suppliersAPI.update(editingSupplier.id, supplierData);
+        if (response.success) {
+          toast({
+            title: "Sukses",
+            description: "Supplier berhasil diperbarui!",
+          });
+        } else {
+          throw new Error(response.error || 'Failed to update supplier');
+        }
       } else {
-        await axios.post('/api/suppliers/create', formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Supplier berhasil ditambahkan!');
+        const response = await suppliersAPI.create(supplierData);
+        if (response.success) {
+          toast({
+            title: "Sukses",
+            description: "Supplier berhasil ditambahkan!",
+          });
+        } else {
+          throw new Error(response.error || 'Failed to create supplier');
+        }
       }
 
       fetchSupplierData();
       setDialogOpen(false);
     } catch (error) {
-      toast.error('Gagal menyimpan supplier');
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan supplier: " + error.message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -129,36 +166,53 @@ const SupplierManagement = () => {
 
   const handleToggleActive = async (supplier) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/suppliers/${supplier.id}/toggle`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success(`Supplier ${supplier.is_active ? 'dinonaktifkan' : 'diaktifkan'}!`);
-      fetchSupplierData();
+      const response = await suppliersAPI.toggleStatus(supplier.id, !supplier.isActive);
+      if (response.success) {
+        const status = supplier.isActive ? 'dinonaktifkan' : 'diaktifkan';
+        toast({
+          title: "Sukses",
+          description: `Supplier ${status}!`,
+        });
+        fetchSupplierData();
+      } else {
+        throw new Error(response.error || 'Failed to toggle supplier status');
+      }
     } catch (error) {
-      toast.error('Gagal mengubah status supplier');
+      toast({
+        title: "Error",
+        description: "Gagal mengubah status supplier: " + error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/suppliers/${supplierToDelete.id}/delete`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success('Supplier berhasil dihapus!');
-      fetchSupplierData();
-      setDeleteDialogOpen(false);
+      const response = await suppliersAPI.delete(supplierToDelete.id);
+      if (response.success) {
+        toast({
+          title: "Sukses",
+          description: "Supplier berhasil dihapus!",
+        });
+        fetchSupplierData();
+        setDeleteDialogOpen(false);
+      } else {
+        throw new Error(response.error || 'Failed to delete supplier');
+      }
     } catch (error) {
-      toast.error('Gagal menghapus supplier');
+      toast({
+        title: "Error",
+        description: "Gagal menghapus supplier: " + error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.contact_person.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSuppliers = Array.isArray(suppliers) ? suppliers.filter(supplier =>
+    (supplier.name && supplier.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (supplier.contactPerson && supplier.contactPerson.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (supplier.email && supplier.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  ) : [];
 
   if (loading) {
     return (
@@ -209,7 +263,7 @@ const SupplierManagement = () => {
           <div className="grid grid-cols-1 gap-4">
             {filteredSuppliers.map((supplier) => {
               return (
-                <Card key={supplier.id} className={`${!supplier.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
+                <Card key={supplier.id} className={`${!supplier.isActive ? 'opacity-60 bg-gray-50' : ''}`}>
                   <CardContent className="pt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                       {/* Supplier Info */}
@@ -219,16 +273,16 @@ const SupplierManagement = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-semibold text-lg">{supplier.name}</h4>
-                              {!supplier.is_active && (
+                              {!supplier.isActive && (
                                 <Badge variant="destructive">Nonaktif</Badge>
                               )}
                             </div>
                             
                             <div className="space-y-1 text-sm">
-                              {supplier.contact_person && (
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="w-3 h-3 text-gray-400" />
-                                  <span>{supplier.contact_person}</span>
+                              {supplier.contactPerson && (
+                                <div className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  <span>{supplier.contactPerson}</span>
                                 </div>
                               )}
                               {supplier.phone && (
@@ -288,7 +342,7 @@ const SupplierManagement = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleActive(supplier)}
-                            className={`text-xs ${supplier.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}`}
+                            className={`text-xs ${supplier.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'}`}
                           >
                             <Power className="w-3 h-3" />
                           </Button>
@@ -355,11 +409,11 @@ const SupplierManagement = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="contact_person">Contact Person</Label>
+                <Label htmlFor="contactPerson">Contact Person</Label>
                 <Input
-                  id="contact_person"
-                  value={formData.contact_person}
-                  onChange={(e) => handleChange('contact_person', e.target.value)}
+                  id="contactPerson"
+                  value={formData.contactPerson}
+                  onChange={(e) => handleChange('contactPerson', e.target.value)}
                   placeholder="Nama kontak person"
                 />
               </div>
@@ -400,21 +454,21 @@ const SupplierManagement = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="payment_terms">Payment Terms</Label>
+                <Label htmlFor="paymentTerms">Payment Terms</Label>
                 <Input
-                  id="payment_terms"
-                  value={formData.payment_terms}
-                  onChange={(e) => handleChange('payment_terms', e.target.value)}
+                  id="paymentTerms"
+                  value={formData.paymentTerms}
+                  onChange={(e) => handleChange('paymentTerms', e.target.value)}
                   placeholder="Net 30 days, COD, dll"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="delivery_terms">Delivery Terms</Label>
+                <Label htmlFor="deliveryTerms">Delivery Terms</Label>
                 <Input
-                  id="delivery_terms"
-                  value={formData.delivery_terms}
-                  onChange={(e) => handleChange('delivery_terms', e.target.value)}
+                  id="deliveryTerms"
+                  value={formData.deliveryTerms}
+                  onChange={(e) => handleChange('deliveryTerms', e.target.value)}
                   placeholder="FOB, CIF, dll"
                 />
               </div>

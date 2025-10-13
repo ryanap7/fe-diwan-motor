@@ -14,7 +14,7 @@ import {
   Phone, Mail, MapPin, Calendar, TrendingUp, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { customersAPI } from '@/lib/api';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
@@ -49,13 +49,14 @@ const CustomerManagement = () => {
 
   const fetchCustomerData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const customersRes = await axios.get('/api/customers', { headers });
-      setCustomers(customersRes.data || []);
+      const response = await customersAPI.getAll();
+      if (response.success) {
+        setCustomers(response.data || []);
+      } else {
+        throw new Error(response.error || 'Failed to fetch customers');
+      }
     } catch (error) {
-      toast.error('Gagal memuat data customer');
+      toast.error('Gagal memuat data customer: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -63,11 +64,10 @@ const CustomerManagement = () => {
 
   const fetchCustomerHistory = async (customerId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`/api/customers/${customerId}/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCustomerHistory(response.data || []);
+      // Customer history belum ada di API dokumentasi, gunakan fallback
+      // const response = await customersAPI.getById(customerId);
+      // setCustomerHistory(response.data.history || []);
+      setCustomerHistory([]); // Temporary fallback
     } catch (error) {
       toast.error('Gagal memuat riwayat pembelian');
       setCustomerHistory([]);
@@ -87,7 +87,7 @@ const CustomerManagement = () => {
         email: customer.email || '',
         address: customer.address || '',
         notes: customer.notes || '',
-        is_active: customer.is_active !== undefined ? customer.is_active : true
+        is_active: customer.isActive !== undefined ? customer.isActive : true
       });
     } else {
       setEditingCustomer(null);
@@ -108,24 +108,36 @@ const CustomerManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // Convert form data to API structure
+      const customerData = {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        notes: formData.notes,
+        isActive: formData.is_active
+      };
       
       if (editingCustomer) {
-        await axios.post(`/api/customers/${editingCustomer.id}/update`, formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Customer berhasil diperbarui!');
+        const response = await customersAPI.update(editingCustomer.id, customerData);
+        if (response.success) {
+          toast.success('Customer berhasil diperbarui!');
+        } else {
+          throw new Error(response.error || 'Failed to update customer');
+        }
       } else {
-        await axios.post('/api/customers/create', formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Customer berhasil ditambahkan!');
+        const response = await customersAPI.create(customerData);
+        if (response.success) {
+          toast.success('Customer berhasil ditambahkan!');
+        } else {
+          throw new Error(response.error || 'Failed to create customer');
+        }
       }
 
       fetchCustomerData();
       setDialogOpen(false);
     } catch (error) {
-      toast.error('Gagal menyimpan customer');
+      toast.error('Gagal menyimpan customer: ' + error.message);
     } finally {
       setSaving(false);
     }
@@ -133,36 +145,39 @@ const CustomerManagement = () => {
 
   const handleToggleActive = async (customer) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/customers/${customer.id}/toggle`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success(`Customer ${customer.is_active ? 'dinonaktifkan' : 'diaktifkan'}!`);
-      fetchCustomerData();
+      const response = await customersAPI.toggleActive(customer.id);
+      if (response.success) {
+        const status = customer.isActive ? 'dinonaktifkan' : 'diaktifkan';
+        toast.success(`Customer ${status}!`);
+        fetchCustomerData();
+      } else {
+        throw new Error(response.error || 'Failed to toggle customer status');
+      }
     } catch (error) {
-      toast.error('Gagal mengubah status customer');
+      toast.error('Gagal mengubah status customer: ' + error.message);
     }
   };
 
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/customers/${customerToDelete.id}/delete`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success('Customer berhasil dihapus!');
-      fetchCustomerData();
-      setDeleteDialogOpen(false);
+      const response = await customersAPI.delete(customerToDelete.id);
+      if (response.success) {
+        toast.success('Customer berhasil dihapus!');
+        fetchCustomerData();
+        setDeleteDialogOpen(false);
+      } else {
+        throw new Error(response.error || 'Failed to delete customer');
+      }
     } catch (error) {
-      toast.error('Gagal menghapus customer');
+      toast.error('Gagal menghapus customer: ' + error.message);
     }
   };
 
   const filteredCustomers = customers.filter(customer => {
     const matchSearch = searchQuery === '' || 
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (customer.name && customer.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (customer.phone && customer.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchSearch;
   });
@@ -212,7 +227,7 @@ const CustomerManagement = () => {
       {/* Customer Cards */}
       <div className="grid grid-cols-1 gap-4">
         {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className={`${!customer.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
+          <Card key={customer.id} className={`${!customer.isActive ? 'opacity-60 bg-gray-50' : ''}`}>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                 {/* Customer Info */}
@@ -222,7 +237,7 @@ const CustomerManagement = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="text-lg font-semibold">{customer.name}</h4>
-                        {!customer.is_active && (
+                        {!customer.isActive && (
                           <Badge variant="destructive">Nonaktif</Badge>
                         )}
                       </div>
@@ -308,7 +323,7 @@ const CustomerManagement = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => handleToggleActive(customer)}
-                      className={customer.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
+                      className={customer.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
                     >
                       <Power className="w-3 h-3" />
                     </Button>

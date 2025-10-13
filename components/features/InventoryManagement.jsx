@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, ArrowLeftRight, Edit3, ClipboardList, Barcode, Calendar, Plus, Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { productsAPI, branchesAPI } from '@/lib/api';
 
 const InventoryManagement = () => {
   const [products, setProducts] = useState([]);
@@ -56,18 +57,21 @@ const InventoryManagement = () => {
 
   const fetchInventoryData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
       const [productsRes, branchesRes] = await Promise.all([
-        axios.get('/api/products', { headers }),
-        axios.get('/api/branches', { headers })
+        productsAPI.getAll(),
+        branchesAPI.getAll()
       ]);
 
-      setProducts(productsRes.data || []);
-      setBranches(branchesRes.data || []);
+      // Handle API response structure
+      setProducts(productsRes?.success ? (productsRes.data || []) : (productsRes || []));
+      setBranches(branchesRes?.success ? (branchesRes.data || []) : (branchesRes || []));
     } catch (error) {
-      toast.error('Gagal memuat data inventory');
+      console.error('Gagal memuat data inventory:', error);
+      toast.error('Gagal memuat data inventory: ' + (error.response?.data?.error || error.message));
+      
+      // Set default empty arrays on error
+      setProducts([]);
+      setBranches([]);
     } finally {
       setLoading(false);
     }
@@ -85,16 +89,16 @@ const InventoryManagement = () => {
   };
 
   // Filter products based on search and branch
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = Array.isArray(products) ? products.filter(product => {
     const matchSearch = searchQuery === '' ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase());
+      (product.name && product.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.sku && product.sku.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchBranch = selectedBranch === 'all' ||
       (product.stock_per_branch && Object.keys(product.stock_per_branch).includes(selectedBranch));
 
     return matchSearch && matchBranch;
-  });
+  }) : [];
 
   // Handle stock transfer
   const handleStockTransfer = async () => {
@@ -205,7 +209,7 @@ const InventoryManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua Cabang</SelectItem>
-                    {branches.map((branch) => (
+                    {Array.isArray(branches) && branches.map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -272,7 +276,7 @@ const InventoryManagement = () => {
                       {/* Stock per Branch */}
                       <div className="lg:col-span-6">
                         <div className="grid grid-cols-2 gap-2">
-                          {branches.map((branch) => {
+                          {Array.isArray(branches) && branches.map((branch) => {
                             const branchStock = getBranchStock(product, branch.id);
                             return (
                               <div key={branch.id} className="p-2 bg-white rounded border">
@@ -418,7 +422,7 @@ const InventoryManagement = () => {
                   <SelectValue placeholder="Pilih produk" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map((product) => (
+                  {Array.isArray(products) && products.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.sku} - {product.name}
                     </SelectItem>
@@ -438,7 +442,7 @@ const InventoryManagement = () => {
                     <SelectValue placeholder="Pilih cabang" />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.map((branch) => (
+                    {Array.isArray(branches) && branches.map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>
                         {branch.name}
                       </SelectItem>
@@ -457,7 +461,7 @@ const InventoryManagement = () => {
                     <SelectValue placeholder="Pilih cabang" />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.map((branch) => (
+                    {Array.isArray(branches) && branches.map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>
                         {branch.name}
                       </SelectItem>
@@ -518,7 +522,7 @@ const InventoryManagement = () => {
                   <SelectValue placeholder="Pilih produk" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map((product) => (
+                  {Array.isArray(products) && products.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.sku} - {product.name}
                     </SelectItem>
@@ -537,7 +541,7 @@ const InventoryManagement = () => {
                   <SelectValue placeholder="Pilih cabang" />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map((branch) => (
+                  {Array.isArray(branches) && branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name}
                     </SelectItem>
