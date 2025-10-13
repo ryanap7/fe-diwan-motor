@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ShoppingBag, Plus, Edit, Trash2, Power, Loader2, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { categoriesAPI } from '@/lib/api';
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
@@ -35,13 +35,46 @@ const CategoryManagement = () => {
 
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/categories', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      setCategories(response.data || []);
+      console.log('CategoryManagement - Starting to fetch data...');
+      const response = await categoriesAPI.getAll();
+      
+      // Safely extract data from API response with multiple format support
+      const extractArrayData = (response) => {
+        // Handle direct array
+        if (Array.isArray(response)) return response;
+        
+        // Handle API3 structure: { data: { categories: [...] } }
+        if (response?.data?.categories && Array.isArray(response.data.categories)) {
+          return response.data.categories;
+        }
+        
+        // Handle legacy structure: { data: [...] }
+        if (response?.data && Array.isArray(response.data)) return response.data;
+        
+        // Handle success wrapper: { success: true, data: [...] }
+        if (response?.success && Array.isArray(response.data)) return response.data;
+        
+        console.warn('Unexpected API response structure:', response);
+        return [];
+      };
+      
+      const categoryData = extractArrayData(response);
+      console.log('CategoryManagement - Raw API Response:', response);
+      console.log('CategoryManagement - Extracted Data:', categoryData);
+      
+      setCategories(categoryData);
     } catch (error) {
-      toast.error('Gagal memuat kategori');
+      console.error('Failed to load categories:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Set empty state on error
+      setCategories([]);
+      
+      toast.error('Gagal memuat kategori: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -53,8 +86,8 @@ const CategoryManagement = () => {
       setFormData({
         name: category.name,
         description: category.description || '',
-        parent_id: category.parent_id || '',
-        is_active: category.is_active
+        parent_id: category.parentId || category.parent_id || '',
+        is_active: category.isActive ?? category.is_active ?? true
       });
     } else {
       setEditingCategory(null);
@@ -78,22 +111,27 @@ const CategoryManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: 'Bearer ' + token };
+      // Convert form data to API3 format
+      const categoryData = {
+        name: formData.name,
+        parentId: formData.parent_id || null,
+        description: formData.description,
+        isActive: formData.is_active
+      };
 
       if (editingCategory) {
-        const categoryId = editingCategory.id;
-        await axios.post('/api/categories/' + categoryId + '/update', formData, { headers });
+        await categoriesAPI.update(editingCategory.id, categoryData);
         toast.success('Kategori berhasil diperbarui!');
       } else {
-        await axios.post('/api/categories/create', formData, { headers });
+        await categoriesAPI.create(categoryData);
         toast.success('Kategori berhasil dibuat!');
       }
 
       fetchCategories();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Gagal menyimpan kategori');
+      console.error('Failed to save category:', error);
+      toast.error(error.response?.data?.message || error.message || 'Gagal menyimpan kategori');
     } finally {
       setSaving(false);
     }
@@ -101,16 +139,16 @@ const CategoryManagement = () => {
 
   const handleToggleActive = async (category) => {
     try {
-      const token = localStorage.getItem('token');
-      const categoryId = category.id;
-      await axios.post('/api/categories/' + categoryId + '/toggle', {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      const message = category.is_active ? 'dinonaktifkan' : 'diaktifkan';
-      toast.success('Kategori ' + message + '!');
+      const currentStatus = category.isActive ?? category.is_active;
+      const newStatus = !currentStatus;
+      await categoriesAPI.updateStatus(category.id, { isActive: newStatus });
+      
+      const message = newStatus ? 'diaktifkan' : 'dinonaktifkan';
+      toast.success(`Kategori berhasil ${message}!`);
       fetchCategories();
     } catch (error) {
-      toast.error('Gagal mengubah status kategori');
+      console.error('Failed to toggle category status:', error);
+      toast.error('Gagal mengubah status kategori: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -118,15 +156,19 @@ const CategoryManagement = () => {
     if (!categoryToDelete) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const categoryId = categoryToDelete.id;
-      await axios.post('/api/categories/' + categoryId + '/delete', {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
+      // Ask user if they want to cascade delete subcategories
+      const hasSubcategories = categories.some(cat => 
+        (cat.parentId || cat.parent_id) === categoryToDelete.id
+      );
+      const cascade = hasSubcategories ? 
+        window.confirm('Kategori ini memiliki subkategori. Hapus juga semua subkategori?') : false;
+      
+      await categoriesAPI.delete(categoryToDelete.id, cascade);
       toast.success('Kategori berhasil dihapus!');
       fetchCategories();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Gagal menghapus kategori');
+      console.error('Failed to delete category:', error);
+      toast.error('Gagal menghapus kategori: ' + (error.response?.data?.message || error.message));
     } finally {
       setDeleteDialogOpen(false);
       setCategoryToDelete(null);
@@ -138,11 +180,11 @@ const CategoryManagement = () => {
   };
 
   const getParentCategories = () => {
-    return categories.filter(cat => !cat.parent_id);
+    return categories.filter(cat => !(cat.parentId || cat.parent_id));
   };
 
   const getChildCategories = (parentId) => {
-    return categories.filter(cat => cat.parent_id === parentId);
+    return categories.filter(cat => (cat.parentId || cat.parent_id) === parentId);
   };
 
   const renderCategoryTree = () => {
@@ -187,8 +229,8 @@ const CategoryManagement = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="text-lg font-bold text-gray-900">{parent.name}</h3>
-                          <Badge variant={parent.is_active ? 'default' : 'secondary'} className={parent.is_active ? 'bg-green-500' : ''}>
-                            {parent.is_active ? 'Aktif' : 'Nonaktif'}
+                          <Badge variant={(parent.isActive ?? parent.is_active) ? 'default' : 'secondary'} className={(parent.isActive ?? parent.is_active) ? 'bg-green-500' : ''}>
+                            {(parent.isActive ?? parent.is_active) ? 'Aktif' : 'Nonaktif'}
                           </Badge>
                           {childCount > 0 && (
                             <Badge variant="outline" className="text-xs">
@@ -215,10 +257,10 @@ const CategoryManagement = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleToggleActive(parent)}
-                        className={parent.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
+                        className={(parent.isActive ?? parent.is_active) ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
                       >
                         <Power className="w-3 h-3 mr-1" />
-                        {parent.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                        {(parent.isActive ?? parent.is_active) ? 'Nonaktifkan' : 'Aktifkan'}
                       </Button>
                       <Button
                         variant="outline"

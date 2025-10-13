@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Building2, Users, Settings, ShoppingBag, BarChart3, Package, Store, LogOut, Menu, X, FileText, Warehouse, ShoppingCart, PieChart } from 'lucide-react';
+import { Building2, Users, Settings, ShoppingBag, BarChart3, Package, Store, LogOut, Menu, X, FileText, Warehouse, ShoppingCart, PieChart, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -198,6 +198,13 @@ const DashboardLayout = ({ children }) => {
       icon: Users, 
       roles: ['ADMIN'], 
       href: '/customers' 
+    },
+    { 
+      id: 'pos', 
+      label: 'POS Kasir', 
+      icon: CreditCard, 
+      roles: ['ADMIN', 'BRANCH_MANAGER', 'CASHIER'], 
+      href: '/pos' 
     },
     { 
       id: 'pos-transactions', 
