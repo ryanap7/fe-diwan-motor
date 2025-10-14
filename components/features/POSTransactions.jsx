@@ -36,8 +36,19 @@ const POSTransactions = () => {
   });
 
   useEffect(() => {
-    // Set JWT token untuk API calls
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
+    // Check if user is logged in and has valid token
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Silakan login terlebih dahulu');
+      return;
+    }
+    
+    // Set token untuk API interceptor (if using setDevToken for development)
+    if (typeof setDevToken === 'function') {
+      setDevToken(token);
+    }
+    
+    console.log('Transactions - Using accessToken from login:', token.substring(0, 50) + '...');
     
     fetchData();
   }, []);
@@ -47,41 +58,68 @@ const POSTransactions = () => {
     setCurrentPage(1);
   }, [transactions, filters]);
 
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('=== STATE CHANGE DEBUG ===');
+    console.log('Transactions state:', transactions.length, transactions);
+    console.log('Filtered transactions state:', filteredTransactions.length, filteredTransactions);
+    console.log('Loading state:', loading);
+    console.log('========================');
+  }, [transactions, filteredTransactions, loading]);
+
   const fetchData = async () => {
     try {
+      setLoading(true);
+      
+      console.log('=== FETCHING TRANSACTIONS DATA ===');
+      
       const [transactionsRes, branchesRes] = await Promise.all([
         transactionsAPI.getAll(),
-        branchesAPI.getBranches()
+        branchesAPI.getAll() // Fixed: use getAll() instead of getBranches()
       ]);
 
-      console.log('=== TRANSACTIONS DATA FETCH ===');
       console.log('Transactions Response:', transactionsRes);
       console.log('Branches Response:', branchesRes);
 
-      // Handle transactions API response
+      // Handle transactions API response with multiple possible structures
       let transactions = [];
       if (transactionsRes?.success && transactionsRes.data?.transactions) {
         transactions = transactionsRes.data.transactions;
+      } else if (transactionsRes?.data && Array.isArray(transactionsRes.data)) {
+        transactions = transactionsRes.data;
+      } else if (Array.isArray(transactionsRes)) {
+        transactions = transactionsRes;
       } else {
-        console.log('No transactions data or unsuccessful response');
+        console.log('No transactions data found in response structure');
       }
       
-      // Handle branches API response
+      // Handle branches API response with multiple possible structures
       let branches = [];
       if (branchesRes?.success && branchesRes.data?.branches) {
         branches = branchesRes.data.branches;
+      } else if (branchesRes?.data && Array.isArray(branchesRes.data)) {
+        branches = branchesRes.data;
+      } else if (Array.isArray(branchesRes)) {
+        branches = branchesRes;
       } else {
-        console.log('No branches data or unsuccessful response');
+        console.log('No branches data found in response structure');
       }
 
       console.log('Processed transactions count:', transactions.length);
+      console.log('Sample transaction:', transactions[0]);
       console.log('Processed branches count:', branches.length);
-      console.log('===============================');
+      console.log('=================================');
 
       setTransactions(transactions);
       setBranches(branches);
+      
+      if (transactions.length === 0) {
+        console.warn('No transactions found - this might be expected if no transactions exist');
+      }
+      
     } catch (error) {
-      toast.error('Gagal memuat data transaksi');
+      console.error('Error fetching transactions data:', error);
+      toast.error('Gagal memuat data transaksi: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -134,46 +172,55 @@ const POSTransactions = () => {
   };
 
   const applyFilters = () => {
-    // If we have active filters, fetch from API with parameters
-    if (filters.branch_id !== 'all' || filters.search || filters.status !== 'all' || 
-        filters.payment_method !== 'all' || filters.start_date || filters.end_date) {
-      fetchTransactionsWithFilters();
-      return;
-    }
-
-    // Otherwise, use client-side filtering for basic cases
+    console.log('=== APPLYING FILTERS ===');
+    console.log('Current filters:', filters);
+    console.log('Available transactions:', transactions.length);
+    
+    // Always start with client-side filtering from the base transactions data
     let filtered = [...transactions];
 
     if (filters.branch_id && filters.branch_id !== 'all') {
-      filtered = filtered.filter(t => t.branchId === filters.branch_id);
+      console.log('Filtering by branch:', filters.branch_id);
+      filtered = filtered.filter(t => t.branchId === filters.branch_id || t.branch?.id === filters.branch_id);
     }
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
+      console.log('Filtering by search:', searchLower);
       filtered = filtered.filter(t => 
         t.invoiceNumber?.toLowerCase().includes(searchLower) ||
-        t.customerName?.toLowerCase().includes(searchLower)
+        t.customerName?.toLowerCase().includes(searchLower) ||
+        t.customer?.fullName?.toLowerCase().includes(searchLower) ||
+        t.customer?.name?.toLowerCase().includes(searchLower) ||
+        t.notes?.toLowerCase().includes(searchLower)
       );
     }
 
     if (filters.status && filters.status !== 'all') {
+      console.log('Filtering by status:', filters.status);
       filtered = filtered.filter(t => t.status === filters.status);
     }
 
     if (filters.payment_method && filters.payment_method !== 'all') {
-      filtered = filtered.filter(t => t.paymentMethod === filters.payment_method);
+      console.log('Filtering by payment method:', filters.payment_method);
+      filtered = filtered.filter(t => (t.paymentMethod || t.payment_method) === filters.payment_method);
     }
 
     if (filters.start_date) {
-      filtered = filtered.filter(t => new Date(t.createdAt) >= new Date(filters.start_date));
+      console.log('Filtering by start date:', filters.start_date);
+      filtered = filtered.filter(t => new Date(t.createdAt || t.transactionDate) >= new Date(filters.start_date));
     }
 
     if (filters.end_date) {
+      console.log('Filtering by end date:', filters.end_date);
       const dateTo = new Date(filters.end_date);
       dateTo.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(t => new Date(t.createdAt) <= dateTo);
+      filtered = filtered.filter(t => new Date(t.createdAt || t.transactionDate) <= dateTo);
     }
 
+    console.log('Filtered transactions count:', filtered.length);
+    console.log('========================');
+    
     setFilteredTransactions(filtered);
   };
 
@@ -193,15 +240,29 @@ const POSTransactions = () => {
   };
 
   const getStatusBadge = (status) => {
-    return <Badge className="bg-green-500 text-white">Selesai</Badge>;
+    return <Badge className="text-white bg-green-500">Selesai</Badge>;
   };
 
   const getPaymentMethodLabel = (method) => {
-    return 'Tunai';
+    if (!method) return 'N/A';
+    switch (method.toUpperCase()) {
+      case 'CASH':
+        return 'Tunai';
+      case 'CARD':
+        return 'Kartu';
+      case 'DIGITAL':
+        return 'Digital';
+      case 'TRANSFER':
+        return 'Transfer';
+      default:
+        return method;
+    }
   };
 
   const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Invalid Date';
     return date.toLocaleString('id-ID', {
       year: 'numeric',
       month: 'short',
@@ -212,11 +273,18 @@ const POSTransactions = () => {
   };
 
   const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined) return 'Rp 0';
+    
+    // Convert string to number
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    
+    if (isNaN(numAmount)) return 'Rp 0';
+    
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0
-    }).format(amount);
+    }).format(numAmount);
   };
 
   const handleViewDetail = async (transaction) => {
@@ -248,7 +316,10 @@ const POSTransactions = () => {
   };
 
   // Calculate summary statistics
-  const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
+  const totalRevenue = filteredTransactions.reduce((sum, t) => {
+    const amount = parseFloat(t.totalAmount || t.total || 0);
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
 
   if (loading) {
     return (
@@ -266,17 +337,41 @@ const POSTransactions = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Transaksi POS</h3>
           <p className="text-sm text-muted-foreground">
             Menampilkan {filteredTransactions.length} dari {transactions.length} transaksi
           </p>
         </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={fetchData}
+            variant="outline"
+            className="hover:bg-blue-50"
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Loading...' : 'Refresh'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Debug Info Panel - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="p-3 mb-4 text-sm bg-gray-100 rounded">
+          <strong>Debug Info:</strong> 
+          <span className="ml-2">Raw Transactions: {transactions.length}</span>
+          <span className="ml-2">Filtered: {filteredTransactions.length}</span>
+          <span className="ml-2">Loading: {loading ? 'Yes' : 'No'}</span>
+        </div>
+      )}
+      
+      <div className="flex items-center justify-between">
         <Button
           onClick={fetchData}
           variant="outline"
-          className="hover:bg-blue-50"
+          className="hidden hover:bg-blue-50" // Hide duplicate button
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Muat Ulang
@@ -284,7 +379,7 @@ const POSTransactions = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -335,11 +430,11 @@ const POSTransactions = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label>Cari</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
                 <Input
                   placeholder="Invoice, customer..."
                   value={filters.search}
@@ -396,7 +491,7 @@ const POSTransactions = () => {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="flex justify-end mt-4">
             <Button
               onClick={resetFilters}
               variant="outline"
@@ -413,10 +508,10 @@ const POSTransactions = () => {
         <CardContent className="p-0">
           {filteredTransactions.length === 0 ? (
             <div className="pt-12 pb-12 text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
                 <ShoppingCart className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada transaksi</h3>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Tidak ada transaksi</h3>
               <p className="text-muted-foreground">
                 {transactions.length === 0 ? 'Belum ada transaksi yang tercatat' : 'Tidak ada transaksi yang cocok dengan filter'}
               </p>
@@ -441,33 +536,37 @@ const POSTransactions = () => {
                       paginatedTransactions.map((transaction) => (
                         <TableRow key={transaction.id} className="hover:bg-gray-50">
                           <TableCell className="font-medium">
-                            {transaction.invoice_number}
+                            {transaction.invoiceNumber || transaction.invoice_number}
                           </TableCell>
                           <TableCell className="text-sm">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs">{formatDate(transaction.transaction_date)}</span>
+                              <span className="text-xs">{formatDate(transaction.transactionDate || transaction.transaction_date)}</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">
-                            {transaction.branch_name}
+                            {transaction.branch?.name || transaction.branchName || transaction.branch_name || 'Unknown Branch'}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {transaction.cashier_name}
+                            {transaction.cashier?.fullName || transaction.cashier?.username || transaction.cashierName || transaction.cashier_name || 'Unknown Cashier'}
                           </TableCell>
                           <TableCell className="text-sm">
                             <div>
-                              <div className="font-medium">{transaction.customer_name}</div>
-                              {transaction.customer_phone && (
-                                <div className="text-xs text-muted-foreground">{transaction.customer_phone}</div>
+                              <div className="font-medium">
+                                {transaction.customer?.name || transaction.customerName || transaction.customer_name || 'Pengunjung'}
+                              </div>
+                              {(transaction.customer?.phone || transaction.customerPhone || transaction.customer_phone) && (
+                                <div className="text-xs text-muted-foreground">
+                                  {transaction.customer?.phone || transaction.customerPhone || transaction.customer_phone}
+                                </div>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(transaction.total)}
+                          <TableCell className="font-semibold text-right">
+                            {formatCurrency(transaction.totalAmount || transaction.total)}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1 justify-center">
+                            <div className="flex items-center justify-center gap-1">
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -488,19 +587,19 @@ const POSTransactions = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan="7" className="text-center py-12">
+                        <TableCell colSpan="7" className="py-12 text-center">
                           <div className="flex flex-col items-center justify-center text-gray-500">
-                            <div className="text-3xl mb-3">📋</div>
-                            <div className="text-lg font-medium mb-2">Belum ada transaksi</div>
-                            <div className="text-sm text-muted-foreground mb-4">
+                            <div className="mb-3 text-3xl">📋</div>
+                            <div className="mb-2 text-lg font-medium">Belum ada transaksi</div>
+                            <div className="mb-4 text-sm text-muted-foreground">
                               {loading ? 'Memuat transaksi...' : 
                                transactions.length === 0 ? 'Belum ada transaksi yang tersedia' :
                                'Coba sesuaikan filter pencarian Anda'}
                             </div>
                             {!loading && transactions.length === 0 && (
-                              <div className="text-xs text-gray-400 max-w-md">
+                              <div className="max-w-md text-xs text-gray-400">
                                 <strong>Catatan:</strong> Untuk membuat transaksi POS, pastikan:
-                                <ul className="text-left mt-2 space-y-1">
+                                <ul className="mt-2 space-y-1 text-left">
                                   <li>• User sudah di-assign ke cabang (branch)</li>
                                   <li>• Produk memiliki stok yang cukup</li>
                                   <li>• Gunakan menu POS untuk transaksi baru</li>
@@ -516,7 +615,7 @@ const POSTransactions = () => {
               </div>
 
               {/* Pagination Controls */}
-              <div className="border-t px-6 py-4">
+              <div className="px-6 py-4 border-t">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="text-sm text-muted-foreground">
@@ -624,12 +723,12 @@ const POSTransactions = () => {
           </DialogHeader>
           
           {selectedTransaction && (
-            <div className="space-y-6 mt-4">
+            <div className="mt-4 space-y-6">
               {/* Transaction Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Tanggal Transaksi</Label>
-                  <p className="font-medium">{formatDate(selectedTransaction.transaction_date)}</p>
+                  <p className="font-medium">{formatDate(selectedTransaction.transactionDate || selectedTransaction.transaction_date)}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Status</Label>
@@ -637,28 +736,28 @@ const POSTransactions = () => {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Cabang</Label>
-                  <p className="font-medium">{selectedTransaction.branch_name}</p>
+                  <p className="font-medium">{selectedTransaction.branch?.name || selectedTransaction.branchName || selectedTransaction.branch_name || 'Unknown Branch'}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Kasir</Label>
-                  <p className="font-medium">{selectedTransaction.cashier_name}</p>
+                  <p className="font-medium">{selectedTransaction.cashier?.fullName || selectedTransaction.cashier?.username || selectedTransaction.cashierName || selectedTransaction.cashier_name || 'Unknown Cashier'}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Customer</Label>
-                  <p className="font-medium">{selectedTransaction.customer_name}</p>
-                  {selectedTransaction.customer_phone && (
-                    <p className="text-sm text-muted-foreground">{selectedTransaction.customer_phone}</p>
+                  <p className="font-medium">{selectedTransaction.customer?.name || selectedTransaction.customerName || selectedTransaction.customer_name || 'Pengunjung'}</p>
+                  {(selectedTransaction.customer?.phone || selectedTransaction.customerPhone || selectedTransaction.customer_phone) && (
+                    <p className="text-sm text-muted-foreground">{selectedTransaction.customer?.phone || selectedTransaction.customerPhone || selectedTransaction.customer_phone}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Metode Pembayaran</Label>
-                  <p className="font-medium">{getPaymentMethodLabel(selectedTransaction.payment_method)}</p>
+                  <p className="font-medium">{getPaymentMethodLabel(selectedTransaction.paymentMethod || selectedTransaction.payment_method)}</p>
                 </div>
               </div>
 
               {/* Items Table */}
               <div>
-                <Label className="text-muted-foreground mb-2 block">Item Transaksi</Label>
+                <Label className="block mb-2 text-muted-foreground">Item Transaksi</Label>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -673,12 +772,12 @@ const POSTransactions = () => {
                   <TableBody>
                     {selectedTransaction.items?.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">{item.product_name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{item.sku}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                        <TableCell className="font-medium">{item.productName || item.product?.name || item.product_name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{item.productSku || item.product?.sku || item.sku}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.unitPrice || item.price)}</TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.discount)}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(item.subtotal)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.discount || item.discountAmount || 0)}</TableCell>
+                        <TableCell className="font-semibold text-right">{formatCurrency(item.subtotal || item.subTotal)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -686,37 +785,37 @@ const POSTransactions = () => {
               </div>
 
               {/* Payment Summary */}
-              <div className="border-t pt-4">
-                <div className="space-y-2 max-w-sm ml-auto">
+              <div className="pt-4 border-t">
+                <div className="max-w-sm ml-auto space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span className="font-medium">{formatCurrency(selectedTransaction.subtotal)}</span>
+                    <span className="font-medium">{formatCurrency(selectedTransaction.subtotal || selectedTransaction.subTotal)}</span>
                   </div>
-                  {selectedTransaction.discount > 0 && (
+                  {(selectedTransaction.discount || selectedTransaction.discountAmount) > 0 && (
                     <div className="flex justify-between text-red-600">
                       <span>Diskon:</span>
-                      <span className="font-medium">- {formatCurrency(selectedTransaction.discount)}</span>
+                      <span className="font-medium">- {formatCurrency(selectedTransaction.discount || selectedTransaction.discountAmount)}</span>
                     </div>
                   )}
-                  {selectedTransaction.tax > 0 && (
+                  {(selectedTransaction.tax || selectedTransaction.taxAmount) > 0 && (
                     <div className="flex justify-between">
                       <span>Pajak:</span>
-                      <span className="font-medium">{formatCurrency(selectedTransaction.tax)}</span>
+                      <span className="font-medium">{formatCurrency(selectedTransaction.tax || selectedTransaction.taxAmount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                  <div className="flex justify-between pt-2 text-lg font-bold border-t">
                     <span>Total:</span>
-                    <span>{formatCurrency(selectedTransaction.total)}</span>
+                    <span>{formatCurrency(selectedTransaction.totalAmount || selectedTransaction.total)}</span>
                   </div>
-                  {selectedTransaction.payment_method === 'cash' && (
+                  {(selectedTransaction.paymentMethod || selectedTransaction.payment_method) === 'CASH' && (
                     <>
                       <div className="flex justify-between">
                         <span>Bayar:</span>
-                        <span className="font-medium">{formatCurrency(selectedTransaction.payment_amount)}</span>
+                        <span className="font-medium">{formatCurrency(selectedTransaction.amountPaid || selectedTransaction.paymentAmount || selectedTransaction.payment_amount)}</span>
                       </div>
                       <div className="flex justify-between text-green-600">
                         <span>Kembali:</span>
-                        <span className="font-medium">{formatCurrency(selectedTransaction.change_amount)}</span>
+                        <span className="font-medium">{formatCurrency(selectedTransaction.changeAmount || selectedTransaction.change_amount)}</span>
                       </div>
                     </>
                   )}
@@ -724,7 +823,7 @@ const POSTransactions = () => {
               </div>
 
               {selectedTransaction.notes && (
-                <div className="border-t pt-4">
+                <div className="pt-4 border-t">
                   <Label className="text-muted-foreground">Catatan</Label>
                   <p className="mt-1">{selectedTransaction.notes}</p>
                 </div>

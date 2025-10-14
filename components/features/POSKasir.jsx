@@ -210,6 +210,22 @@ export default function POSKasir() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Helper function to get price based on quantity and minStock
+  const getProductPrice = (product, quantity = 1) => {
+    // Auto wholesale: if quantity >= minStock, use wholesalePrice
+    const shouldUseWholesale = priceType === 'wholesale' || 
+      (quantity >= (product.minStock || 0) && product.minStock > 0);
+    
+    return shouldUseWholesale
+      ? (product.wholesalePrice || product.sellingPrice || 0)
+      : (product.sellingPrice || product.price || 0)
+  }
+
+  // Helper function to check if product should show wholesale indicator
+  const shouldShowWholesaleIndicator = (product, quantity = 1) => {
+    return quantity >= (product.minStock || 0) && product.minStock > 0 && product.wholesalePrice;
+  }
+
   // Load initial data
   useEffect(() => {
     // Check if user is logged in and has valid token
@@ -348,12 +364,10 @@ export default function POSKasir() {
     return uniqueCategories.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   }, [categories])
 
-  // Calculate totals
+  // Calculate totals with automatic wholesale pricing
   const calculations = useMemo(() => {
     const subtotal = cartItems.reduce((sum, item) => {
-      const price = priceType === 'wholesale' 
-        ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-        : (item.product.sellingPrice || item.product.price || 0)
+      const price = getProductPrice(item.product, item.quantity);
       return sum + (price * item.quantity)
     }, 0)
     
@@ -371,15 +385,28 @@ export default function POSKasir() {
     
     if (existingItem) {
       if (existingItem.quantity < availableStock) {
+        const newQuantity = existingItem.quantity + 1;
         setCartItems(cartItems.map(item =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: newQuantity }
             : item
         ))
-        toast({
-          title: "Produk Ditambahkan",
-          description: `${product.name} berhasil ditambahkan ke keranjang`
-        })
+        
+        // Check if reached wholesale threshold
+        const willUseWholesale = shouldShowWholesaleIndicator(product, newQuantity);
+        const wasWholesale = shouldShowWholesaleIndicator(product, existingItem.quantity);
+        
+        if (willUseWholesale && !wasWholesale) {
+          toast({
+            title: "Harga Grosir Aktif!",
+            description: `${product.name} sekarang menggunakan harga grosir ${formatCurrency(product.wholesalePrice)}`,
+          })
+        } else {
+          toast({
+            title: "Produk Ditambahkan",
+            description: `${product.name} berhasil ditambahkan ke keranjang`
+          })
+        }
       } else {
         toast({
           title: "Stok Tidak Mencukupi",
@@ -406,11 +433,29 @@ export default function POSKasir() {
     const item = cartItems.find(item => item.product.id === productId)
     const availableStock = item?.product?.stock || 999
     if (item && newQuantity <= availableStock) {
+      const oldQuantity = item.quantity;
+      
       setCartItems(cartItems.map(item =>
         item.product.id === productId
           ? { ...item, quantity: newQuantity }
           : item
       ))
+      
+      // Check wholesale threshold changes
+      const willUseWholesale = shouldShowWholesaleIndicator(item.product, newQuantity);
+      const wasWholesale = shouldShowWholesaleIndicator(item.product, oldQuantity);
+      
+      if (willUseWholesale && !wasWholesale) {
+        toast({
+          title: "Harga Grosir Aktif!",
+          description: `${item.product.name} sekarang menggunakan harga grosir ${formatCurrency(item.product.wholesalePrice)}`,
+        })
+      } else if (!willUseWholesale && wasWholesale) {
+        toast({
+          title: "Harga Normal",
+          description: `${item.product.name} kembali menggunakan harga normal`,
+        })
+      }
     } else {
       toast({
         title: "Stok Tidak Mencukupi",
@@ -486,16 +531,15 @@ export default function POSKasir() {
       const transactionData = {
         // customerId is optional - can be null or omitted for walk-in customers
         ...(customerId && { customerId: customerId }),
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          unitPrice: priceType === 'wholesale' 
-            ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-            : (item.product.sellingPrice || item.product.price || 0),
-          subtotal: (priceType === 'wholesale' 
-            ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-            : (item.product.sellingPrice || item.product.price || 0)) * item.quantity
-        })),
+        items: cartItems.map(item => {
+          const unitPrice = getProductPrice(item.product, item.quantity);
+          return {
+            productId: item.product.id,
+            quantity: item.quantity,
+            unitPrice: unitPrice,
+            subtotal: unitPrice * item.quantity
+          }
+        }),
         subtotal: calculations.subtotal,
         taxAmount: calculations.tax || 0,
         discountAmount: calculations.discount || 0,
@@ -690,15 +734,20 @@ export default function POSKasir() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={priceType} onValueChange={setPriceType}>
-                  <SelectTrigger className="w-full md:w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="wholesale">Grosir</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col w-full md:w-40">
+                  <Select value={priceType} onValueChange={setPriceType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="wholesale">Force Grosir</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto grosir jika qty ≥ min stok
+                  </p>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -720,10 +769,13 @@ export default function POSKasir() {
                         <div className="flex items-end justify-between">
                           <div>
                             <p className="font-bold text-blue-600">
-                              {formatCurrency(priceType === 'wholesale' 
-                                ? (product.wholesalePrice || product.sellingPrice || 0)
-                                : (product.sellingPrice || product.price || 0))}
+                              {formatCurrency(getProductPrice(product, 1))}
                             </p>
+                            {product.wholesalePrice && product.minStock > 0 && (
+                              <p className="text-xs font-medium text-orange-600">
+                                Grosir: {formatCurrency(product.wholesalePrice)} (≥{product.minStock} {product.unit || 'Pcs'})
+                              </p>
+                            )}
                             <p className="text-xs text-gray-500">
                               Stok: {product.stock || 'N/A'} {product.unit || 'Pcs'}
                             </p>
@@ -773,11 +825,14 @@ export default function POSKasir() {
                         <div className="flex-1">
                           <h4 className="text-sm font-medium line-clamp-2">{item.product.name}</h4>
                           <p className="text-xs text-gray-500">{item.product.sku}</p>
-                          <p className="text-sm font-semibold text-blue-600">
-                            {formatCurrency(priceType === 'wholesale' 
-                              ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-                              : (item.product.sellingPrice || item.product.price || 0))}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-blue-600">
+                              {formatCurrency(getProductPrice(item.product, item.quantity))}
+                            </p>
+                            {shouldShowWholesaleIndicator(item.product, item.quantity) && (
+                              <Badge variant="secondary" className="text-xs">Grosir</Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
