@@ -11,10 +11,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ShoppingBag, Plus, Edit, Trash2, Power, Loader2, ChevronRight } from 'lucide-react';
-import { toast } from 'sonner';
-import { categoriesAPI } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { categoriesAPI, setDevToken } from '@/lib/api';
 
 const CategoryManagement = () => {
+  const { toast } = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -28,6 +29,11 @@ const CategoryManagement = () => {
     is_active: true
   });
   const [saving, setSaving] = useState(false);
+
+  // Setup JWT token for testing
+  useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+  }, []);
 
   useEffect(() => {
     fetchCategories();
@@ -74,7 +80,11 @@ const CategoryManagement = () => {
       // Set empty state on error
       setCategories([]);
       
-      toast.error('Gagal memuat kategori: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat kategori: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -121,17 +131,27 @@ const CategoryManagement = () => {
 
       if (editingCategory) {
         await categoriesAPI.update(editingCategory.id, categoryData);
-        toast.success('Kategori berhasil diperbarui!');
+        toast({
+          title: 'Berhasil',
+          description: 'Kategori berhasil diperbarui!'
+        });
       } else {
         await categoriesAPI.create(categoryData);
-        toast.success('Kategori berhasil dibuat!');
+        toast({
+          title: 'Berhasil',
+          description: 'Kategori berhasil dibuat!'
+        });
       }
 
       fetchCategories();
       handleCloseDialog();
     } catch (error) {
       console.error('Failed to save category:', error);
-      toast.error(error.response?.data?.message || error.message || 'Gagal menyimpan kategori');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Gagal menyimpan kategori',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -144,11 +164,18 @@ const CategoryManagement = () => {
       await categoriesAPI.updateStatus(category.id, { isActive: newStatus });
       
       const message = newStatus ? 'diaktifkan' : 'dinonaktifkan';
-      toast.success(`Kategori berhasil ${message}!`);
+      toast({
+        title: 'Berhasil',
+        description: `Kategori berhasil ${message}!`
+      });
       fetchCategories();
     } catch (error) {
       console.error('Failed to toggle category status:', error);
-      toast.error('Gagal mengubah status kategori: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Gagal mengubah status kategori: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -164,11 +191,18 @@ const CategoryManagement = () => {
         window.confirm('Kategori ini memiliki subkategori. Hapus juga semua subkategori?') : false;
       
       await categoriesAPI.delete(categoryToDelete.id, cascade);
-      toast.success('Kategori berhasil dihapus!');
+      toast({
+        title: 'Berhasil',
+        description: 'Kategori berhasil dihapus!'
+      });
       fetchCategories();
     } catch (error) {
       console.error('Failed to delete category:', error);
-      toast.error('Gagal menghapus kategori: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus kategori: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setDeleteDialogOpen(false);
       setCategoryToDelete(null);

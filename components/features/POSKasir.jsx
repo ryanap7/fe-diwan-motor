@@ -14,46 +14,166 @@ import { Textarea } from "@/components/ui/textarea"
 import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2 } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
-import { productsAPI, categoriesAPI } from '@/lib/api'
-import { setDevToken } from '@/lib/dev-token'
-import { getAuthToken } from '@/lib/auth'
+import { transactionsAPI, categoriesAPI, setDevToken } from '@/lib/api'
 
-// API functions
+// API functions untuk POS - menggunakan endpoint products biasa karena endpoint POS belum ready
 const fetchProducts = async (params = {}) => {
   try {
-    const queryParams = {
-      isActive: true,
-      sortBy: 'name',
-      sortOrder: 'asc',
-      limit: 100,
-      ...params
+    // Gunakan productsAPI sebagai fallback karena transactionsAPI.getProductsForPOS belum tersedia
+    const response = await fetch('/api/products', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const response = await productsAPI.getAll(queryParams)
-
-    if (response?.success) {
-      return response.data?.products || response.data || []
-    } else {
-      throw new Error(response?.error || 'Failed to fetch products')
+    const data = await response.json();
+    console.log('Products API Response:', data)
+    
+    // Handle API response structure
+    if (data?.success && data.data?.products) {
+      return data.data.products
+    } else if (Array.isArray(data?.data)) {
+      return data.data
+    } else if (Array.isArray(data)) {
+      return data
     }
+    return []
+    
   } catch (error) {
-    console.error('Error fetching products:', error)
-    throw error
+    console.error('Error fetching products for POS:', error)
+    return []
   }
 }
 
 const fetchCategories = async () => {
   try {
     const response = await categoriesAPI.getAll()
+    console.log('Categories API Response:', response)
     
-    if (response?.success) {
-      return response.data?.categories || response.data || []
-    } else {
-      throw new Error(response?.error || 'Failed to fetch categories')
+    // Handle API response structure  
+    if (response?.success && response.data?.categories) {
+      return response.data.categories
+    } else if (Array.isArray(response?.data)) {
+      return response.data
+    } else if (Array.isArray(response)) {
+      return response
     }
+    return []
   } catch (error) {
     console.error('Error fetching categories:', error)
     return []
+  }
+}
+
+// Fetch customers untuk mendapatkan default customer
+const fetchCustomers = async () => {
+  try {
+    const response = await fetch('/api/customers', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Customers API Response:', data)
+    
+    if (data?.success && data.data?.customers) {
+      return data.data.customers
+    } else if (Array.isArray(data?.data)) {
+      return data.data
+    } else if (Array.isArray(data)) {
+      return data
+    }
+    return []
+    
+  } catch (error) {
+    console.error('Error fetching customers:', error)
+    return []
+  }
+}
+
+// Search customer by phone
+const searchCustomerByPhone = async (phone) => {
+  try {
+    const response = await transactionsAPI.searchCustomerByPhone(phone)
+    return response.data
+  } catch (error) {
+    console.error('Error searching customer:', error)
+    return null
+  }
+}
+
+// Create quick customer for POS
+const createQuickCustomer = async (customerData) => {
+  try {
+    const response = await transactionsAPI.createQuickCustomer(customerData)
+    return response.data
+  } catch (error) {
+    console.error('Error creating customer:', error)
+    throw error
+  }
+}
+
+// Create transaction
+const createTransaction = async (transactionData) => {
+  try {
+    // Format data sesuai dengan API validation requirements
+    const formattedData = {
+      customerId: transactionData.customerId, // Keep as null if null, don't convert to string
+      items: transactionData.items.map(item => ({
+        productId: item.productId,
+        quantity: parseInt(item.quantity),
+        unitPrice: parseFloat(item.unitPrice),
+        subtotal: parseFloat(item.subtotal)
+      })),
+      subtotal: parseFloat(transactionData.subtotal),
+      taxAmount: parseFloat(transactionData.taxAmount || 0),
+      discountAmount: parseFloat(transactionData.discountAmount || 0),
+      totalAmount: parseFloat(transactionData.totalAmount),
+      paymentMethod: transactionData.paymentMethod, // Already formatted above
+      amountPaid: parseFloat(transactionData.amountPaid || 0), // Ensure it's a number
+      changeAmount: parseFloat(transactionData.changeAmount || 0),
+      notes: transactionData.notes || ''
+    }
+
+    console.log('Creating transaction with data:', formattedData)
+    const response = await transactionsAPI.create(formattedData)
+    return response.data
+  } catch (error) {
+    console.error('Error creating transaction:', error)
+    
+    // Handle specific error cases
+    if (error.response?.status === 400) {
+      const errorData = error.response?.data
+      const errorMessage = errorData?.message || error.message
+      
+      if (errorData?.code === 'NO_BRANCH_ASSIGNED') {
+        throw new Error('User belum di-assign ke cabang. Hubungi administrator untuk mengatur branch assignment.')
+      } else if (errorData?.code === 'INSUFFICIENT_STOCK' || errorMessage.includes('Insufficient stock')) {
+        throw new Error(`Stok tidak mencukupi: ${errorMessage}`)
+      } else if (errorMessage.includes('User is not assigned to any branch')) {
+        throw new Error('User belum di-assign ke cabang manapun')
+      }
+    } else if (error.response?.status === 422) {
+      const errorData = error.response?.data
+      if (errorData?.errors) {
+        const errorKeys = Object.keys(errorData.errors)
+        const firstError = errorData.errors[errorKeys[0]][0]
+        throw new Error(`Validation error: ${firstError}`)
+      }
+    }
+    
+    throw error
   }
 }
 
@@ -67,7 +187,7 @@ export default function POSKasir() {
     phone: '',
     type: 'walk-in' // walk-in or registered
   })
-  const [paymentMethod, setPaymentMethod] = useState('cash') // cash or edc
+  const [paymentMethod, setPaymentMethod] = useState('CASH') // CASH or DEBIT_CARD
   const [paymentAmount, setPaymentAmount] = useState('')
   const [notes, setNotes] = useState('')
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
@@ -76,15 +196,15 @@ export default function POSKasir() {
   // API Data States
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
+  const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   // Load initial data
   useEffect(() => {
-    // Set development token if not already set
-    if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
-      setDevToken()
-    }
+    // Set JWT token untuk API calls
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
+    
     loadInitialData()
   }, [])
 
@@ -93,13 +213,21 @@ export default function POSKasir() {
       setLoading(true)
       setError(null)
       
-      const [productsData, categoriesData] = await Promise.all([
+      const [productsData, categoriesData, customersData] = await Promise.all([
         fetchProducts(),
-        fetchCategories()
+        fetchCategories(),
+        fetchCustomers()
       ])
+      
+      console.log('=== POS DATA LOADED ===')
+      console.log('Products loaded:', productsData.length, productsData)
+      console.log('Categories loaded:', categoriesData.length, categoriesData)
+      console.log('Customers loaded:', customersData.length, customersData)
+      console.log('=====================')
       
       setProducts(productsData)
       setCategories(categoriesData)
+      setCustomers(customersData)
     } catch (err) {
       setError(err.message)
       toast({
@@ -114,8 +242,17 @@ export default function POSKasir() {
 
   // Filter products
   const filteredProducts = useMemo(() => {
-    if (!Array.isArray(products)) return []
-    return products.filter(product => {
+    console.log('=== FILTERING PRODUCTS ===')
+    console.log('Products array:', Array.isArray(products), products.length)
+    console.log('Search term:', searchTerm)
+    console.log('Selected category:', selectedCategory)
+    
+    if (!Array.isArray(products)) {
+      console.log('Products is not array, returning empty')
+      return []
+    }
+    
+    const filtered = products.filter(product => {
       const searchFields = [
         product.name || '',
         product.sku || '',
@@ -129,8 +266,24 @@ export default function POSKasir() {
       // Check if product has stock (assume stock comes from inventory)
       const hasStock = product.stock > 0 || true // Fallback to true if stock not available
       
-      return matchesSearch && matchesCategory && hasStock && product.isActive !== false
+      const result = matchesSearch && matchesCategory && hasStock && product.isActive !== false
+      
+      if (!result) {
+        console.log('Product filtered out:', product.name, {
+          matchesSearch,
+          matchesCategory, 
+          hasStock,
+          isActive: product.isActive
+        })
+      }
+      
+      return result
     })
+    
+    console.log('Filtered products count:', filtered.length)
+    console.log('========================')
+    
+    return filtered
   }, [products, searchTerm, selectedCategory])
 
   // Available category options for filter
@@ -227,60 +380,117 @@ export default function POSKasir() {
   }
 
   // Process payment
-  const processPayment = () => {
-    if (paymentMethod === 'cash') {
-      const amount = parseFloat(paymentAmount)
-      if (amount < calculations.total) {
-        toast({
-          title: "Jumlah Pembayaran Kurang",
-          description: "Jumlah pembayaran harus minimal sama dengan total",
-          variant: "destructive"
-        })
-        return
+  const processPayment = async () => {
+    try {
+      // Validation untuk payment method
+      if (paymentMethod === 'CASH') {
+        const amount = parseFloat(paymentAmount || 0)
+        if (!paymentAmount || amount < calculations.total) {
+          toast({
+            title: "Jumlah Pembayaran Kurang",
+            description: "Jumlah pembayaran harus minimal sama dengan total",
+            variant: "destructive"
+          })
+          return
+        }
       }
+      
+      // Untuk debit card, set payment amount otomatis ke total amount
+      if (paymentMethod === 'DEBIT_CARD') {
+        setPaymentAmount(calculations.total.toString())
+      }
+
+      // Handle customer creation if needed
+      let customerId = null
+      if (customerInfo.phone && customerInfo.name && customerInfo.type !== 'walk-in') {
+        try {
+          // Search for existing customer first
+          const existingCustomer = await searchCustomerByPhone(customerInfo.phone)
+          if (existingCustomer) {
+            customerId = existingCustomer.id
+          } else {
+            // Create new customer
+            const newCustomer = await createQuickCustomer({
+              name: customerInfo.name,
+              phone: customerInfo.phone
+            })
+            customerId = newCustomer.id
+          }
+        } catch (error) {
+          console.error('Customer handling error:', error)
+        }
+      }
+      
+      // Fallback: Use first customer as default if no customer specified
+      if (!customerId && customers.length > 0) {
+        customerId = customers[0].id
+        console.log('Using default customer:', customers[0].id, customers[0].name)
+      }
+
+      // Prepare transaction data according to API validation requirements  
+      const transactionData = {
+        customerId: customerId, // Should be a valid user ID now
+        items: cartItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          unitPrice: priceType === 'wholesale' 
+            ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
+            : (item.product.sellingPrice || item.product.price || 0),
+          subtotal: (priceType === 'wholesale' 
+            ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
+            : (item.product.sellingPrice || item.product.price || 0)) * item.quantity
+        })),
+        subtotal: calculations.subtotal,
+        taxAmount: calculations.tax,
+        discountAmount: calculations.discount,
+        totalAmount: calculations.total,
+        paymentMethod: paymentMethod, // Already in correct format (CASH or DEBIT_CARD)
+        amountPaid: paymentMethod === 'DEBIT_CARD' ? calculations.total : parseFloat(paymentAmount || 0), // Debit card exact amount
+        changeAmount: paymentMethod === 'CASH' ? (parseFloat(paymentAmount || 0) - calculations.total) : 0,
+        notes: notes || `${customerInfo.name || 'Walk-in Customer'} - ${paymentMethod} payment`
+      }
+
+      console.log('Processing transaction:', transactionData)
+
+      // Create transaction via API
+      const result = await createTransaction(transactionData)
+      
+      // Reset form
+      clearCart()
+      setShowPaymentDialog(false)
+      setCurrentStep(1)
+      setCustomerInfo({ name: '', phone: '', type: 'walk-in' })
+      setPaymentAmount('')
+      setNotes('')
+
+      toast({
+        title: "Transaksi Berhasil",
+        description: `Invoice: ${result.invoiceNo || result.id}`,
+      })
+
+    } catch (error) {
+      console.error('Error processing transaction:', error)
+      
+      let errorMessage = "Gagal memproses transaksi"
+      if (error.response?.status === 400) {
+        const errorData = error.response?.data
+        if (errorData?.code === 'NO_BRANCH_ASSIGNED') {
+          errorMessage = "User belum di-assign ke cabang. Hubungi administrator untuk assign user ke cabang."
+        } else if (errorData?.code === 'INSUFFICIENT_STOCK') {
+          errorMessage = `Stok tidak mencukupi: ${errorData.message}`
+        } else {
+          errorMessage = errorData?.message || errorMessage
+        }
+      } else if (error.response?.status === 422) {
+        errorMessage = "Data transaksi tidak valid. Periksa kembali form input."
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      })
     }
-
-    // Generate invoice number
-    const invoiceNumber = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
-    
-    // Simulate transaction processing
-    const transaction = {
-      invoice_number: invoiceNumber,
-      items: cartItems.map(item => ({
-        product_id: item.product.id,
-        product_name: item.product.name,
-        sku: item.product.sku,
-        quantity: item.quantity,
-        price: priceType === 'wholesale' 
-          ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-          : (item.product.sellingPrice || item.product.price || 0),
-        subtotal: (priceType === 'wholesale' 
-          ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-          : (item.product.sellingPrice || item.product.price || 0)) * item.quantity
-      })),
-      customer_name: customerInfo.name || 'Walk-in Customer',
-      customer_phone: customerInfo.phone,
-      subtotal: calculations.subtotal,
-      discount: calculations.discount,
-      tax: calculations.tax,
-      total: calculations.total,
-      payment_method: paymentMethod,
-      payment_amount: parseFloat(paymentAmount),
-      change_amount: paymentMethod === 'cash' ? (parseFloat(paymentAmount) - calculations.total) : 0,
-      notes: notes,
-      transaction_date: new Date().toISOString()
-    }
-
-    console.log('Transaction processed:', transaction)
-    
-    toast({
-      title: "Transaksi Berhasil",
-      description: `Invoice: ${invoiceNumber}`,
-    })
-
-    // Reset form
-    clearCart()
-    setShowPaymentDialog(false)
   }
 
   // Format currency
@@ -577,24 +787,30 @@ export default function POSKasir() {
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-2">
                           <Button 
-                            variant={paymentMethod === 'cash' ? 'default' : 'outline'}
-                            onClick={() => setPaymentMethod('cash')}
+                            variant={paymentMethod === 'CASH' ? 'default' : 'outline'}
+                            onClick={() => {
+                              setPaymentMethod('CASH')
+                              setPaymentAmount('') // Reset amount for manual input
+                            }}
                             className="flex items-center justify-center space-x-2"
                           >
                             <Banknote className="w-4 h-4" />
                             <span>Tunai</span>
                           </Button>
                           <Button 
-                            variant={paymentMethod === 'edc' ? 'default' : 'outline'}
-                            onClick={() => setPaymentMethod('edc')}
+                            variant={paymentMethod === 'DEBIT_CARD' ? 'default' : 'outline'}
+                            onClick={() => {
+                              setPaymentMethod('DEBIT_CARD')
+                              setPaymentAmount(calculations.total.toString()) // Auto-set exact amount
+                            }}
                             className="flex items-center justify-center space-x-2"
                           >
                             <CreditCard className="w-4 h-4" />
-                            <span>EDC</span>
+                            <span>Debit Card</span>
                           </Button>
                         </div>
 
-                        {paymentMethod === 'cash' && (
+                        {paymentMethod === 'CASH' && (
                           <div className="space-y-2">
                             <Label htmlFor="payment-amount">Jumlah Bayar</Label>
                             <Input
@@ -652,9 +868,9 @@ export default function POSKasir() {
                                   </div>
                                   <div className="flex justify-between">
                                     <span>Metode:</span>
-                                    <span>{paymentMethod === 'cash' ? 'Tunai' : 'EDC'}</span>
+                                    <span>{paymentMethod === 'CASH' ? 'Tunai' : 'Debit Card'}</span>
                                   </div>
-                                  {paymentMethod === 'cash' && (
+                                  {paymentMethod === 'CASH' && (
                                     <>
                                       <div className="flex justify-between">
                                         <span>Bayar:</span>

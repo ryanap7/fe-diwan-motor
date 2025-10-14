@@ -50,7 +50,7 @@ const StockMovementManagement = () => {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [movementsRes, productsRes, branchesRes] = await Promise.all([
-        axios.get('/api/inventory/movements', { headers }),
+        axios.get('/api/stocks/movements', { headers }),
         axios.get('/api/products', { headers }),
         axios.get('/api/branches', { headers })
       ]);
@@ -76,7 +76,7 @@ const StockMovementManagement = () => {
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
 
-      const response = await axios.get(`/api/inventory/movements?${params.toString()}`, {
+      const response = await axios.get(`/api/stocks/movements?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -162,7 +162,7 @@ const StockMovementManagement = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-center">
+        <div className="text-center animate-pulse">
           <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p>Memuat data pergerakan stok...</p>
         </div>
@@ -172,7 +172,7 @@ const StockMovementManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Stock Movement & Reports</h3>
           <p className="text-sm text-muted-foreground">Log dan laporan pergerakan stok</p>
@@ -181,7 +181,7 @@ const StockMovementManagement = () => {
           <Button
             onClick={exportMovements}
             variant="outline"
-            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100"
           >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
@@ -199,7 +199,7 @@ const StockMovementManagement = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
                 <div className="space-y-2">
                   <Label>Produk</Label>
                   <Select 
@@ -383,7 +383,7 @@ const StockMovementManagement = () => {
               </Table>
               
               {movements.length === 0 && (
-                <div className="text-center py-8">
+                <div className="py-8 text-center">
                   <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                   <p className="text-muted-foreground">Tidak ada pergerakan stok ditemukan</p>
                 </div>

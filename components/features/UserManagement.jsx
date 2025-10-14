@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Edit, Trash2, UserCheck, Store, Shield, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { usersAPI, branchesAPI, rolesAPI } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { usersAPI, branchesAPI, setDevToken } from '@/lib/api';
 
 const UserManagement = () => {
+  const { toast } = useToast();
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -32,6 +33,11 @@ const UserManagement = () => {
     isActive: true
   });
   const [saving, setSaving] = useState(false);
+
+  // Setup JWT token for testing
+  useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -98,7 +104,11 @@ const UserManagement = () => {
       setUsers([]);
       setBranches([]);
       
-      toast.error('Failed to load data: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Failed to load data: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -141,27 +151,47 @@ const UserManagement = () => {
     
     // Validation berdasarkan API3.md
     if (!formData.username?.trim()) {
-      toast.error('Username is required');
+      toast({
+        title: 'Error',
+        description: 'Username is required',
+        variant: 'destructive'
+      });
       return;
     }
     
     if (!formData.email?.trim()) {
-      toast.error('Email is required');
+      toast({
+        title: 'Error',
+        description: 'Email is required',
+        variant: 'destructive'
+      });
       return;
     }
     
     if (!formData.fullName?.trim()) {
-      toast.error('Full Name is required');
+      toast({
+        title: 'Error',
+        description: 'Full Name is required',
+        variant: 'destructive'
+      });
       return;
     }
     
     if (!formData.role) {
-      toast.error('Please select a role');
+      toast({
+        title: 'Error',
+        description: 'Please select a role',
+        variant: 'destructive'
+      });
       return;
     }
     
     if (!editingUser && !formData.password) {
-      toast.error('Password is required for new users');
+      toast({
+        title: 'Error',
+        description: 'Password is required for new users',
+        variant: 'destructive'
+      });
       return;
     }
     
@@ -183,18 +213,28 @@ const UserManagement = () => {
           dataToSend.password = formData.password;
         }
         await usersAPI.update(editingUser.id, dataToSend);
-        toast.success('User updated successfully!');
+        toast({
+          title: 'Berhasil',
+          description: 'User updated successfully!'
+        });
       } else {
         dataToSend.password = formData.password;
         await usersAPI.create(dataToSend);
-        toast.success('User created successfully!');
+        toast({
+          title: 'Berhasil',
+          description: 'User created successfully!'
+        });
       }
 
       fetchData();
       handleCloseDialog();
     } catch (error) {
       console.error('User save error:', error);
-      toast.error(error.response?.data?.error || error.message || 'Failed to save user');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || error.message || 'Failed to save user',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -205,10 +245,17 @@ const UserManagement = () => {
 
     try {
       await usersAPI.delete(userToDelete.id);
-      toast.success('User deleted successfully!');
+      toast({
+        title: 'Berhasil',
+        description: 'User deleted successfully!'
+      });
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.error || error.message || 'Failed to delete user');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || error.message || 'Failed to delete user',
+        variant: 'destructive'
+      });
     } finally {
       setDeleteDialogOpen(false);
       setUserToDelete(null);

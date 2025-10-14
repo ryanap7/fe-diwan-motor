@@ -16,8 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
-import { suppliersAPI } from '@/lib/api';
-import { setDevToken } from '@/lib/dev-token';
+import { suppliersAPI, setDevToken } from '@/lib/api';
 
 const SupplierManagement = () => {
   const { toast } = useToast();
@@ -50,27 +49,57 @@ const SupplierManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setDevToken(); // Setup development token
+    // Set JWT token untuk API calls
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
     fetchSupplierData();
   }, []);
 
   const fetchSupplierData = async () => {
     try {
       setLoading(true);
+      console.log('Fetching suppliers data...');
+      
       const response = await suppliersAPI.getAll();
-      if (response.success) {
-        setSuppliers(response.data.suppliers || []);
-      } else {
-        throw new Error(response.error || 'Failed to fetch suppliers');
+      
+      console.log('=== SUPPLIERS DEBUG ===');
+      console.log('Raw API Response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', Object.keys(response || {}));
+      console.log('Response.success:', response?.success);
+      console.log('Response.data:', response?.data);
+      console.log('Response.data type:', typeof response?.data);
+      if (response?.data) {
+        console.log('Response.data keys:', Object.keys(response.data));
       }
+      
+      // Handle API response structure berdasarkan format yang benar: data.suppliers
+      let suppliers = [];
+      if (response?.success && response.data?.suppliers) {
+        suppliers = response.data.suppliers;
+        console.log('✅ Found suppliers in response.data.suppliers:', suppliers.length);
+      } else if (Array.isArray(response?.data)) {
+        suppliers = response.data;
+        console.log('✅ Using response.data as array:', suppliers.length);
+      } else if (Array.isArray(response)) {
+        suppliers = response;
+        console.log('✅ Using response as array:', suppliers.length);
+      } else {
+        console.log('❌ No suppliers found in response');
+      }
+      
+      console.log('Final processed suppliers:', suppliers);
+      console.log('Suppliers count:', suppliers.length);
+      console.log('========================');
+      
+      setSuppliers(suppliers);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data supplier: " + error.message,
+        description: "Gagal memuat data supplier: " + (error.response?.data?.message || error.message),
         variant: "destructive",
       });
-      setSuppliers([]); // Set empty array on error
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
@@ -166,17 +195,15 @@ const SupplierManagement = () => {
 
   const handleToggleActive = async (supplier) => {
     try {
-      const response = await suppliersAPI.toggleStatus(supplier.id, !supplier.isActive);
-      if (response.success) {
-        const status = supplier.isActive ? 'dinonaktifkan' : 'diaktifkan';
-        toast({
-          title: "Sukses",
-          description: `Supplier ${status}!`,
-        });
-        fetchSupplierData();
-      } else {
-        throw new Error(response.error || 'Failed to toggle supplier status');
-      }
+      const newActiveStatus = !supplier.isActive;
+      await suppliersAPI.updateStatus(supplier.id, newActiveStatus);
+      
+      const status = supplier.isActive ? 'dinonaktifkan' : 'diaktifkan';
+      toast({
+        title: "Sukses",
+        description: `Supplier ${status}!`,
+      });
+      fetchSupplierData();
     } catch (error) {
       toast({
         title: "Error",
@@ -214,10 +241,20 @@ const SupplierManagement = () => {
     (supplier.email && supplier.email.toLowerCase().includes(searchQuery.toLowerCase()))
   ) : [];
 
+  console.log('=== SUPPLIER DEBUG ===');
+  console.log('Loading state:', loading);
+  console.log('Suppliers state:', suppliers);
+  console.log('Suppliers length:', suppliers?.length);
+  console.log('Filtered suppliers:', filteredSuppliers);
+  console.log('Filtered length:', filteredSuppliers?.length);
+  console.log('Search query:', searchQuery);
+  console.log('Is suppliers array:', Array.isArray(suppliers));
+  console.log('========================');
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-center">
+        <div className="text-center animate-pulse">
           <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p>Memuat data supplier...</p>
         </div>
@@ -227,7 +264,7 @@ const SupplierManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Supplier</h3>
           <p className="text-sm text-muted-foreground">Manajemen data supplier dan performance tracking</p>
@@ -247,7 +284,7 @@ const SupplierManagement = () => {
             <CardContent className="pt-6">
               <div className="flex gap-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
                   <Input
                     placeholder="Cari supplier (nama, kontak, email)..."
                     value={searchQuery}
@@ -259,24 +296,36 @@ const SupplierManagement = () => {
             </CardContent>
           </Card>
 
+          {/* Debug Info */}
+          <div className="p-4 mb-4 border border-yellow-200 rounded bg-yellow-50">
+            <h4 className="font-semibold text-yellow-800">Debug Information:</h4>
+            <p className="text-sm text-yellow-700">
+              Total Suppliers: {suppliers.length} | 
+              Filtered: {filteredSuppliers.length} | 
+              Loading: {loading ? 'Yes' : 'No'}
+            </p>
+          </div>
+
           {/* Supplier List */}
           <div className="grid grid-cols-1 gap-4">
-            {filteredSuppliers.map((supplier) => {
-              return (
-                <Card key={supplier.id} className={`${!supplier.isActive ? 'opacity-60 bg-gray-50' : ''}`}>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                      {/* Supplier Info */}
-                      <div className="lg:col-span-6">
-                        <div className="flex items-start gap-3">
-                          <Building2 className="w-8 h-8 text-blue-500 mt-1" />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-lg">{supplier.name}</h4>
-                              {!supplier.isActive && (
-                                <Badge variant="destructive">Nonaktif</Badge>
-                              )}
-                            </div>
+            {filteredSuppliers.length > 0 ? (
+              filteredSuppliers.map((supplier) => {
+                console.log('Rendering supplier:', supplier);
+                return (
+                  <Card key={supplier.id || supplier.name} className={`${supplier.isActive === false ? 'opacity-60 bg-gray-50' : ''}`}>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                        {/* Supplier Info */}
+                        <div className="lg:col-span-6">
+                          <div className="flex items-start gap-3">
+                            <Building2 className="w-8 h-8 mt-1 text-blue-500" />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="text-lg font-semibold">{supplier.name || 'Unknown Name'}</h4>
+                                {supplier.isActive === false && (
+                                  <Badge variant="destructive">Nonaktif</Badge>
+                                )}
+                              </div>
                             
                             <div className="space-y-1 text-sm">
                               {supplier.contactPerson && (
@@ -306,7 +355,7 @@ const SupplierManagement = () => {
 
                       {/* Terms */}
                       <div className="lg:col-span-5">
-                        <div className="text-sm space-y-1">
+                        <div className="space-y-1 text-sm">
                           {supplier.payment_terms && (
                             <div>
                               <span className="font-medium">Payment Terms:</span> {supplier.payment_terms}
@@ -364,19 +413,30 @@ const SupplierManagement = () => {
                   </CardContent>
                 </Card>
               );
-            })}
+            })
+            ) : (
+              <div className="py-8 text-center">
+                <p className="text-gray-500">No suppliers to display</p>
+              </div>
+            )}
           </div>
 
-          {filteredSuppliers.length === 0 && (
+          {filteredSuppliers.length === 0 && !loading && (
             <Card>
               <CardContent className="pt-12 pb-12 text-center">
                 <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="mb-2 text-lg font-semibold text-gray-900">
                   Tidak ada supplier ditemukan
                 </h3>
                 <p className="text-muted-foreground">
                   Tambah supplier baru atau ubah filter pencarian
                 </p>
+                <div className="p-4 mt-4 text-xs text-left bg-gray-100 rounded">
+                  <strong>Debug Info:</strong><br/>
+                  Total suppliers: {suppliers?.length || 0}<br/>
+                  Filtered: {filteredSuppliers?.length || 0}<br/>
+                  Loading: {loading ? 'Yes' : 'No'}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -395,7 +455,7 @@ const SupplierManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nama Supplier <span className="text-red-500">*</span></Label>

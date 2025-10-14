@@ -10,10 +10,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Package, Plus, Edit, Trash2, Power, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { brandsAPI } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { brandsAPI, setDevToken } from '@/lib/api';
 
 const BrandManagement = () => {
+  const { toast } = useToast();
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -26,6 +27,11 @@ const BrandManagement = () => {
     is_active: true
   });
   const [saving, setSaving] = useState(false);
+
+  // Setup JWT token for testing
+  useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+  }, []);
 
   useEffect(() => {
     fetchBrands();
@@ -55,7 +61,11 @@ const BrandManagement = () => {
           console.error('Received: { data: { branches: [...] } }');
           
           // Show user-friendly error
-          toast.error('Server configuration error: Brands endpoint returning wrong data type. Please contact administrator.');
+          toast({
+            title: 'Error',
+            description: 'Server configuration error: Brands endpoint returning wrong data type. Please contact administrator.',
+            variant: 'destructive'
+          });
           return [];
         }
         
@@ -85,7 +95,11 @@ const BrandManagement = () => {
       // Set empty state on error
       setBrands([]);
       
-      toast.error('Gagal memuat brand: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat brand: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -129,17 +143,27 @@ const BrandManagement = () => {
 
       if (editingBrand) {
         await brandsAPI.update(editingBrand.id, brandData);
-        toast.success('Brand berhasil diperbarui!');
+        toast({
+          title: 'Berhasil',
+          description: 'Brand berhasil diperbarui!'
+        });
       } else {
         await brandsAPI.create(brandData);
-        toast.success('Brand berhasil dibuat!');
+        toast({
+          title: 'Berhasil',
+          description: 'Brand berhasil dibuat!'
+        });
       }
 
       fetchBrands();
       handleCloseDialog();
     } catch (error) {
       console.error('Failed to save brand:', error);
-      toast.error(error.response?.data?.message || error.message || 'Gagal menyimpan brand');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Gagal menyimpan brand',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -152,11 +176,18 @@ const BrandManagement = () => {
       await brandsAPI.updateStatus(brand.id, { isActive: newStatus });
       
       const message = newStatus ? 'diaktifkan' : 'dinonaktifkan';
-      toast.success(`Brand berhasil ${message}!`);
+      toast({
+        title: 'Berhasil',
+        description: `Brand berhasil ${message}!`
+      });
       fetchBrands();
     } catch (error) {
       console.error('Failed to toggle brand status:', error);
-      toast.error('Gagal mengubah status brand: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Gagal mengubah status brand: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -165,11 +196,18 @@ const BrandManagement = () => {
 
     try {
       await brandsAPI.delete(brandToDelete.id);
-      toast.success('Brand berhasil dihapus!');
+      toast({
+        title: 'Berhasil',
+        description: 'Brand berhasil dihapus!'
+      });
       fetchBrands();
     } catch (error) {
       console.error('Failed to delete brand:', error);
-      toast.error('Gagal menghapus brand: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus brand: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setDeleteDialogOpen(false);
       setBrandToDelete(null);

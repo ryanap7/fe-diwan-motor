@@ -13,10 +13,11 @@ import {
   Users, Plus, Edit, Trash2, Power, Loader2, Search, 
   Phone, Mail, MapPin, Calendar, TrendingUp, Package
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { customersAPI } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { customersAPI, setDevToken } from '@/lib/api';
 
 const CustomerManagement = () => {
+  const { toast } = useToast();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -44,19 +45,32 @@ const CustomerManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
     fetchCustomerData();
   }, []);
 
   const fetchCustomerData = async () => {
     try {
+      setLoading(true);
       const response = await customersAPI.getAll();
-      if (response.success) {
-        setCustomers(response.data || []);
-      } else {
-        throw new Error(response.error || 'Failed to fetch customers');
-      }
+      
+      // Handle API response - correct structure based on API testing
+      console.log('Customers API Response:', response);
+      
+      const customers = Array.isArray(response?.data?.customers) ? response.data.customers : 
+                       Array.isArray(response?.data?.data) ? response.data.data : 
+                       Array.isArray(response?.data) ? response.data : [];
+      
+      console.log('Extracted Customers:', customers.length, customers);
+      setCustomers(customers);
     } catch (error) {
-      toast.error('Gagal memuat data customer: ' + error.message);
+      console.error('Error fetching customers:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat data customer: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -69,7 +83,11 @@ const CustomerManagement = () => {
       // setCustomerHistory(response.data.history || []);
       setCustomerHistory([]); // Temporary fallback
     } catch (error) {
-      toast.error('Gagal memuat riwayat pembelian');
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat riwayat pembelian',
+        variant: 'destructive'
+      });
       setCustomerHistory([]);
     }
   };
@@ -121,14 +139,20 @@ const CustomerManagement = () => {
       if (editingCustomer) {
         const response = await customersAPI.update(editingCustomer.id, customerData);
         if (response.success) {
-          toast.success('Customer berhasil diperbarui!');
+          toast({
+            title: 'Berhasil',
+            description: 'Customer berhasil diperbarui!'
+          });
         } else {
           throw new Error(response.error || 'Failed to update customer');
         }
       } else {
         const response = await customersAPI.create(customerData);
         if (response.success) {
-          toast.success('Customer berhasil ditambahkan!');
+          toast({
+            title: 'Berhasil',
+            description: 'Customer berhasil ditambahkan!'
+          });
         } else {
           throw new Error(response.error || 'Failed to create customer');
         }
@@ -137,7 +161,11 @@ const CustomerManagement = () => {
       fetchCustomerData();
       setDialogOpen(false);
     } catch (error) {
-      toast.error('Gagal menyimpan customer: ' + error.message);
+      toast({
+        title: 'Error',
+        description: 'Gagal menyimpan customer: ' + error.message,
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -148,13 +176,20 @@ const CustomerManagement = () => {
       const response = await customersAPI.toggleActive(customer.id);
       if (response.success) {
         const status = customer.isActive ? 'dinonaktifkan' : 'diaktifkan';
-        toast.success(`Customer ${status}!`);
+        toast({
+          title: 'Berhasil',
+          description: `Customer ${status}!`
+        });
         fetchCustomerData();
       } else {
         throw new Error(response.error || 'Failed to toggle customer status');
       }
     } catch (error) {
-      toast.error('Gagal mengubah status customer: ' + error.message);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengubah status customer: ' + error.message,
+        variant: 'destructive'
+      });
     }
   };
 
@@ -162,14 +197,21 @@ const CustomerManagement = () => {
     try {
       const response = await customersAPI.delete(customerToDelete.id);
       if (response.success) {
-        toast.success('Customer berhasil dihapus!');
+        toast({
+          title: 'Berhasil',
+          description: 'Customer berhasil dihapus!'
+        });
         fetchCustomerData();
         setDeleteDialogOpen(false);
       } else {
         throw new Error(response.error || 'Failed to delete customer');
       }
     } catch (error) {
-      toast.error('Gagal menghapus customer: ' + error.message);
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus customer: ' + error.message,
+        variant: 'destructive'
+      });
     }
   };
 

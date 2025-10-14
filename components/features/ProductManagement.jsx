@@ -67,15 +67,15 @@ const ProductManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Set development token if not already set
-    if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
-      setDevToken();
-    }
+    // Setup JWT token for testing
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
+      
       const [productsRes, categoriesRes, brandsRes, branchesRes] = await Promise.all([
         productsAPI.getAll(),
         categoriesAPI.getAll(),
@@ -83,14 +83,46 @@ const ProductManagement = () => {
         branchesAPI.getAll()
       ]);
 
-      // Handle API response structure - categories and brands have nested data structure
-      setProducts(productsRes?.success ? (productsRes.data?.products || productsRes.data || []) : (productsRes || []));
-      setCategories(categoriesRes?.success ? (categoriesRes.data?.categories || categoriesRes.data || []) : (categoriesRes || []));
-      setBrands(brandsRes?.success ? (brandsRes.data?.brands || brandsRes.data || []) : (brandsRes || []));
-      setBranches(branchesRes?.success ? (branchesRes.data?.branches || branchesRes.data || []) : (branchesRes || []));
+      // Handle API response - correct structure based on API testing
+      console.log('Products API Response:', productsRes);
+      console.log('Categories API Response:', categoriesRes);
+      console.log('Brands API Response:', brandsRes);
+      
+      const extractedProducts = Array.isArray(productsRes?.data?.products) ? productsRes.data.products : 
+                               Array.isArray(productsRes?.data?.data) ? productsRes.data.data : 
+                               Array.isArray(productsRes?.data) ? productsRes.data : [];
+                               
+      const extractedCategories = Array.isArray(categoriesRes?.data?.categories) ? categoriesRes.data.categories : 
+                                 Array.isArray(categoriesRes?.data?.data) ? categoriesRes.data.data : 
+                                 Array.isArray(categoriesRes?.data) ? categoriesRes.data : [];
+                                 
+      const extractedBrands = Array.isArray(brandsRes?.data?.brands) ? brandsRes.data.brands : 
+                             Array.isArray(brandsRes?.data?.data) ? brandsRes.data.data : 
+                             Array.isArray(brandsRes?.data) ? brandsRes.data : [];
+                             
+      const extractedBranches = Array.isArray(branchesRes?.data?.branches) ? branchesRes.data.branches : 
+                               Array.isArray(branchesRes?.data?.data) ? branchesRes.data.data : 
+                               Array.isArray(branchesRes?.data) ? branchesRes.data : [];
+      
+      console.log('Extracted Products:', extractedProducts.length, extractedProducts);
+      console.log('Extracted Categories:', extractedCategories.length, extractedCategories);
+      console.log('Extracted Brands:', extractedBrands.length, extractedBrands);
+      
+      setProducts(extractedProducts);
+      setCategories(extractedCategories);
+      setBrands(extractedBrands);
+      setBranches(extractedBranches);
+      
     } catch (error) {
-      console.error('Gagal memuat data:', error);
-      toast.error('Gagal memuat data: ' + (error.response?.data?.error || error.message));
+      console.error('Error fetching data:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      toast.error('Gagal memuat data: ' + (error.response?.data?.message || error.message));
       
       // Set default empty arrays on error
       setProducts([]);
@@ -240,7 +272,7 @@ const ProductManagement = () => {
       fetchData();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || error.message || 'Gagal menyimpan produk');
+      toast.error(error.response?.data?.message || error.message || 'Gagal menyimpan produk');
     } finally {
       setSaving(false);
     }
@@ -249,12 +281,12 @@ const ProductManagement = () => {
   const handleToggleActive = async (product) => {
     try {
       const newActiveStatus = !product.isActive;
-      await productsAPI.toggleActive(product.id, newActiveStatus);
+      await productsAPI.updateStatus(product.id, newActiveStatus);
       const message = newActiveStatus ? 'diaktifkan' : 'dinonaktifkan';
       toast.success('Produk berhasil ' + message + '!');
       fetchData();
     } catch (error) {
-      toast.error('Gagal mengubah status produk: ' + (error.response?.data?.error || error.message));
+      toast.error('Gagal mengubah status produk: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -266,7 +298,7 @@ const ProductManagement = () => {
       toast.success('Produk berhasil dihapus!');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.error || error.message || 'Gagal menghapus produk');
+      toast.error(error.response?.data?.message || error.message || 'Gagal menghapus produk');
     } finally {
       setDeleteDialogOpen(false);
       setProductToDelete(null);
@@ -933,10 +965,7 @@ const ProductManagement = () => {
                 <Button
                   onClick={async () => {
                     try {
-                      await productsAPI.updatePromo(selectedProductForPromo.id, {
-                        discount_percentage: 0,
-                        is_active: false
-                      });
+                      await productsAPI.removeDiscount(selectedProductForPromo.id);
                       toast.success('Promo dihapus!');
                       fetchData();
                       setPromoDialogOpen(false);
@@ -945,7 +974,7 @@ const ProductManagement = () => {
                         is_active: true
                       });
                     } catch (error) {
-                      toast.error('Gagal menghapus promo: ' + (error.response?.data?.error || error.message));
+                      toast.error('Gagal menghapus promo: ' + (error.response?.data?.message || error.message));
                     }
                   }}
                   variant="outline"
@@ -958,9 +987,8 @@ const ProductManagement = () => {
               <Button
                 onClick={async () => {
                   try {
-                    await productsAPI.updatePromo(selectedProductForPromo.id, {
-                      discount_percentage: parseFloat(promoFormData.discount_percentage) || 0,
-                      is_active: promoFormData.is_active
+                    await productsAPI.addDiscount(selectedProductForPromo.id, {
+                      discountPercent: parseFloat(promoFormData.discount_percentage) || 0
                     });
                     toast.success('Promo berhasil disimpan!');
                     fetchData();
@@ -970,7 +998,7 @@ const ProductManagement = () => {
                       is_active: true
                     });
                   } catch (error) {
-                    toast.error('Gagal menyimpan promo');
+                    toast.error('Gagal menyimpan promo: ' + (error.response?.data?.message || error.message));
                   }
                 }}
                 className="text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"

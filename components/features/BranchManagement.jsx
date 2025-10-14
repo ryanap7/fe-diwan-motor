@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Store, Plus, Edit, Trash2, Power, MapPin, Phone, User, Loader2, UserCheck } from 'lucide-react';
-import { toast } from 'sonner';
-import { branchesAPI, usersAPI, rolesAPI } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { branchesAPI, usersAPI, setDevToken } from '@/lib/api';
 
 const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
+  const { toast } = useToast();
   const [branches, setBranches] = useState([]);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -53,6 +54,11 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
   
   // Determine if user is a branch manager viewing their profile
   const isProfileMode = viewMode === 'profile' && currentUser;
+
+  // Setup JWT token for testing
+  useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+  }, []);
 
   useEffect(() => {
     fetchBranches();
@@ -124,7 +130,11 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
       setBranches([]);
       setUsers([]);
       
-      toast.error('Failed to load branches: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Failed to load branches: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -183,16 +193,26 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
     try {
       if (editingBranch) {
         await branchesAPI.update(editingBranch.id, formData);
-        toast.success('Branch updated successfully!');
+        toast({
+          title: 'Berhasil',
+          description: 'Branch updated successfully!'
+        });
       } else {
         await branchesAPI.create(formData);
-        toast.success('Branch created successfully!');
+        toast({
+          title: 'Berhasil',
+          description: 'Branch created successfully!'
+        });
       }
 
       fetchBranches();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || error.message || 'Failed to save branch');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || error.message || 'Failed to save branch',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -204,17 +224,27 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
         const reason = prompt('Please enter reason for deactivation:');
         if (reason) {
           await branchesAPI.deactivate(branch.id, reason);
-          toast.success('Branch deactivated successfully!');
+          toast({
+            title: 'Berhasil',
+            description: 'Branch deactivated successfully!'
+          });
         } else {
           return;
         }
       } else {
         await branchesAPI.activate(branch.id);
-        toast.success('Branch activated successfully!');
+        toast({
+          title: 'Berhasil',
+          description: 'Branch activated successfully!'
+        });
       }
       fetchBranches();
     } catch (error) {
-      toast.error('Failed to toggle branch status: ' + (error.response?.data?.message || error.message));
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle branch status: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -223,10 +253,17 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
 
     try {
       await branchesAPI.delete(branchToDelete.id);
-      toast.success('Branch deleted successfully!');
+      toast({
+        title: 'Berhasil',
+        description: 'Branch deleted successfully!'
+      });
       fetchBranches();
     } catch (error) {
-      toast.error('Failed to delete branch: ' + (error.response?.data?.error || error.message));
+      toast({
+        title: 'Error',
+        description: 'Failed to delete branch: ' + (error.response?.data?.error || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setDeleteDialogOpen(false);
       setBranchToDelete(null);
@@ -270,11 +307,18 @@ const BranchManagement = ({ currentUser = null, viewMode = 'admin' }) => {
         });
       }
 
-      toast.success('Staff assigned successfully!');
+      toast({
+        title: 'Berhasil',
+        description: 'Staff assigned successfully!'
+      });
       fetchBranches();
       handleCloseStaffDialog();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Failed to assign staff');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Failed to assign staff',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }

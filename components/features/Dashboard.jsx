@@ -58,7 +58,7 @@ const Dashboard = () => {
         axios.get('/api/products', { headers }),
         axios.get('/api/transactions', { headers }),
         axios.get('/api/customers', { headers }),
-        axios.get('/api/inventory', { headers })
+        axios.get('/api/stocks', { headers })
       ]);
 
       const branches = branchesRes.data || [];
