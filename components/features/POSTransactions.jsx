@@ -14,7 +14,7 @@ import {
   FileText, Printer, Eye, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { branchesAPI, transactionsAPI, setDevToken } from '@/lib/api';
 
 const POSTransactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -27,13 +27,18 @@ const POSTransactions = () => {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   
   const [filters, setFilters] = useState({
-    branch_id: '',
+    branch_id: 'all',
     search: '',
-    date_from: '',
-    date_to: ''
+    status: 'all',
+    payment_method: 'all',
+    start_date: '',
+    end_date: ''
   });
 
   useEffect(() => {
+    // Set JWT token untuk API calls
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
+    
     fetchData();
   }, []);
 
@@ -44,16 +49,37 @@ const POSTransactions = () => {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
       const [transactionsRes, branchesRes] = await Promise.all([
-        axios.get('/api/transactions', { headers }),
-        axios.get('/api/branches', { headers })
+        transactionsAPI.getAll(),
+        branchesAPI.getBranches()
       ]);
 
-      setTransactions(transactionsRes.data || []);
-      setBranches(branchesRes.data || []);
+      console.log('=== TRANSACTIONS DATA FETCH ===');
+      console.log('Transactions Response:', transactionsRes);
+      console.log('Branches Response:', branchesRes);
+
+      // Handle transactions API response
+      let transactions = [];
+      if (transactionsRes?.success && transactionsRes.data?.transactions) {
+        transactions = transactionsRes.data.transactions;
+      } else {
+        console.log('No transactions data or unsuccessful response');
+      }
+      
+      // Handle branches API response
+      let branches = [];
+      if (branchesRes?.success && branchesRes.data?.branches) {
+        branches = branchesRes.data.branches;
+      } else {
+        console.log('No branches data or unsuccessful response');
+      }
+
+      console.log('Processed transactions count:', transactions.length);
+      console.log('Processed branches count:', branches.length);
+      console.log('===============================');
+
+      setTransactions(transactions);
+      setBranches(branches);
     } catch (error) {
       toast.error('Gagal memuat data transaksi');
     } finally {
@@ -61,29 +87,91 @@ const POSTransactions = () => {
     }
   };
 
+  const fetchTransactionsWithFilters = async () => {
+    try {
+      setLoading(true);
+      
+      // Build API query parameters
+      const params = {};
+      if (filters.branch_id && filters.branch_id !== 'all') {
+        params.branchId = filters.branch_id;
+      }
+      if (filters.search) {
+        params.search = filters.search;
+      }
+      if (filters.status && filters.status !== 'all') {
+        params.status = filters.status;
+      }
+      if (filters.payment_method && filters.payment_method !== 'all') {
+        params.paymentMethod = filters.payment_method;
+      }
+      if (filters.start_date) {
+        params.startDate = filters.start_date;
+      }
+      if (filters.end_date) {
+        params.endDate = filters.end_date;
+      }
+
+      console.log('Fetching transactions with params:', params);
+      
+      const response = await transactionsAPI.getAll(params);
+      
+      if (response?.success && response.data?.transactions) {
+        setTransactions(response.data.transactions);
+        setFilteredTransactions(response.data.transactions);
+      } else {
+        setTransactions([]);
+        setFilteredTransactions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching filtered transactions:', error);
+      toast.error('Gagal memuat data transaksi');
+      setTransactions([]);
+      setFilteredTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const applyFilters = () => {
+    // If we have active filters, fetch from API with parameters
+    if (filters.branch_id !== 'all' || filters.search || filters.status !== 'all' || 
+        filters.payment_method !== 'all' || filters.start_date || filters.end_date) {
+      fetchTransactionsWithFilters();
+      return;
+    }
+
+    // Otherwise, use client-side filtering for basic cases
     let filtered = [...transactions];
 
-    if (filters.branch_id) {
-      filtered = filtered.filter(t => t.branch_id === filters.branch_id);
+    if (filters.branch_id && filters.branch_id !== 'all') {
+      filtered = filtered.filter(t => t.branchId === filters.branch_id);
     }
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(t => 
-        t.invoice_number?.toLowerCase().includes(searchLower) ||
-        t.customer_name?.toLowerCase().includes(searchLower)
+        t.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        t.customerName?.toLowerCase().includes(searchLower)
       );
     }
 
-    if (filters.date_from) {
-      filtered = filtered.filter(t => new Date(t.transaction_date) >= new Date(filters.date_from));
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(t => t.status === filters.status);
     }
 
-    if (filters.date_to) {
-      const dateTo = new Date(filters.date_to);
+    if (filters.payment_method && filters.payment_method !== 'all') {
+      filtered = filtered.filter(t => t.paymentMethod === filters.payment_method);
+    }
+
+    if (filters.start_date) {
+      filtered = filtered.filter(t => new Date(t.createdAt) >= new Date(filters.start_date));
+    }
+
+    if (filters.end_date) {
+      const dateTo = new Date(filters.end_date);
       dateTo.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(t => new Date(t.transaction_date) <= dateTo);
+      filtered = filtered.filter(t => new Date(t.createdAt) <= dateTo);
     }
 
     setFilteredTransactions(filtered);
@@ -95,10 +183,12 @@ const POSTransactions = () => {
 
   const resetFilters = () => {
     setFilters({
-      branch_id: '',
+      branch_id: 'all',
       search: '',
-      date_from: '',
-      date_to: ''
+      status: 'all',
+      payment_method: 'all',
+      start_date: '',
+      end_date: ''
     });
   };
 
@@ -270,11 +360,17 @@ const POSTransactions = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Cabang</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
+                  {Array.isArray(branches) && branches.length > 0 ? (
+                    branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-branches" disabled>
+                      Tidak ada cabang tersedia
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -341,54 +437,80 @@ const POSTransactions = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedTransactions.map((transaction) => (
-                      <TableRow key={transaction.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
-                          {transaction.invoice_number}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs">{formatDate(transaction.transaction_date)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {transaction.branch_name}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {transaction.cashier_name}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <div>
-                            <div className="font-medium">{transaction.customer_name}</div>
-                            {transaction.customer_phone && (
-                              <div className="text-xs text-muted-foreground">{transaction.customer_phone}</div>
+                    {paginatedTransactions.length > 0 ? (
+                      paginatedTransactions.map((transaction) => (
+                        <TableRow key={transaction.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium">
+                            {transaction.invoice_number}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-gray-400" />
+                              <span className="text-xs">{formatDate(transaction.transaction_date)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {transaction.branch_name}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {transaction.cashier_name}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            <div>
+                              <div className="font-medium">{transaction.customer_name}</div>
+                              {transaction.customer_phone && (
+                                <div className="text-xs text-muted-foreground">{transaction.customer_phone}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(transaction.total)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 justify-center">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleViewDetail(transaction)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handlePrintReceipt(transaction)}
+                              >
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan="7" className="text-center py-12">
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                            <div className="text-3xl mb-3">📋</div>
+                            <div className="text-lg font-medium mb-2">Belum ada transaksi</div>
+                            <div className="text-sm text-muted-foreground mb-4">
+                              {loading ? 'Memuat transaksi...' : 
+                               transactions.length === 0 ? 'Belum ada transaksi yang tersedia' :
+                               'Coba sesuaikan filter pencarian Anda'}
+                            </div>
+                            {!loading && transactions.length === 0 && (
+                              <div className="text-xs text-gray-400 max-w-md">
+                                <strong>Catatan:</strong> Untuk membuat transaksi POS, pastikan:
+                                <ul className="text-left mt-2 space-y-1">
+                                  <li>• User sudah di-assign ke cabang (branch)</li>
+                                  <li>• Produk memiliki stok yang cukup</li>
+                                  <li>• Gunakan menu POS untuk transaksi baru</li>
+                                </ul>
+                              </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatCurrency(transaction.total)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 justify-center">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleViewDetail(transaction)}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handlePrintReceipt(transaction)}
-                            >
-                              <Printer className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>

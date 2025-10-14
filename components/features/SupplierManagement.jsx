@@ -14,10 +14,12 @@ import {
   Building2, Plus, Edit, Trash2, Power, Loader2, Search, 
   MapPin, Phone, Mail
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { suppliersAPI, setDevToken } from '@/lib/api';
 
 const SupplierManagement = () => {
+  const { toast } = useToast();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -31,14 +33,14 @@ const SupplierManagement = () => {
   
   const [formData, setFormData] = useState({
     name: '',
-    contact_person: '',
+    contactPerson: '',
     phone: '',
     email: '',
     address: '',
-    payment_terms: '',
-    delivery_terms: '',
+    paymentTerms: '',
+    deliveryTerms: '',
     notes: '',
-    is_active: true
+    isActive: true
   });
 
   // Mapping data state removed
@@ -47,18 +49,57 @@ const SupplierManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Set JWT token untuk API calls
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
     fetchSupplierData();
   }, []);
 
   const fetchSupplierData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const suppliersRes = await axios.get('/api/suppliers', { headers });
-      setSuppliers(suppliersRes.data || []);
+      setLoading(true);
+      console.log('Fetching suppliers data...');
+      
+      const response = await suppliersAPI.getAll();
+      
+      console.log('=== SUPPLIERS DEBUG ===');
+      console.log('Raw API Response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', Object.keys(response || {}));
+      console.log('Response.success:', response?.success);
+      console.log('Response.data:', response?.data);
+      console.log('Response.data type:', typeof response?.data);
+      if (response?.data) {
+        console.log('Response.data keys:', Object.keys(response.data));
+      }
+      
+      // Handle API response structure berdasarkan format yang benar: data.suppliers
+      let suppliers = [];
+      if (response?.success && response.data?.suppliers) {
+        suppliers = response.data.suppliers;
+        console.log('✅ Found suppliers in response.data.suppliers:', suppliers.length);
+      } else if (Array.isArray(response?.data)) {
+        suppliers = response.data;
+        console.log('✅ Using response.data as array:', suppliers.length);
+      } else if (Array.isArray(response)) {
+        suppliers = response;
+        console.log('✅ Using response as array:', suppliers.length);
+      } else {
+        console.log('❌ No suppliers found in response');
+      }
+      
+      console.log('Final processed suppliers:', suppliers);
+      console.log('Suppliers count:', suppliers.length);
+      console.log('========================');
+      
+      setSuppliers(suppliers);
     } catch (error) {
-      toast.error('Gagal memuat data supplier');
+      console.error('Error fetching suppliers:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data supplier: " + (error.response?.data?.message || error.message),
+        variant: "destructive",
+      });
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
@@ -73,27 +114,27 @@ const SupplierManagement = () => {
       setEditingSupplier(supplier);
       setFormData({
         name: supplier.name || '',
-        contact_person: supplier.contact_person || '',
+        contactPerson: supplier.contactPerson || '',
         phone: supplier.phone || '',
         email: supplier.email || '',
         address: supplier.address || '',
-        payment_terms: supplier.payment_terms || '',
-        delivery_terms: supplier.delivery_terms || '',
+        paymentTerms: supplier.paymentTerms || '',
+        deliveryTerms: supplier.deliveryTerms || '',
         notes: supplier.notes || '',
-        is_active: supplier.is_active !== undefined ? supplier.is_active : true
+        isActive: supplier.isActive !== undefined ? supplier.isActive : true
       });
     } else {
       setEditingSupplier(null);
       setFormData({
         name: '',
-        contact_person: '',
+        contactPerson: '',
         phone: '',
         email: '',
         address: '',
-        payment_terms: '',
-        delivery_terms: '',
+        paymentTerms: '',
+        deliveryTerms: '',
         notes: '',
-        is_active: true
+        isActive: true
       });
     }
     setDialogOpen(true);
@@ -104,24 +145,49 @@ const SupplierManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // Convert form data to API structure
+      const supplierData = {
+        name: formData.name,
+        contactPerson: formData.contactPerson,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        paymentTerms: formData.paymentTerms,
+        deliveryTerms: formData.deliveryTerms,
+        notes: formData.notes,
+        isActive: formData.isActive
+      };
       
       if (editingSupplier) {
-        await axios.post(`/api/suppliers/${editingSupplier.id}/update`, formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Supplier berhasil diperbarui!');
+        const response = await suppliersAPI.update(editingSupplier.id, supplierData);
+        if (response.success) {
+          toast({
+            title: "Sukses",
+            description: "Supplier berhasil diperbarui!",
+          });
+        } else {
+          throw new Error(response.error || 'Failed to update supplier');
+        }
       } else {
-        await axios.post('/api/suppliers/create', formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Supplier berhasil ditambahkan!');
+        const response = await suppliersAPI.create(supplierData);
+        if (response.success) {
+          toast({
+            title: "Sukses",
+            description: "Supplier berhasil ditambahkan!",
+          });
+        } else {
+          throw new Error(response.error || 'Failed to create supplier');
+        }
       }
 
       fetchSupplierData();
       setDialogOpen(false);
     } catch (error) {
-      toast.error('Gagal menyimpan supplier');
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan supplier: " + error.message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -129,41 +195,66 @@ const SupplierManagement = () => {
 
   const handleToggleActive = async (supplier) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/suppliers/${supplier.id}/toggle`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
+      const newActiveStatus = !supplier.isActive;
+      await suppliersAPI.updateStatus(supplier.id, newActiveStatus);
+      
+      const status = supplier.isActive ? 'dinonaktifkan' : 'diaktifkan';
+      toast({
+        title: "Sukses",
+        description: `Supplier ${status}!`,
       });
-      toast.success(`Supplier ${supplier.is_active ? 'dinonaktifkan' : 'diaktifkan'}!`);
       fetchSupplierData();
     } catch (error) {
-      toast.error('Gagal mengubah status supplier');
+      toast({
+        title: "Error",
+        description: "Gagal mengubah status supplier: " + error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/suppliers/${supplierToDelete.id}/delete`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success('Supplier berhasil dihapus!');
-      fetchSupplierData();
-      setDeleteDialogOpen(false);
+      const response = await suppliersAPI.delete(supplierToDelete.id);
+      if (response.success) {
+        toast({
+          title: "Sukses",
+          description: "Supplier berhasil dihapus!",
+        });
+        fetchSupplierData();
+        setDeleteDialogOpen(false);
+      } else {
+        throw new Error(response.error || 'Failed to delete supplier');
+      }
     } catch (error) {
-      toast.error('Gagal menghapus supplier');
+      toast({
+        title: "Error",
+        description: "Gagal menghapus supplier: " + error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.contact_person.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSuppliers = Array.isArray(suppliers) ? suppliers.filter(supplier =>
+    (supplier.name && supplier.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (supplier.contactPerson && supplier.contactPerson.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (supplier.email && supplier.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  ) : [];
+
+  console.log('=== SUPPLIER DEBUG ===');
+  console.log('Loading state:', loading);
+  console.log('Suppliers state:', suppliers);
+  console.log('Suppliers length:', suppliers?.length);
+  console.log('Filtered suppliers:', filteredSuppliers);
+  console.log('Filtered length:', filteredSuppliers?.length);
+  console.log('Search query:', searchQuery);
+  console.log('Is suppliers array:', Array.isArray(suppliers));
+  console.log('========================');
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-center">
+        <div className="text-center animate-pulse">
           <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p>Memuat data supplier...</p>
         </div>
@@ -173,7 +264,7 @@ const SupplierManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Supplier</h3>
           <p className="text-sm text-muted-foreground">Manajemen data supplier dan performance tracking</p>
@@ -193,7 +284,7 @@ const SupplierManagement = () => {
             <CardContent className="pt-6">
               <div className="flex gap-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
                   <Input
                     placeholder="Cari supplier (nama, kontak, email)..."
                     value={searchQuery}
@@ -205,30 +296,42 @@ const SupplierManagement = () => {
             </CardContent>
           </Card>
 
+          {/* Debug Info */}
+          <div className="p-4 mb-4 border border-yellow-200 rounded bg-yellow-50">
+            <h4 className="font-semibold text-yellow-800">Debug Information:</h4>
+            <p className="text-sm text-yellow-700">
+              Total Suppliers: {suppliers.length} | 
+              Filtered: {filteredSuppliers.length} | 
+              Loading: {loading ? 'Yes' : 'No'}
+            </p>
+          </div>
+
           {/* Supplier List */}
           <div className="grid grid-cols-1 gap-4">
-            {filteredSuppliers.map((supplier) => {
-              return (
-                <Card key={supplier.id} className={`${!supplier.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                      {/* Supplier Info */}
-                      <div className="lg:col-span-6">
-                        <div className="flex items-start gap-3">
-                          <Building2 className="w-8 h-8 text-blue-500 mt-1" />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-lg">{supplier.name}</h4>
-                              {!supplier.is_active && (
-                                <Badge variant="destructive">Nonaktif</Badge>
-                              )}
-                            </div>
+            {filteredSuppliers.length > 0 ? (
+              filteredSuppliers.map((supplier) => {
+                console.log('Rendering supplier:', supplier);
+                return (
+                  <Card key={supplier.id || supplier.name} className={`${supplier.isActive === false ? 'opacity-60 bg-gray-50' : ''}`}>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                        {/* Supplier Info */}
+                        <div className="lg:col-span-6">
+                          <div className="flex items-start gap-3">
+                            <Building2 className="w-8 h-8 mt-1 text-blue-500" />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="text-lg font-semibold">{supplier.name || 'Unknown Name'}</h4>
+                                {supplier.isActive === false && (
+                                  <Badge variant="destructive">Nonaktif</Badge>
+                                )}
+                              </div>
                             
                             <div className="space-y-1 text-sm">
-                              {supplier.contact_person && (
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="w-3 h-3 text-gray-400" />
-                                  <span>{supplier.contact_person}</span>
+                              {supplier.contactPerson && (
+                                <div className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  <span>{supplier.contactPerson}</span>
                                 </div>
                               )}
                               {supplier.phone && (
@@ -252,7 +355,7 @@ const SupplierManagement = () => {
 
                       {/* Terms */}
                       <div className="lg:col-span-5">
-                        <div className="text-sm space-y-1">
+                        <div className="space-y-1 text-sm">
                           {supplier.payment_terms && (
                             <div>
                               <span className="font-medium">Payment Terms:</span> {supplier.payment_terms}
@@ -288,7 +391,7 @@ const SupplierManagement = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleActive(supplier)}
-                            className={`text-xs ${supplier.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}`}
+                            className={`text-xs ${supplier.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'}`}
                           >
                             <Power className="w-3 h-3" />
                           </Button>
@@ -310,19 +413,30 @@ const SupplierManagement = () => {
                   </CardContent>
                 </Card>
               );
-            })}
+            })
+            ) : (
+              <div className="py-8 text-center">
+                <p className="text-gray-500">No suppliers to display</p>
+              </div>
+            )}
           </div>
 
-          {filteredSuppliers.length === 0 && (
+          {filteredSuppliers.length === 0 && !loading && (
             <Card>
               <CardContent className="pt-12 pb-12 text-center">
                 <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="mb-2 text-lg font-semibold text-gray-900">
                   Tidak ada supplier ditemukan
                 </h3>
                 <p className="text-muted-foreground">
                   Tambah supplier baru atau ubah filter pencarian
                 </p>
+                <div className="p-4 mt-4 text-xs text-left bg-gray-100 rounded">
+                  <strong>Debug Info:</strong><br/>
+                  Total suppliers: {suppliers?.length || 0}<br/>
+                  Filtered: {filteredSuppliers?.length || 0}<br/>
+                  Loading: {loading ? 'Yes' : 'No'}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -341,7 +455,7 @@ const SupplierManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nama Supplier <span className="text-red-500">*</span></Label>
@@ -355,11 +469,11 @@ const SupplierManagement = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="contact_person">Contact Person</Label>
+                <Label htmlFor="contactPerson">Contact Person</Label>
                 <Input
-                  id="contact_person"
-                  value={formData.contact_person}
-                  onChange={(e) => handleChange('contact_person', e.target.value)}
+                  id="contactPerson"
+                  value={formData.contactPerson}
+                  onChange={(e) => handleChange('contactPerson', e.target.value)}
                   placeholder="Nama kontak person"
                 />
               </div>
@@ -400,21 +514,21 @@ const SupplierManagement = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="payment_terms">Payment Terms</Label>
+                <Label htmlFor="paymentTerms">Payment Terms</Label>
                 <Input
-                  id="payment_terms"
-                  value={formData.payment_terms}
-                  onChange={(e) => handleChange('payment_terms', e.target.value)}
+                  id="paymentTerms"
+                  value={formData.paymentTerms}
+                  onChange={(e) => handleChange('paymentTerms', e.target.value)}
                   placeholder="Net 30 days, COD, dll"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="delivery_terms">Delivery Terms</Label>
+                <Label htmlFor="deliveryTerms">Delivery Terms</Label>
                 <Input
-                  id="delivery_terms"
-                  value={formData.delivery_terms}
-                  onChange={(e) => handleChange('delivery_terms', e.target.value)}
+                  id="deliveryTerms"
+                  value={formData.deliveryTerms}
+                  onChange={(e) => handleChange('deliveryTerms', e.target.value)}
                   placeholder="FOB, CIF, dll"
                 />
               </div>

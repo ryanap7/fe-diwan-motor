@@ -13,10 +13,11 @@ import {
   Users, Plus, Edit, Trash2, Power, Loader2, Search, 
   Phone, Mail, MapPin, Calendar, TrendingUp, Package
 } from 'lucide-react';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
+import { customersAPI, setDevToken } from '@/lib/api';
 
 const CustomerManagement = () => {
+  const { toast } = useToast();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -44,18 +45,32 @@ const CustomerManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
     fetchCustomerData();
   }, []);
 
   const fetchCustomerData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const customersRes = await axios.get('/api/customers', { headers });
-      setCustomers(customersRes.data || []);
+      setLoading(true);
+      const response = await customersAPI.getAll();
+      
+      // Handle API response - correct structure based on API testing
+      console.log('Customers API Response:', response);
+      
+      const customers = Array.isArray(response?.data?.customers) ? response.data.customers : 
+                       Array.isArray(response?.data?.data) ? response.data.data : 
+                       Array.isArray(response?.data) ? response.data : [];
+      
+      console.log('Extracted Customers:', customers.length, customers);
+      setCustomers(customers);
     } catch (error) {
-      toast.error('Gagal memuat data customer');
+      console.error('Error fetching customers:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat data customer: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -63,13 +78,16 @@ const CustomerManagement = () => {
 
   const fetchCustomerHistory = async (customerId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`/api/customers/${customerId}/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCustomerHistory(response.data || []);
+      // Customer history belum ada di API dokumentasi, gunakan fallback
+      // const response = await customersAPI.getById(customerId);
+      // setCustomerHistory(response.data.history || []);
+      setCustomerHistory([]); // Temporary fallback
     } catch (error) {
-      toast.error('Gagal memuat riwayat pembelian');
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat riwayat pembelian',
+        variant: 'destructive'
+      });
       setCustomerHistory([]);
     }
   };
@@ -87,7 +105,7 @@ const CustomerManagement = () => {
         email: customer.email || '',
         address: customer.address || '',
         notes: customer.notes || '',
-        is_active: customer.is_active !== undefined ? customer.is_active : true
+        is_active: customer.isActive !== undefined ? customer.isActive : true
       });
     } else {
       setEditingCustomer(null);
@@ -108,24 +126,46 @@ const CustomerManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // Convert form data to API structure
+      const customerData = {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        notes: formData.notes,
+        isActive: formData.is_active
+      };
       
       if (editingCustomer) {
-        await axios.post(`/api/customers/${editingCustomer.id}/update`, formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Customer berhasil diperbarui!');
+        const response = await customersAPI.update(editingCustomer.id, customerData);
+        if (response.success) {
+          toast({
+            title: 'Berhasil',
+            description: 'Customer berhasil diperbarui!'
+          });
+        } else {
+          throw new Error(response.error || 'Failed to update customer');
+        }
       } else {
-        await axios.post('/api/customers/create', formData, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        toast.success('Customer berhasil ditambahkan!');
+        const response = await customersAPI.create(customerData);
+        if (response.success) {
+          toast({
+            title: 'Berhasil',
+            description: 'Customer berhasil ditambahkan!'
+          });
+        } else {
+          throw new Error(response.error || 'Failed to create customer');
+        }
       }
 
       fetchCustomerData();
       setDialogOpen(false);
     } catch (error) {
-      toast.error('Gagal menyimpan customer');
+      toast({
+        title: 'Error',
+        description: 'Gagal menyimpan customer: ' + error.message,
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -133,36 +173,53 @@ const CustomerManagement = () => {
 
   const handleToggleActive = async (customer) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/customers/${customer.id}/toggle`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success(`Customer ${customer.is_active ? 'dinonaktifkan' : 'diaktifkan'}!`);
-      fetchCustomerData();
+      const response = await customersAPI.toggleActive(customer.id);
+      if (response.success) {
+        const status = customer.isActive ? 'dinonaktifkan' : 'diaktifkan';
+        toast({
+          title: 'Berhasil',
+          description: `Customer ${status}!`
+        });
+        fetchCustomerData();
+      } else {
+        throw new Error(response.error || 'Failed to toggle customer status');
+      }
     } catch (error) {
-      toast.error('Gagal mengubah status customer');
+      toast({
+        title: 'Error',
+        description: 'Gagal mengubah status customer: ' + error.message,
+        variant: 'destructive'
+      });
     }
   };
 
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/customers/${customerToDelete.id}/delete`, {}, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      toast.success('Customer berhasil dihapus!');
-      fetchCustomerData();
-      setDeleteDialogOpen(false);
+      const response = await customersAPI.delete(customerToDelete.id);
+      if (response.success) {
+        toast({
+          title: 'Berhasil',
+          description: 'Customer berhasil dihapus!'
+        });
+        fetchCustomerData();
+        setDeleteDialogOpen(false);
+      } else {
+        throw new Error(response.error || 'Failed to delete customer');
+      }
     } catch (error) {
-      toast.error('Gagal menghapus customer');
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus customer: ' + error.message,
+        variant: 'destructive'
+      });
     }
   };
 
   const filteredCustomers = customers.filter(customer => {
     const matchSearch = searchQuery === '' || 
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (customer.name && customer.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (customer.phone && customer.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchSearch;
   });
@@ -170,7 +227,7 @@ const CustomerManagement = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-center">
+        <div className="text-center animate-pulse">
           <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p>Memuat data customer...</p>
         </div>
@@ -180,7 +237,7 @@ const CustomerManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Customer</h3>
           <p className="text-sm text-muted-foreground">Manajemen data pelanggan</p>
@@ -198,7 +255,7 @@ const CustomerManagement = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
             <Input
               placeholder="Cari customer (nama, telepon, email)..."
               value={searchQuery}
@@ -212,17 +269,17 @@ const CustomerManagement = () => {
       {/* Customer Cards */}
       <div className="grid grid-cols-1 gap-4">
         {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className={`${!customer.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
+          <Card key={customer.id} className={`${!customer.isActive ? 'opacity-60 bg-gray-50' : ''}`}>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                 {/* Customer Info */}
                 <div className="lg:col-span-6">
                   <div className="flex items-start gap-3">
-                    <Users className="w-8 h-8 text-blue-500 mt-1" />
+                    <Users className="w-8 h-8 mt-1 text-blue-500" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg">{customer.name}</h4>
-                        {!customer.is_active && (
+                        <h4 className="text-lg font-semibold">{customer.name}</h4>
+                        {!customer.isActive && (
                           <Badge variant="destructive">Nonaktif</Badge>
                         )}
                       </div>
@@ -308,7 +365,7 @@ const CustomerManagement = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => handleToggleActive(customer)}
-                      className={customer.is_active ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
+                      className={customer.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'}
                     >
                       <Power className="w-3 h-3" />
                     </Button>
@@ -336,7 +393,7 @@ const CustomerManagement = () => {
         <Card>
           <CardContent className="pt-12 pb-12 text-center">
             <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
               Tidak ada customer ditemukan
             </h3>
             <p className="text-muted-foreground">
@@ -358,7 +415,7 @@ const CustomerManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nama Customer <span className="text-red-500">*</span></Label>
               <Input
@@ -453,7 +510,7 @@ const CustomerManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 mt-4">
+          <div className="mt-4 space-y-4">
             {customerHistory.length > 0 ? (
               <Table>
                 <TableHeader>
@@ -480,7 +537,7 @@ const CustomerManagement = () => {
                 </TableBody>
               </Table>
             ) : (
-              <div className="text-center py-8">
+              <div className="py-8 text-center">
                 <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                 <p className="text-muted-foreground">Belum ada riwayat pembelian</p>
               </div>

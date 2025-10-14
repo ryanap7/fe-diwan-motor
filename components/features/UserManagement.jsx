@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Edit, Trash2, UserCheck, Store, Shield, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
+import { usersAPI, branchesAPI, setDevToken } from '@/lib/api';
 
 const UserManagement = () => {
+  const { toast } = useToast();
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -25,10 +26,18 @@ const UserManagement = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role_id: '',
-    branch_id: ''
+    email: '',
+    fullName: '',
+    phone: '',
+    role: 'CASHIER',
+    isActive: true
   });
   const [saving, setSaving] = useState(false);
+
+  // Setup JWT token for testing
+  useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -36,20 +45,70 @@ const UserManagement = () => {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const [usersRes, branchesRes, rolesRes] = await Promise.all([
-        axios.get('/api/users', { headers }),
-        axios.get('/api/branches', { headers }),
-        axios.get('/api/roles', { headers })
+      console.log('UserManagement - Starting to fetch data...');
+      
+      const [usersRes, branchesRes] = await Promise.all([
+        usersAPI.getAll(),
+        branchesAPI.getAll()
       ]);
 
-      setUsers(usersRes.data || []);
-      setBranches(branchesRes.data || []);
-      setRoles(rolesRes.data || []);
+      // Safely extract data from API response with multiple format support
+      const extractArrayData = (response) => {
+        // Handle direct array
+        if (Array.isArray(response)) return response;
+        
+        // Handle API3.md structure: { data: { users: [...] } }
+        if (response?.data?.users && Array.isArray(response.data.users)) {
+          return response.data.users;
+        }
+        
+        // Handle API3.md structure for branches: { data: { branches: [...] } }
+        if (response?.data?.branches && Array.isArray(response.data.branches)) {
+          return response.data.branches;
+        }
+        
+        // Handle legacy structure: { data: [...] }
+        if (response?.data && Array.isArray(response.data)) return response.data;
+        
+        // Handle success wrapper: { success: true, data: [...] }
+        if (response?.success && Array.isArray(response.data)) return response.data;
+        
+        console.warn('Unexpected API response structure:', response);
+        return [];
+      };
+      
+      const userData = extractArrayData(usersRes);
+      const branchData = extractArrayData(branchesRes);
+      
+      console.log('UserManagement - Raw API Response:', { usersRes, branchesRes });
+      console.log('UserManagement - Extracted Data:', { userData, branchData });
+      
+      setUsers(userData);
+      setBranches(branchData);
+      
+      // Hardcoded roles sesuai API3.md
+      setRoles([
+        { id: 'ADMIN', name: 'Admin' },
+        { id: 'BRANCH_MANAGER', name: 'Branch Manager' },
+        { id: 'CASHIER', name: 'Cashier' }
+      ]);
     } catch (error) {
-      toast.error('Failed to load data');
+      console.error('Failed to load data:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Set empty state on error
+      setUsers([]);
+      setBranches([]);
+      
+      toast({
+        title: 'Error',
+        description: 'Failed to load data: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -59,18 +118,24 @@ const UserManagement = () => {
     if (user) {
       setEditingUser(user);
       setFormData({
-        username: user.username,
+        username: user.username || '',
         password: '',
-        role_id: user.role_id || '',
-        branch_id: user.branch_id || ''
+        email: user.email || '',
+        fullName: user.fullName || '',
+        phone: user.phone || '',
+        role: user.role || 'CASHIER',
+        isActive: user.isActive !== undefined ? user.isActive : true
       });
     } else {
       setEditingUser(null);
       setFormData({
         username: '',
         password: '',
-        role_id: '',
-        branch_id: ''
+        email: '',
+        fullName: '',
+        phone: '',
+        role: 'CASHIER',
+        isActive: true
       });
     }
     setDialogOpen(true);
@@ -84,52 +149,92 @@ const UserManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
+    // Validation berdasarkan API3.md
     if (!formData.username?.trim()) {
-      toast.error('Username is required');
+      toast({
+        title: 'Error',
+        description: 'Username is required',
+        variant: 'destructive'
+      });
       return;
     }
     
-    if (!formData.role_id) {
-      toast.error('Please select a role');
+    if (!formData.email?.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Email is required',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    if (!formData.fullName?.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Full Name is required',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    if (!formData.role) {
+      toast({
+        title: 'Error',
+        description: 'Please select a role',
+        variant: 'destructive'
+      });
       return;
     }
     
     if (!editingUser && !formData.password) {
-      toast.error('Password is required for new users');
+      toast({
+        title: 'Error',
+        description: 'Password is required for new users',
+        variant: 'destructive'
+      });
       return;
     }
     
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      // Prepare data
+      // Prepare data sesuai API3.md
       const dataToSend = {
         username: formData.username.trim(),
-        role_id: formData.role_id,
-        branch_id: formData.branch_id || null
+        email: formData.email.trim(),
+        fullName: formData.fullName.trim(),
+        phone: formData.phone?.trim() || '',
+        role: formData.role,
+        isActive: formData.isActive
       };
 
       if (editingUser) {
         if (formData.password?.trim()) {
           dataToSend.password = formData.password;
         }
-        await axios.post(`/api/users/${editingUser.id}/update`, dataToSend, { headers });
-        toast.success('User updated successfully!');
+        await usersAPI.update(editingUser.id, dataToSend);
+        toast({
+          title: 'Berhasil',
+          description: 'User updated successfully!'
+        });
       } else {
         dataToSend.password = formData.password;
-        await axios.post('/api/users/create', dataToSend, { headers });
-        toast.success('User created successfully!');
+        await usersAPI.create(dataToSend);
+        toast({
+          title: 'Berhasil',
+          description: 'User created successfully!'
+        });
       }
 
       fetchData();
       handleCloseDialog();
     } catch (error) {
       console.error('User save error:', error);
-      toast.error(error.response?.data?.error || 'Failed to save user');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || error.message || 'Failed to save user',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -139,14 +244,18 @@ const UserManagement = () => {
     if (!userToDelete) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/users/${userToDelete.id}/delete`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
+      await usersAPI.delete(userToDelete.id);
+      toast({
+        title: 'Berhasil',
+        description: 'User deleted successfully!'
       });
-      toast.success('User deleted successfully!');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to delete user');
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || error.message || 'Failed to delete user',
+        variant: 'destructive'
+      });
     } finally {
       setDeleteDialogOpen(false);
       setUserToDelete(null);
@@ -158,17 +267,26 @@ const UserManagement = () => {
   };
 
   const getRoleById = (roleId) => {
+    // Handle string role directly from API3.md
+    if (typeof roleId === 'string' && ['ADMIN', 'BRANCH_MANAGER', 'CASHIER'].includes(roleId)) {
+      return roles.find(r => r.id === roleId);
+    }
+    // Handle legacy role_id
     return roles.find(r => r.id === roleId);
   };
 
   const getBranchById = (branchId) => {
+    if (!branchId) return null;
     return branches.find(b => b.id === branchId);
   };
 
   const getRoleBadgeColor = (roleName) => {
-    if (roleName === 'Admin') return 'bg-purple-500';
-    if (roleName === 'Branch Manager') return 'bg-blue-500';
-    if (roleName === 'Cashier') return 'bg-green-500';
+    // Handle both direct string role and role object
+    const role = typeof roleName === 'string' ? roleName : roleName?.name;
+    
+    if (role === 'Admin' || role === 'ADMIN') return 'bg-purple-500';
+    if (role === 'Branch Manager' || role === 'BRANCH_MANAGER') return 'bg-blue-500';
+    if (role === 'Cashier' || role === 'CASHIER') return 'bg-green-500';
     return 'bg-gray-500';
   };
 
@@ -211,7 +329,7 @@ const UserManagement = () => {
       </div>
 
       {/* Users Grid */}
-      {users.length === 0 ? (
+      {!Array.isArray(users) || users.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -230,9 +348,9 @@ const UserManagement = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {users.map((user) => {
-            const role = getRoleById(user.role_id);
-            const branch = getBranchById(user.branch_id);
+          {Array.isArray(users) && users.map((user) => {
+            const role = getRoleById(user.role || user.role_id);
+            const branch = user.branch || getBranchById(user.branchId || user.branch_id);
             
             return (
               <Card
@@ -248,9 +366,9 @@ const UserManagement = () => {
                       </div>
                       <div className="flex-1">
                         <CardTitle className="text-lg mb-1">{user.username}</CardTitle>
-                        {role && (
-                          <Badge className={`${getRoleBadgeColor(role.name)} hover:${getRoleBadgeColor(role.name)} text-white text-xs`}>
-                            {role.name}
+                        {(role || user.role) && (
+                          <Badge className={`${getRoleBadgeColor(role?.name || user.role)} hover:${getRoleBadgeColor(role?.name || user.role)} text-white text-xs`}>
+                            {role?.name || user.role}
                           </Badge>
                         )}
                       </div>
@@ -332,6 +450,39 @@ const UserManagement = () => {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="fullName"
+                value={formData.fullName}
+                onChange={(e) => handleChange('fullName', e.target.value)}
+                placeholder="Enter full name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => handleChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="password">
                 Password {!editingUser && <span className="text-red-500">*</span>}
               </Label>
@@ -351,8 +502,8 @@ const UserManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
               <Select
-                value={formData.role_id}
-                onValueChange={(value) => handleChange('role_id', value)}
+                value={formData.role}
+                onValueChange={(value) => handleChange('role', value)}
                 required
               >
                 <SelectTrigger>
@@ -366,6 +517,17 @@ const UserManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={formData.isActive}
+                onChange={(e) => handleChange('isActive', e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="isActive" className="text-sm font-normal">Active User</Label>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">

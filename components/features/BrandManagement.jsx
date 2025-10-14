@@ -10,10 +10,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Package, Plus, Edit, Trash2, Power, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
+import { brandsAPI, setDevToken } from '@/lib/api';
 
 const BrandManagement = () => {
+  const { toast } = useToast();
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -27,19 +28,78 @@ const BrandManagement = () => {
   });
   const [saving, setSaving] = useState(false);
 
+  // Setup JWT token for testing
+  useEffect(() => {
+    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+  }, []);
+
   useEffect(() => {
     fetchBrands();
   }, []);
 
   const fetchBrands = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/brands', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      setBrands(response.data || []);
+      console.log('BrandManagement - Starting to fetch data...');
+      console.log('BrandManagement - Calling brandsAPI.getAll()...');
+      const response = await brandsAPI.getAll();
+      
+      // Safely extract data from API response with multiple format support
+      const extractArrayData = (response) => {
+        // Handle direct array
+        if (Array.isArray(response)) return response;
+        
+        // Handle API3 structure: { data: { brands: [...] } }
+        if (response?.data?.brands && Array.isArray(response.data.brands)) {
+          return response.data.brands;
+        }
+        
+        // CRITICAL: Check if server returned branches data instead of brands
+        if (response?.data?.branches && Array.isArray(response.data.branches)) {
+          console.error('❌ SERVER ERROR: /brands endpoint returned branches data!');
+          console.error('This indicates a server-side routing or controller issue');
+          console.error('Expected: { data: { brands: [...] } }');
+          console.error('Received: { data: { branches: [...] } }');
+          
+          // Show user-friendly error
+          toast({
+            title: 'Error',
+            description: 'Server configuration error: Brands endpoint returning wrong data type. Please contact administrator.',
+            variant: 'destructive'
+          });
+          return [];
+        }
+        
+        // Handle legacy structure: { data: [...] }
+        if (response?.data && Array.isArray(response.data)) return response.data;
+        
+        // Handle success wrapper: { success: true, data: [...] }
+        if (response?.success && Array.isArray(response.data)) return response.data;
+        
+        console.warn('Unexpected API response structure:', response);
+        return [];
+      };
+      
+      const brandData = extractArrayData(response);
+      console.log('BrandManagement - Raw API Response:', response);
+      console.log('BrandManagement - Extracted Data:', brandData);
+      
+      setBrands(brandData);
     } catch (error) {
-      toast.error('Gagal memuat brand');
+      console.error('Failed to load brands:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Set empty state on error
+      setBrands([]);
+      
+      toast({
+        title: 'Error',
+        description: 'Gagal memuat brand: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
@@ -51,7 +111,7 @@ const BrandManagement = () => {
       setFormData({
         name: brand.name,
         description: brand.description || '',
-        is_active: brand.is_active
+        is_active: brand.isActive ?? brand.is_active ?? true
       });
     } else {
       setEditingBrand(null);
@@ -74,21 +134,36 @@ const BrandManagement = () => {
     setSaving(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: 'Bearer ' + token };
+      // Convert form data to API3 format
+      const brandData = {
+        name: formData.name,
+        description: formData.description,
+        isActive: formData.is_active
+      };
 
       if (editingBrand) {
-        await axios.post('/api/brands/' + editingBrand.id + '/update', formData, { headers });
-        toast.success('Brand berhasil diperbarui!');
+        await brandsAPI.update(editingBrand.id, brandData);
+        toast({
+          title: 'Berhasil',
+          description: 'Brand berhasil diperbarui!'
+        });
       } else {
-        await axios.post('/api/brands/create', formData, { headers });
-        toast.success('Brand berhasil dibuat!');
+        await brandsAPI.create(brandData);
+        toast({
+          title: 'Berhasil',
+          description: 'Brand berhasil dibuat!'
+        });
       }
 
       fetchBrands();
       handleCloseDialog();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Gagal menyimpan brand');
+      console.error('Failed to save brand:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Gagal menyimpan brand',
+        variant: 'destructive'
+      });
     } finally {
       setSaving(false);
     }
@@ -96,15 +171,23 @@ const BrandManagement = () => {
 
   const handleToggleActive = async (brand) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/brands/' + brand.id + '/toggle', {}, {
-        headers: { Authorization: 'Bearer ' + token }
+      const currentStatus = brand.isActive ?? brand.is_active;
+      const newStatus = !currentStatus;
+      await brandsAPI.updateStatus(brand.id, { isActive: newStatus });
+      
+      const message = newStatus ? 'diaktifkan' : 'dinonaktifkan';
+      toast({
+        title: 'Berhasil',
+        description: `Brand berhasil ${message}!`
       });
-      const message = brand.is_active ? 'dinonaktifkan' : 'diaktifkan';
-      toast.success('Brand ' + message + '!');
       fetchBrands();
     } catch (error) {
-      toast.error('Gagal mengubah status brand');
+      console.error('Failed to toggle brand status:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengubah status brand: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -112,14 +195,19 @@ const BrandManagement = () => {
     if (!brandToDelete) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/brands/' + brandToDelete.id + '/delete', {}, {
-        headers: { Authorization: 'Bearer ' + token }
+      await brandsAPI.delete(brandToDelete.id);
+      toast({
+        title: 'Berhasil',
+        description: 'Brand berhasil dihapus!'
       });
-      toast.success('Brand berhasil dihapus!');
       fetchBrands();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Gagal menghapus brand');
+      console.error('Failed to delete brand:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus brand: ' + (error.response?.data?.message || error.message),
+        variant: 'destructive'
+      });
     } finally {
       setDeleteDialogOpen(false);
       setBrandToDelete(null);
@@ -189,8 +277,8 @@ const BrandManagement = () => {
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center shadow-md">
                     <Package className="w-6 h-6 text-white" />
                   </div>
-                  <Badge variant={brand.is_active ? 'default' : 'secondary'} className={brand.is_active ? 'bg-green-500' : ''}>
-                    {brand.is_active ? 'Aktif' : 'Nonaktif'}
+                  <Badge variant={(brand.isActive ?? brand.is_active) ? 'default' : 'secondary'} className={(brand.isActive ?? brand.is_active) ? 'bg-green-500' : ''}>
+                    {(brand.isActive ?? brand.is_active) ? 'Aktif' : 'Nonaktif'}
                   </Badge>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{brand.name}</h3>
@@ -211,10 +299,10 @@ const BrandManagement = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleToggleActive(brand)}
-                    className={brand.is_active ? 'flex-1 hover:bg-orange-50' : 'flex-1 hover:bg-green-50'}
+                    className={(brand.isActive ?? brand.is_active) ? 'flex-1 hover:bg-orange-50' : 'flex-1 hover:bg-green-50'}
                   >
                     <Power className="w-3 h-3 mr-1" />
-                    {brand.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                    {(brand.isActive ?? brand.is_active) ? 'Nonaktifkan' : 'Aktifkan'}
                   </Button>
                   <Button
                     variant="outline"

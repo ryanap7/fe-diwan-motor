@@ -58,7 +58,7 @@ const ReportingAnalytics = () => {
       const [transactionsRes, productsRes, inventoryRes, branchesRes, categoriesRes] = await Promise.all([
         axios.get('/api/transactions', { headers }),
         axios.get('/api/products', { headers }),
-        axios.get('/api/inventory', { headers }),
+        axios.get('/api/stocks', { headers }),
         axios.get('/api/branches', { headers }),
         axios.get('/api/categories', { headers })
       ]);
