@@ -18,6 +18,19 @@ import { setDevToken } from '@/lib/dev-token';
 const UOM_OPTIONS = ['Pcs', 'Unit', 'Box', 'Lusin', 'Karton', 'Kg', 'Liter', 'Meter', 'Set'];
 
 const ProductManagement = () => {
+  // Auto-generate functions
+  const generateSKU = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+    return `PRD-${timestamp}-${randomStr}`;
+  };
+
+  const generateBarcode = () => {
+    // Generate 13-digit EAN barcode
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return (timestamp.slice(-9) + random).substring(0, 13);
+  };
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -44,12 +57,13 @@ const ProductManagement = () => {
     description: '',
     categoryId: '',
     brandId: '',
-    unit: 'PCS',
+    unit: 'Pcs', // Default to Pcs
     compatibleModels: '',
     purchasePrice: '',
     sellingPrice: '',
     wholesalePrice: '',
     minStock: '',
+    minOrderWholesale: '', // Min Transaksi Grosir
     weight: '',
     dimensions: {
       length: '',
@@ -57,12 +71,12 @@ const ProductManagement = () => {
       height: ''
     },
     specifications: {},
-    storageLocation: '',
-    tags: '',
-    images: [],
+    storageLocation: 'Gudang', // Default to Gudang
+    tags: 'Product', // Default tag
+    images: [], // Default empty
     mainImage: '',
     isActive: true,
-    isFeatured: false
+    isFeatured: false // Disabled by default
   });
   const [saving, setSaving] = useState(false);
 
@@ -144,12 +158,13 @@ const ProductManagement = () => {
         description: product.description || '',
         categoryId: product.categoryId || product.category?.id || '',
         brandId: product.brandId || product.brand?.id || '',
-        unit: product.unit || 'PCS',
+        unit: product.unit || 'Pcs',
         compatibleModels: product.compatibleModels || '',
         purchasePrice: product.purchasePrice || '',
         sellingPrice: product.sellingPrice || '',
         wholesalePrice: product.wholesalePrice || '',
         minStock: product.minStock || '',
+        minOrderWholesale: product.minOrderWholesale || '',
         weight: product.weight || '',
         dimensions: {
           length: product.dimensions?.length || '',
@@ -157,7 +172,7 @@ const ProductManagement = () => {
           height: product.dimensions?.height || ''
         },
         specifications: product.specifications || {},
-        storageLocation: product.storageLocation || '',
+        storageLocation: product.storageLocation || 'Gudang',
         tags: product.tags || '',
         images: product.images || [],
         mainImage: product.mainImage || '',
@@ -166,19 +181,22 @@ const ProductManagement = () => {
       });
     } else {
       setEditingProduct(null);
+      // Auto-generate values for new product
+      const firstBrandId = Array.isArray(brands) && brands.length > 0 ? brands[0].id : '';
       setFormData({
-        sku: '',
-        barcode: '',
+        sku: generateSKU(), // Auto-generate SKU
+        barcode: generateBarcode(), // Auto-generate Barcode
         name: '',
         description: '',
         categoryId: '',
-        brandId: '',
-        unit: 'PCS',
+        brandId: firstBrandId, // Auto-select first brand
+        unit: 'Pcs', // Default to Pcs
         compatibleModels: '',
         purchasePrice: '',
         sellingPrice: '',
         wholesalePrice: '',
         minStock: '',
+        minOrderWholesale: '',
         weight: '',
         dimensions: {
           length: '',
@@ -186,12 +204,12 @@ const ProductManagement = () => {
           height: ''
         },
         specifications: {},
-        storageLocation: '',
-        tags: '',
-        images: [],
+        storageLocation: 'Gudang', // Auto-input Gudang
+        tags: 'Product', // Default tag
+        images: [], // Default empty images
         mainImage: '',
         isActive: true,
-        isFeatured: false
+        isFeatured: false // Disabled by default
       });
     }
     setDialogOpen(true);
@@ -227,6 +245,7 @@ const ProductManagement = () => {
         sellingPrice: parseFloat(formData.sellingPrice) || 0,
         wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
         minStock: parseInt(formData.minStock) || 0,
+        minOrderWholesale: parseInt(formData.minOrderWholesale) || 0,
         specifications: typeof formData.specifications === 'string' 
           ? { description: formData.specifications }
           : formData.specifications,
@@ -621,7 +640,8 @@ const ProductManagement = () => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="mt-4 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            {/* Hidden Fields - Auto Generated Values */}
+            <div style={{ display: 'none' }}>
               <div className="space-y-2">
                 <Label>SKU/Part Number <span className="text-red-500">*</span></Label>
                 <Input
@@ -651,54 +671,56 @@ const ProductManagement = () => {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Kategori <span className="text-red-500">*</span></Label>
-                <Select value={formData.categoryId} onValueChange={(value) => handleChange('categoryId', value)} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(categories) && categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Brand <span className="text-red-500">*</span></Label>
-                <Select value={formData.brandId} onValueChange={(value) => handleChange('brandId', value)} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(brands) && brands.map((brand) => (
-                      <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Unit</Label>
-                <Select value={formData.unit} onValueChange={(value) => handleChange('unit', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UOM_OPTIONS.map((uom) => (
-                      <SelectItem key={uom} value={uom}>{uom}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Kategori <span className="text-red-500">*</span></Label>
+              <Select value={formData.categoryId} onValueChange={(value) => handleChange('categoryId', value)} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(categories) && categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Hidden Brand - Auto Selected First Brand */}
+            <div style={{ display: 'none' }}>
+              <Label>Brand <span className="text-red-500">*</span></Label>
+              <Select value={formData.brandId} onValueChange={(value) => handleChange('brandId', value)} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(brands) && brands.map((brand) => (
+                    <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Hidden Unit - Default Pcs */}
+            <div style={{ display: 'none' }}>
+              <Label>Unit</Label>
+              <Select value={formData.unit} onValueChange={(value) => handleChange('unit', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {UOM_OPTIONS.map((uom) => (
+                    <SelectItem key={uom} value={uom}>{uom}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Model Kendaraan Compatible</Label>
+              <Label>Model Kendaraan Compatible <span className="text-red-500">*</span></Label>
               <Input
                 value={formData.compatibleModels}
                 onChange={(e) => handleChange('compatibleModels', e.target.value)}
                 placeholder="contoh: Yamaha R15, Honda CBR150R, Suzuki GSX-R150"
+                required
               />
               <p className="text-xs text-muted-foreground">Pisahkan dengan koma untuk multiple model</p>
             </div>
@@ -729,19 +751,32 @@ const ProductManagement = () => {
                   </p>
                 )}
               </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Harga Grosir</Label>
+              <div className="space-y-2">
+                <Label>Harga Grosir <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   value={formData.wholesalePrice}
                   onChange={(e) => handleChange('wholesalePrice', e.target.value)}
                   placeholder="0"
+                  required
                 />
                 <p className="text-xs text-muted-foreground">Harga khusus untuk pembelian grosir</p>
               </div>
+              <div className="space-y-2">
+                <Label>Min Transaksi Grosir <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  value={formData.minOrderWholesale}
+                  onChange={(e) => handleChange('minOrderWholesale', e.target.value)}
+                  placeholder="0"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Jumlah minimum untuk mendapat harga grosir</p>
+              </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Hidden Image Upload - Default Empty */}
+            <div style={{ display: 'none' }}>
               <Label className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
                 Gambar Produk (Maksimal 3)
@@ -779,37 +814,42 @@ const ProductManagement = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Deskripsi Produk</Label>
+              <Label>Deskripsi Produk <span className="text-red-500">*</span></Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 placeholder="Deskripsi detail produk..."
                 rows={4}
                 className="resize-none"
+                required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Lokasi Penyimpanan</Label>
+                <Label>Lokasi Penyimpanan <span className="text-red-500">*</span></Label>
                 <Input
                   value={formData.storageLocation}
                   onChange={(e) => handleChange('storageLocation', e.target.value)}
                   placeholder="contoh: Rak A-3, Gudang Utama"
+                  required
                 />
+                <p className="text-xs text-muted-foreground">Default: Gudang</p>
               </div>
               <div className="space-y-2">
-                <Label>Min Stock</Label>
+                <Label>Min Stock <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   value={formData.minStock}
                   onChange={(e) => handleChange('minStock', e.target.value)}
                   placeholder="0"
+                  required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Hidden Tags - Default "Product" */}
+            <div style={{ display: 'none' }}>
               <Label className="flex items-center gap-2">
                 <Tag className="w-4 h-4" />
                 Tags/Label
@@ -833,7 +873,8 @@ const ProductManagement = () => {
               <Label htmlFor="isActive">Produk Aktif</Label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            {/* Hidden Product Featured - Disabled by Default */}
+            <div style={{ display: 'none' }}>
               <input
                 type="checkbox"
                 id="isFeatured"
@@ -843,6 +884,23 @@ const ProductManagement = () => {
               />
               <Label htmlFor="isFeatured">Produk Unggulan</Label>
             </div>
+
+            {/* Debug Info - Show Auto Generated Values */}
+            {!editingProduct && (
+              <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                <h4 className="mb-2 text-sm font-semibold text-blue-800">Auto Generated & Default Values:</h4>
+                <div className="space-y-1 text-xs text-blue-600">
+                  <p><strong>SKU:</strong> {formData.sku}</p>
+                  <p><strong>Barcode:</strong> {formData.barcode}</p>
+                  <p><strong>Brand:</strong> {Array.isArray(brands) && brands.find(b => b.id === formData.brandId)?.name || 'Loading...'}</p>
+                  <p><strong>Unit:</strong> {formData.unit}</p>
+                  <p><strong>Storage Location:</strong> {formData.storageLocation}</p>
+                  <p><strong>Tags:</strong> {formData.tags}</p>
+                  <p><strong>Product Featured:</strong> {formData.isFeatured ? 'Yes' : 'No (Disabled)'}</p>
+                  <p><strong>Images:</strong> Empty (Default)</p>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button
