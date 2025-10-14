@@ -127,9 +127,10 @@ const createQuickCustomer = async (customerData) => {
 // Create transaction
 const createTransaction = async (transactionData) => {
   try {
-    // Format data sesuai dengan API validation requirements
+    // Format data according to API specification
     const formattedData = {
-      customerId: transactionData.customerId, // Keep as null if null, don't convert to string
+      // Only include customerId if it exists (for registered customers)
+      ...(transactionData.customerId && { customerId: transactionData.customerId }),
       items: transactionData.items.map(item => ({
         productId: item.productId,
         quantity: parseInt(item.quantity),
@@ -140,13 +141,15 @@ const createTransaction = async (transactionData) => {
       taxAmount: parseFloat(transactionData.taxAmount || 0),
       discountAmount: parseFloat(transactionData.discountAmount || 0),
       totalAmount: parseFloat(transactionData.totalAmount),
-      paymentMethod: transactionData.paymentMethod, // Already formatted above
-      amountPaid: parseFloat(transactionData.amountPaid || 0), // Ensure it's a number
+      paymentMethod: transactionData.paymentMethod,
+      amountPaid: parseFloat(transactionData.amountPaid || 0),
       changeAmount: parseFloat(transactionData.changeAmount || 0),
       notes: transactionData.notes || ''
     }
 
-    console.log('Creating transaction with data:', formattedData)
+    console.log('Creating transaction with formatted data:', formattedData)
+    console.log('JSON payload:', JSON.stringify(formattedData, null, 2))
+    
     const response = await transactionsAPI.create(formattedData)
     return response.data
   } catch (error) {
@@ -427,9 +430,10 @@ export default function POSKasir() {
         console.log('Using default customer:', customers[0].id, customers[0].name)
       }
 
-      // Prepare transaction data according to API validation requirements  
+      // Prepare transaction data according to API specification
       const transactionData = {
-        customerId: customerId, // Should be a valid user ID now
+        // customerId is optional - can be null or omitted for walk-in customers
+        ...(customerId && { customerId: customerId }),
         items: cartItems.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -441,12 +445,12 @@ export default function POSKasir() {
             : (item.product.sellingPrice || item.product.price || 0)) * item.quantity
         })),
         subtotal: calculations.subtotal,
-        taxAmount: calculations.tax,
-        discountAmount: calculations.discount,
+        taxAmount: calculations.tax || 0,
+        discountAmount: calculations.discount || 0,
         totalAmount: calculations.total,
-        paymentMethod: paymentMethod, // Already in correct format (CASH or DEBIT_CARD)
-        amountPaid: paymentMethod === 'DEBIT_CARD' ? calculations.total : parseFloat(paymentAmount || 0), // Debit card exact amount
-        changeAmount: paymentMethod === 'CASH' ? (parseFloat(paymentAmount || 0) - calculations.total) : 0,
+        paymentMethod: paymentMethod, // CASH or DEBIT_CARD
+        amountPaid: paymentMethod === 'DEBIT_CARD' ? calculations.total : parseFloat(paymentAmount || 0),
+        changeAmount: paymentMethod === 'CASH' ? Math.max(0, parseFloat(paymentAmount || 0) - calculations.total) : 0,
         notes: notes || `${customerInfo.name || 'Walk-in Customer'} - ${paymentMethod} payment`
       }
 
