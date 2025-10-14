@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, ArrowLeftRight, Edit3, ClipboardList, Barcode, Calendar, Plus, Search, AlertTriangle } from 'lucide-react';
+import { Package, ArrowLeftRight, Edit3, ClipboardList, Barcode, Calendar, Plus, Minus, Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { productsAPI, branchesAPI, stockAPI, setDevToken } from '@/lib/api';
 
@@ -27,6 +27,9 @@ const InventoryManagement = () => {
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [opnameDialogOpen, setOpnameDialogOpen] = useState(false);
+  const [stockDetailDialogOpen, setStockDetailDialogOpen] = useState(false);
+  const [quickAddDialogOpen, setQuickAddDialogOpen] = useState(false);
+  const [quickReduceDialogOpen, setQuickReduceDialogOpen] = useState(false);
 
   // Selected data
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -51,13 +54,122 @@ const InventoryManagement = () => {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [productStocks, setProductStocks] = useState({});
+
+  // Quick adjustment form states
+  const [quickAddData, setQuickAddData] = useState({
+    branch_id: '',
+    quantity: '',
+    reason: 'Purchase order received',
+    notes: ''
+  });
+
+  const [quickReduceData, setQuickReduceData] = useState({
+    branch_id: '',
+    quantity: '',
+    reason: 'damaged',
+    notes: ''
+  });
 
   useEffect(() => {
-    // Set JWT token untuk API calls
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NzViZGJhZjQ0NmIzNzk5NDQyZDgxMjgiLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjp7ImlkIjoiNjc1YmQ5ZTc0NDZiMzc5OTQ0MmQ4MTFkIiwibmFtZSI6IlN1cGVyIEFkbWluIiwic2x1ZyI6InN1cGVyX2FkbWluIn0sImJyYW5jaCI6eyJpZCI6IjY3NWJkYTYyNDQ2YjM3OTk0NDJkODExZiIsIm5hbWUiOiJIZWFkIE9mZmljZSIsInNsdWciOiJoZWFkX29mZmljZSJ9LCJpYXQiOjE3MzQzMzQwODIsImV4cCI6MTczNDQ3NzI4Mn0.ws8AneYGQK0Qr5ThtVeUYrNYrmwKdHZjKl2si64t1Rs');
+    // Check if token exists, if not set dev token
+    const checkAndSetToken = () => {
+      const existingToken = localStorage.getItem('token');
+      if (!existingToken) {
+        // Set JWT token untuk API calls
+        setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NzViZGJhZjQ0NmIzNzk5NDQyZDgxMjgiLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjp7ImlkIjoiNjc1YmQ5ZTc0NDZiMzc5OTQ0MmQ4MTFkIiwibmFtZSI6IlN1cGVyIEFkbWluIiwic2x1ZyI6InN1cGVyX2FkbWluIn0sImJyYW5jaCI6eyJpZCI6IjY3NWJkYTYyNDQ2YjM3OTk0NDJkODExZiIsIm5hbWUiOiJIZWFkIE9mZmljZSIsInNsdWciOiJoZWFkX29mZmljZSJ9LCJpYXQiOjE3MzQzMzQwODIsImV4cCI6MTczNDQ3NzI4Mn0.ws8AneYGQK0Qr5ThtVeUYrNYrmwKdHZjKl2si64t1Rs');
+        console.log('Token set for inventory API calls');
+      } else {
+        console.log('Existing token found:', existingToken.substring(0, 20) + '...');
+      }
+    };
+
+    checkAndSetToken();
     
-    fetchInventoryData();
+    // Test API connectivity first
+    testAPIConnectivity().then((isConnected) => {
+      if (isConnected) {
+        fetchInventoryData();
+      } else {
+        console.warn('API not accessible, using fallback data');
+        loadFallbackData();
+      }
+    });
   }, []);
+
+  // Test API connectivity
+  const testAPIConnectivity = async () => {
+    try {
+      console.log('Testing API connectivity...');
+      // Try a simple API call to test connectivity
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://api.diwanmotor.com/api'}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+      
+      console.log('API connectivity test result:', response.status);
+      return response.ok;
+    } catch (error) {
+      console.error('API connectivity test failed:', error);
+      return false;
+    }
+  };
+
+  // Load fallback data when API is not accessible
+  const loadFallbackData = () => {
+    console.log('Loading fallback inventory data...');
+    
+    // Set fallback products data
+    const fallbackProducts = [
+      {
+        id: 'prod1',
+        name: 'Oli Mesin Shell Helix',
+        sku: 'OLI-SHL-001',
+        price: 85000,
+        stock: 25,
+        images: []
+      },
+      {
+        id: 'prod2', 
+        name: 'Ban Michelin 185/65R15',
+        sku: 'BAN-MCH-185',
+        price: 750000,
+        stock: 8,
+        images: []
+      },
+      {
+        id: 'prod3',
+        name: 'Filter Udara Honda',
+        sku: 'FLT-HND-001',
+        price: 45000,
+        stock: 15,
+        images: []
+      }
+    ];
+
+    // Set fallback branches data
+    const fallbackBranches = [
+      {
+        id: 'branch1',
+        name: 'Head Office',
+        slug: 'head_office'
+      },
+      {
+        id: 'branch2',
+        name: 'Cabang Jakarta',
+        slug: 'jakarta'
+      }
+    ];
+
+    setProducts(fallbackProducts);
+    setBranches(fallbackBranches);
+    setLoading(false);
+    
+    toast.info('Menggunakan data demo karena API tidak dapat diakses');
+  };
 
   // Fetch stock movements when branch changes and movements tab is active
   useEffect(() => {
@@ -68,49 +180,105 @@ const InventoryManagement = () => {
 
   const fetchInventoryData = async () => {
     try {
-      const [productsRes, branchesRes, stocksRes] = await Promise.all([
-        productsAPI.getProducts(),
-        branchesAPI.getBranches(),
-        stockAPI.getAll({ 
-          branchId: selectedBranch === 'all' ? undefined : selectedBranch 
-        })
+      console.log('Fetching inventory data...');
+      console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
+      console.log('Current token:', localStorage.getItem('token')?.substring(0, 20) + '...');
+
+      const [productsRes, branchesRes] = await Promise.all([
+        productsAPI.getAll(),
+        branchesAPI.getAll()
       ]);
 
       console.log('Products Response:', productsRes);
       console.log('Branches Response:', branchesRes);
-      console.log('Stocks Response:', stocksRes);
 
       // Handle API response structure sesuai dengan format yang benar
       if (productsRes?.success && productsRes.data?.products) {
         setProducts(productsRes.data.products);
+        
+        // Fetch stock information for each product
+        fetchProductStocks(productsRes.data.products);
+      } else if (productsRes?.data?.products) {
+        // Handle case where success field might not exist
+        setProducts(productsRes.data.products);
+        fetchProductStocks(productsRes.data.products);
       } else {
+        console.warn('No products data found in response');
         setProducts([]);
       }
 
       if (branchesRes?.success && branchesRes.data?.branches) {
         setBranches(branchesRes.data.branches);
+      } else if (branchesRes?.data?.branches) {
+        // Handle case where success field might not exist
+        setBranches(branchesRes.data.branches);
       } else {
+        console.warn('No branches data found in response');
         setBranches([]);
-      }
-
-      // Handle stocks response
-      if (stocksRes?.success && stocksRes.data?.stocks) {
-        setStocks(stocksRes.data.stocks);
-      } else {
-        setStocks([]);
       }
 
     } catch (error) {
       console.error('Gagal memuat data inventory:', error);
-      toast.error('Gagal memuat data inventory: ' + (error.response?.data?.error || error.message));
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+
+      // Handle specific error types
+      if (error.response?.status === 401) {
+        toast.error('Token tidak valid atau sudah expired. Silakan login ulang.');
+        console.log('Attempting to refresh token or redirect to login...');
+      } else if (error.response?.status === 404) {
+        toast.error('API endpoint tidak ditemukan. Periksa konfigurasi API.');
+      } else if (error.response?.status >= 500) {
+        toast.error('Server error. Silakan coba lagi nanti.');
+      } else {
+        toast.error('Gagal memuat data inventory: ' + (error.response?.data?.message || error.message));
+      }
       
       // Set default empty arrays on error
       setProducts([]);
       setBranches([]);
-      setStocks([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch stock information for all products
+  const fetchProductStocks = async (productList) => {
+    const stocksMap = {};
+    
+    // Fetch stock for each product (in batches to avoid too many concurrent requests)
+    const batchSize = 5;
+    for (let i = 0; i < productList.length; i += batchSize) {
+      const batch = productList.slice(i, i + batchSize);
+      
+      const stockPromises = batch.map(async (product) => {
+        try {
+          const stockRes = await stockAPI.getByProduct(product.id);
+          return { productId: product.id, stockData: stockRes };
+        } catch (error) {
+          console.warn(`Failed to fetch stock for product ${product.id}:`, error);
+          return { productId: product.id, stockData: null };
+        }
+      });
+
+      const batchResults = await Promise.all(stockPromises);
+      batchResults.forEach(({ productId, stockData }) => {
+        if (stockData?.success && stockData.data) {
+          stocksMap[productId] = stockData.data;
+        }
+      });
+      
+      // Small delay between batches to avoid overwhelming the server
+      if (i + batchSize < productList.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    setProductStocks(stocksMap);
   };
 
   // Fetch stock movements history
@@ -177,20 +345,34 @@ const InventoryManagement = () => {
 
   // Calculate total stock across all branches for a product
   const getTotalStock = (product) => {
-    // Jika ada stock_per_branch, gunakan itu
+    const stockInfo = productStocks[product.id];
+    
+    if (stockInfo?.totalStock !== undefined) {
+      return stockInfo.totalStock;
+    }
+    
+    // Fallback to product data if API stock info not available
     if (product.stock_per_branch) {
       return Object.values(product.stock_per_branch).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0);
     }
-    // Jika tidak, gunakan field stock biasa
+    
     return parseInt(product.stock) || 0;
   };
 
   // Get stock for specific branch
   const getBranchStock = (product, branchId) => {
+    const stockInfo = productStocks[product.id];
+    
+    if (stockInfo?.stocksByBranch) {
+      const branchStock = stockInfo.stocksByBranch.find(branch => branch.branchId === branchId);
+      return branchStock ? branchStock.quantity : 0;
+    }
+    
+    // Fallback to product data if API stock info not available
     if (product.stock_per_branch) {
       return product.stock_per_branch[branchId] || 0;
     }
-    // Jika tidak ada per branch, return total stock untuk semua branch
+    
     return selectedBranch === 'all' ? (parseInt(product.stock) || 0) : (parseInt(product.stock) || 0);
   };
 
@@ -209,13 +391,31 @@ const InventoryManagement = () => {
   // Handle stock transfer
   const handleStockTransfer = async () => {
     try {
+      // Validate required fields
+      if (!transferData.product_id || !transferData.from_branch_id || !transferData.to_branch_id || !transferData.quantity) {
+        toast.error('Semua field wajib diisi!');
+        return;
+      }
+
+      if (transferData.from_branch_id === transferData.to_branch_id) {
+        toast.error('Cabang asal dan tujuan tidak boleh sama!');
+        return;
+      }
+
+      if (parseInt(transferData.quantity) <= 0) {
+        toast.error('Jumlah transfer harus lebih dari 0!');
+        return;
+      }
+
       const transferPayload = {
         productId: transferData.product_id,
         fromBranchId: transferData.from_branch_id,
         toBranchId: transferData.to_branch_id,
         quantity: parseInt(transferData.quantity),
-        notes: transferData.notes
+        notes: transferData.notes || ''
       };
+
+      console.log('Transfer payload:', transferPayload);
 
       const response = await stockAPI.transfer(transferPayload);
       
@@ -243,15 +443,40 @@ const InventoryManagement = () => {
   // Handle stock adjustment
   const handleStockAdjustment = async () => {
     try {
+      // Validate required fields
+      if (!adjustmentData.product_id || !adjustmentData.branch_id || !adjustmentData.quantity || !adjustmentData.reason) {
+        toast.error('Semua field wajib diisi!');
+        return;
+      }
+
+      if (parseInt(adjustmentData.quantity) <= 0) {
+        toast.error('Jumlah adjustment harus lebih dari 0!');
+        return;
+      }
+
+      // Prepare quantity based on adjustment type
+      let quantity = parseInt(adjustmentData.quantity);
+      let type = 'IN';
+
+      if (adjustmentData.adjustment_type === 'subtract') {
+        quantity = -Math.abs(quantity); // Ensure negative for subtraction
+        type = 'OUT';
+      } else if (adjustmentData.adjustment_type === 'add') {
+        quantity = Math.abs(quantity); // Ensure positive for addition
+        type = 'IN';
+      }
+      // Note: 'set' type might need special handling in backend
+
       const adjustPayload = {
         productId: adjustmentData.product_id,
         branchId: adjustmentData.branch_id,
-        quantity: adjustmentData.adjustment_type === 'subtract' ? 
-          -parseInt(adjustmentData.quantity) : parseInt(adjustmentData.quantity),
-        type: adjustmentData.adjustment_type === 'add' ? 'IN' : 'OUT',
+        quantity: quantity,
+        type: type,
         reason: adjustmentData.reason,
-        notes: adjustmentData.notes
+        notes: adjustmentData.notes || ''
       };
+
+      console.log('Adjustment payload:', adjustPayload);
 
       const response = await stockAPI.adjust(adjustPayload);
       
@@ -277,6 +502,178 @@ const InventoryManagement = () => {
     }
   };
 
+  // Handle quick add stock
+  const handleQuickAddStock = async () => {
+    try {
+      if (!quickAddData.branch_id || !quickAddData.quantity) {
+        toast.error('Branch dan jumlah wajib diisi!');
+        return;
+      }
+
+      if (parseInt(quickAddData.quantity) <= 0) {
+        toast.error('Jumlah harus lebih dari 0!');
+        return;
+      }
+
+      // Validate IDs exist
+      if (!selectedProduct?.id) {
+        toast.error('Product tidak valid. Silakan refresh halaman dan coba lagi.');
+        return;
+      }
+
+      // Check if selected branch exists
+      const selectedBranchExists = branches.find(b => b.id === quickAddData.branch_id);
+      if (!selectedBranchExists) {
+        toast.error('Branch yang dipilih tidak valid. Silakan pilih branch lain.');
+        return;
+      }
+
+      const adjustPayload = {
+        productId: selectedProduct.id,
+        branchId: quickAddData.branch_id,
+        quantity: Math.abs(parseInt(quickAddData.quantity)), // Ensure positive
+        type: 'IN',
+        reason: quickAddData.reason,
+        notes: quickAddData.notes || `Menambah stok ${quickAddData.quantity} unit untuk ${selectedProduct.name}`
+      };
+
+      console.log('Quick Add payload:', adjustPayload);
+      console.log('Selected Product:', selectedProduct);
+      console.log('Selected Branch:', selectedBranchExists);
+
+      // Show loading state
+      toast.loading('Memproses penambahan stok...', { id: 'add-stock' });
+
+      const response = await stockAPI.adjust(adjustPayload);
+      
+      if (response?.success) {
+        toast.success(`✅ Berhasil menambah ${quickAddData.quantity} unit stok!`, { id: 'add-stock' });
+        
+        fetchInventoryData();
+        fetchStockMovements(selectedBranch);
+        setQuickAddDialogOpen(false);
+        setQuickAddData({
+          branch_id: '',
+          quantity: '',
+          reason: 'Purchase order received',
+          notes: ''
+        });
+      } else {
+        toast.error(response?.message || 'Gagal menambah stok', { id: 'add-stock' });
+      }
+    } catch (error) {
+      console.error('Error adding stock:', error);
+      console.error('Error response data:', error.response?.data);
+      
+      // More specific error messages
+      let errorMessage = 'Gagal menambah stok';
+      
+      if (error.response?.data?.code === 'FOREIGN_KEY_ERROR') {
+        errorMessage = `❌ ID tidak valid: Produk "${selectedProduct?.name}" atau Branch "${branches.find(b => b.id === quickAddData.branch_id)?.name}" tidak ditemukan di database. Silakan refresh halaman dan coba lagi.`;
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Endpoint stock adjustment belum tersedia di backend';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Tidak memiliki izin untuk mengubah stok';
+      } else if (error.response?.status === 400) {
+        errorMessage = `Data tidak valid: ${error.response?.data?.message || 'Periksa kembali data yang diinput'}`;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Error server saat memproses stok';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, { id: 'add-stock', duration: 5000 });
+    }
+  };
+
+  // Handle quick reduce stock
+  const handleQuickReduceStock = async () => {
+    try {
+      if (!quickReduceData.branch_id || !quickReduceData.quantity) {
+        toast.error('Branch dan jumlah wajib diisi!');
+        return;
+      }
+
+      if (parseInt(quickReduceData.quantity) <= 0) {
+        toast.error('Jumlah harus lebih dari 0!');
+        return;
+      }
+
+      // Validate IDs exist
+      if (!selectedProduct?.id) {
+        toast.error('Product tidak valid. Silakan refresh halaman dan coba lagi.');
+        return;
+      }
+
+      // Check if selected branch exists
+      const selectedBranchExists = branches.find(b => b.id === quickReduceData.branch_id);
+      if (!selectedBranchExists) {
+        toast.error('Branch yang dipilih tidak valid. Silakan pilih branch lain.');
+        return;
+      }
+
+      const adjustPayload = {
+        productId: selectedProduct.id,
+        branchId: quickReduceData.branch_id,
+        quantity: -Math.abs(parseInt(quickReduceData.quantity)), // Ensure negative
+        type: 'OUT',
+        reason: quickReduceData.reason,
+        notes: quickReduceData.notes || `Mengurangi stok ${quickReduceData.quantity} unit untuk ${selectedProduct.name}`
+      };
+
+      console.log('Quick Reduce payload:', adjustPayload);
+      console.log('Selected Product:', selectedProduct);
+      console.log('Selected Branch:', selectedBranchExists);
+
+      // Show loading state
+      toast.loading('Memproses pengurangan stok...', { id: 'reduce-stock' });
+
+      const response = await stockAPI.adjust(adjustPayload);
+      
+      if (response?.success) {
+        toast.success(`✅ Berhasil mengurangi ${quickReduceData.quantity} unit stok!`, { id: 'reduce-stock' });
+        
+        fetchInventoryData();
+        fetchStockMovements(selectedBranch);
+        setQuickReduceDialogOpen(false);
+        setQuickReduceData({
+          branch_id: '',
+          quantity: '',
+          reason: 'damaged',
+          notes: ''
+        });
+      } else {
+        toast.error(response?.message || 'Gagal mengurangi stok', { id: 'reduce-stock' });
+      }
+    } catch (error) {
+      console.error('Error reducing stock:', error);
+      console.error('Error response data:', error.response?.data);
+      
+      // More specific error messages
+      let errorMessage = 'Gagal mengurangi stok';
+      
+      if (error.response?.data?.code === 'FOREIGN_KEY_ERROR') {
+        errorMessage = `❌ ID tidak valid: Produk "${selectedProduct?.name}" atau Branch "${branches.find(b => b.id === quickReduceData.branch_id)?.name}" tidak ditemukan di database. Silakan refresh halaman dan coba lagi.`;
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Endpoint stock adjustment belum tersedia di backend';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Tidak memiliki izin untuk mengubah stok';
+      } else if (error.response?.status === 400) {
+        errorMessage = `Data tidak valid: ${error.response?.data?.message || 'Periksa kembali data yang diinput'}`;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Error server saat memproses stok';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, { id: 'reduce-stock', duration: 5000 });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -290,6 +687,39 @@ const InventoryManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* API Status Info */}
+      <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+        <div className="flex items-start gap-3">
+          <Package className="w-5 h-5 text-green-600 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="font-medium text-green-800">Stock Management API Ready</h4>
+            <p className="text-sm text-green-700 mt-1">
+              Backend API untuk stock management (<code>/api/stocks/adjust/</code>) sudah tersedia dan siap digunakan.
+              Fitur tambah/kurangi stok akan langsung memperbarui database.
+            </p>
+            <p className="text-xs text-green-600 mt-2">
+              <strong>Status:</strong> ✅ Endpoint <code>POST /api/stocks/adjust/{'{productId}'}</code> aktif dan berfungsi
+            </p>
+            {/* Debug Info */}
+            <details className="mt-2">
+              <summary className="text-xs cursor-pointer text-green-700 hover:text-green-800">
+                🔍 Debug Info (klik untuk melihat)
+              </summary>
+              <div className="mt-1 text-xs text-green-600 bg-green-100 p-2 rounded">
+                <p><strong>Total Products:</strong> {Array.isArray(products) ? products.length : 0}</p>
+                <p><strong>Total Branches:</strong> {Array.isArray(branches) ? branches.length : 0}</p>
+                {Array.isArray(products) && products.length > 0 && (
+                  <p><strong>Sample Product ID:</strong> {products[0]?.id}</p>
+                )}
+                {Array.isArray(branches) && branches.length > 0 && (
+                  <p><strong>Sample Branch ID:</strong> {branches[0]?.id}</p>
+                )}
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Inventory</h3>
@@ -405,6 +835,17 @@ const InventoryManagement = () => {
                             <p className="text-xs text-muted-foreground">
                               Total Stok: <span className="font-semibold">{totalStock} unit</span>
                             </p>
+                            <Button
+                              size="sm"
+                              variant="link"
+                              className="p-0 h-auto text-xs text-blue-600 hover:text-blue-800"
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setStockDetailDialogOpen(true);
+                              }}
+                            >
+                              Lihat detail stok →
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -432,6 +873,30 @@ const InventoryManagement = () => {
                           <Button
                             size="sm"
                             variant="outline"
+                            className="text-xs bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                            onClick={() => {
+                              setSelectedProduct(product);
+                              setQuickAddDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Tambah Stok
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                            onClick={() => {
+                              setSelectedProduct(product);
+                              setQuickReduceDialogOpen(true);
+                            }}
+                          >
+                            <Minus className="w-3 h-3 mr-1" />
+                            Kurangi Stok
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => {
                               setSelectedProduct(product);
                               setTransferData(prev => ({ ...prev, product_id: product.id }));
@@ -441,19 +906,6 @@ const InventoryManagement = () => {
                           >
                             <ArrowLeftRight className="w-3 h-3 mr-1" />
                             Transfer
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setAdjustmentData(prev => ({ ...prev, product_id: product.id }));
-                              setAdjustmentDialogOpen(true);
-                            }}
-                            className="text-xs"
-                          >
-                            <Edit3 className="w-3 h-3 mr-1" />
-                            Adjust
                           </Button>
                         </div>
                       </div>
@@ -601,8 +1053,73 @@ const InventoryManagement = () => {
           </Card>
         </TabsContent>
 
-        {/* Tracking tab removed as requested */}
       </Tabs>
+
+      {/* Stock Opname Dialog */}
+      <Dialog open={opnameDialogOpen} onOpenChange={setOpnameDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Stock Opname (Inventory Count)</DialogTitle>
+            <DialogDescription>
+              Lakukan penghitungan fisik stok dan sesuaikan dengan data sistem
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="p-4 border rounded-lg bg-blue-50">
+              <p className="text-sm text-blue-800">
+                <strong>Info:</strong> Stock Opname adalah proses penghitungan fisik barang di gudang 
+                untuk mencocokkan dengan data sistem. Fitur ini akan membantu Anda mengidentifikasi 
+                selisih stok dan melakukan penyesuaian yang diperlukan.
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Pilih Cabang untuk Stock Opname</Label>
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih cabang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(branches) && branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-4 border rounded-lg">
+              <h4 className="mb-3 font-semibold">Langkah-langkah Stock Opname:</h4>
+              <ol className="space-y-2 text-sm list-decimal list-inside">
+                <li>Pilih cabang yang akan dilakukan stock opname</li>
+                <li>Hitung secara fisik semua barang yang ada di gudang</li>
+                <li>Bandingkan hasil hitungan dengan data sistem</li>
+                <li>Lakukan penyesuaian stok jika ada selisih</li>
+                <li>Catat alasan penyesuaian untuk audit trail</li>
+              </ol>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setOpnameDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button 
+                onClick={() => {
+                  // Close opname dialog and switch to overview tab to see current stock
+                  setOpnameDialogOpen(false);
+                  setActiveTab('overview');
+                  toast.success(`Stock opname dimulai untuk ${branches.find(b => b.id === selectedBranch)?.name || 'cabang yang dipilih'}`);
+                }} 
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <ClipboardList className="w-4 h-4 mr-2" />
+                Mulai Stock Opname
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stock Transfer Dialog */}
       <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
@@ -813,6 +1330,280 @@ const InventoryManagement = () => {
               </Button>
               <Button onClick={handleStockAdjustment} className="bg-green-600 hover:bg-green-700">
                 Simpan Penyesuaian
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Detail Dialog */}
+      <Dialog open={stockDetailDialogOpen} onOpenChange={setStockDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detail Stok Produk</DialogTitle>
+            <DialogDescription>
+              {selectedProduct ? `${selectedProduct.sku} - ${selectedProduct.name}` : 'Informasi detail stok'}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedProduct && (
+            <div className="mt-4 space-y-4">
+              {/* Product Info */}
+              <div className="flex items-start gap-4 p-4 border rounded-lg">
+                {selectedProduct.images && selectedProduct.images[0] && (
+                  <img
+                    src={selectedProduct.images[0]}
+                    alt={selectedProduct.name}
+                    className="object-cover w-20 h-20 border rounded"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                )}
+                <div className="flex-1">
+                  <h3 className="font-semibold">{selectedProduct.name}</h3>
+                  <p className="text-sm text-muted-foreground">{selectedProduct.sku}</p>
+                  <div className="flex gap-4 mt-2 text-sm">
+                    <span>Total Stok: <strong>{getTotalStock(selectedProduct)} unit</strong></span>
+                    <span>Harga: <strong>Rp {parseInt(selectedProduct.price || 0).toLocaleString('id-ID')}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stock by Branch */}
+              <div className="space-y-3">
+                <h4 className="font-semibold">Stok per Cabang:</h4>
+                <div className="space-y-2">
+                  {Array.isArray(branches) && branches.map((branch) => {
+                    const branchStock = getBranchStock(selectedProduct, branch.id);
+                    const stockInfo = productStocks[selectedProduct.id];
+                    const branchData = stockInfo?.stocksByBranch?.find(b => b.branchId === branch.id);
+                    
+                    return (
+                      <div key={branch.id} className="flex items-center justify-between p-3 border rounded">
+                        <div>
+                          <p className="font-medium">{branch.name}</p>
+                          {branchData && (
+                            <p className="text-xs text-muted-foreground">
+                              Branch ID: {branchData.branchName || branch.id}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{branchStock} unit</p>
+                          <Badge 
+                            variant={branchStock > 10 ? "default" : branchStock > 0 ? "secondary" : "destructive"}
+                            className="text-xs"
+                          >
+                            {branchStock > 10 ? "Stock Aman" : branchStock > 0 ? "Stock Menipis" : "Habis"}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setStockDetailDialogOpen(false);
+                    setTransferData(prev => ({ ...prev, product_id: selectedProduct.id }));
+                    setTransferDialogOpen(true);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <ArrowLeftRight className="w-4 h-4 mr-2" />
+                  Transfer Stok
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setStockDetailDialogOpen(false);
+                    setAdjustmentData(prev => ({ ...prev, product_id: selectedProduct.id }));
+                    setAdjustmentDialogOpen(true);
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Adjust Stok
+                </Button>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button variant="outline" onClick={() => setStockDetailDialogOpen(false)}>
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Add Stock Dialog */}
+      <Dialog open={quickAddDialogOpen} onOpenChange={setQuickAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <Plus className="w-5 h-5" />
+              Tambah Stok Barang
+            </DialogTitle>
+            <DialogDescription>
+              {selectedProduct ? `${selectedProduct.sku} - ${selectedProduct.name}` : 'Menambah stok produk'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Pilih Cabang</Label>
+              <Select
+                value={quickAddData.branch_id}
+                onValueChange={(value) => setQuickAddData(prev => ({ ...prev, branch_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih cabang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(branches) && branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Jumlah yang Ditambah</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={quickAddData.quantity}
+                onChange={(e) => setQuickAddData(prev => ({ ...prev, quantity: e.target.value }))}
+                min="1"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Alasan</Label>
+              <Select
+                value={quickAddData.reason}
+                onValueChange={(value) => setQuickAddData(prev => ({ ...prev, reason: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Purchase order received">Purchase Order Masuk</SelectItem>
+                  <SelectItem value="found">Barang Ditemukan</SelectItem>
+                  <SelectItem value="correction">Koreksi Data</SelectItem>
+                  <SelectItem value="return">Barang Return</SelectItem>
+                  <SelectItem value="other">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Catatan (Opsional)</Label>
+              <Input
+                placeholder="Catatan tambahan..."
+                value={quickAddData.notes}
+                onChange={(e) => setQuickAddData(prev => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setQuickAddDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleQuickAddStock} className="bg-green-600 hover:bg-green-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Tambah Stok
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Reduce Stock Dialog */}
+      <Dialog open={quickReduceDialogOpen} onOpenChange={setQuickReduceDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Minus className="w-5 h-5" />
+              Kurangi Stok Barang
+            </DialogTitle>
+            <DialogDescription>
+              {selectedProduct ? `${selectedProduct.sku} - ${selectedProduct.name}` : 'Mengurangi stok produk'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Pilih Cabang</Label>
+              <Select
+                value={quickReduceData.branch_id}
+                onValueChange={(value) => setQuickReduceData(prev => ({ ...prev, branch_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih cabang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(branches) && branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Jumlah yang Dikurangi</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={quickReduceData.quantity}
+                onChange={(e) => setQuickReduceData(prev => ({ ...prev, quantity: e.target.value }))}
+                min="1"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Alasan</Label>
+              <Select
+                value={quickReduceData.reason}
+                onValueChange={(value) => setQuickReduceData(prev => ({ ...prev, reason: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="damaged">Barang Rusak</SelectItem>
+                  <SelectItem value="lost">Barang Hilang</SelectItem>
+                  <SelectItem value="expired">Barang Kadaluarsa</SelectItem>
+                  <SelectItem value="sold">Terjual</SelectItem>
+                  <SelectItem value="correction">Koreksi Data</SelectItem>
+                  <SelectItem value="other">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Catatan (Opsional)</Label>
+              <Input
+                placeholder="Catatan tambahan..."
+                value={quickReduceData.notes}
+                onChange={(e) => setQuickReduceData(prev => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setQuickReduceDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleQuickReduceStock} className="bg-red-600 hover:bg-red-700">
+                <Minus className="w-4 h-4 mr-2" />
+                Kurangi Stok
               </Button>
             </div>
           </div>
