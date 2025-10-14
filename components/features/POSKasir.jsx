@@ -19,16 +19,20 @@ import { transactionsAPI, categoriesAPI, setDevToken } from '@/lib/api'
 // API functions untuk POS - menggunakan endpoint products biasa karena endpoint POS belum ready
 const fetchProducts = async (params = {}) => {
   try {
-    // Gunakan productsAPI sebagai fallback karena transactionsAPI.getProductsForPOS belum tersedia
+    const token = localStorage.getItem('token') || '';
+    console.log('POS - Using token for products:', token.substring(0, 50) + '...');
+    
     const response = await fetch('/api/products', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Products API Error:', response.status, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -127,9 +131,10 @@ const createQuickCustomer = async (customerData) => {
 // Create transaction
 const createTransaction = async (transactionData) => {
   try {
-    // Format data sesuai dengan API validation requirements
+    // Format data according to API specification
     const formattedData = {
-      customerId: transactionData.customerId, // Keep as null if null, don't convert to string
+      // Only include customerId if it exists (for registered customers)
+      ...(transactionData.customerId && { customerId: transactionData.customerId }),
       items: transactionData.items.map(item => ({
         productId: item.productId,
         quantity: parseInt(item.quantity),
@@ -140,13 +145,18 @@ const createTransaction = async (transactionData) => {
       taxAmount: parseFloat(transactionData.taxAmount || 0),
       discountAmount: parseFloat(transactionData.discountAmount || 0),
       totalAmount: parseFloat(transactionData.totalAmount),
-      paymentMethod: transactionData.paymentMethod, // Already formatted above
-      amountPaid: parseFloat(transactionData.amountPaid || 0), // Ensure it's a number
+      paymentMethod: transactionData.paymentMethod,
+      amountPaid: parseFloat(transactionData.amountPaid || 0),
       changeAmount: parseFloat(transactionData.changeAmount || 0),
       notes: transactionData.notes || ''
     }
 
-    console.log('Creating transaction with data:', formattedData)
+    console.log('Creating transaction with formatted data:', formattedData)
+    console.log('JSON payload:', JSON.stringify(formattedData, null, 2))
+    
+    const token = localStorage.getItem('token') || '';
+    console.log('POS - Using token for transaction:', token.substring(0, 50) + '...');
+    
     const response = await transactionsAPI.create(formattedData)
     return response.data
   } catch (error) {
@@ -200,10 +210,61 @@ export default function POSKasir() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Helper function to get price based on quantity and minStock
+  const getProductPrice = (product, quantity = 1) => {
+    // Auto wholesale: if quantity >= minStock, use wholesalePrice
+    const shouldUseWholesale = priceType === 'wholesale' || 
+      (quantity >= (product.minStock || 0) && product.minStock > 0);
+    
+    return shouldUseWholesale
+      ? (product.wholesalePrice || product.sellingPrice || 0)
+      : (product.sellingPrice || product.price || 0)
+  }
+
+  // Helper function to check if product should show wholesale indicator
+  const shouldShowWholesaleIndicator = (product, quantity = 1) => {
+    return quantity >= (product.minStock || 0) && product.minStock > 0 && product.wholesalePrice;
+  }
+
   // Load initial data
   useEffect(() => {
-    // Set JWT token untuk API calls
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
+    // Check if user is logged in and has valid token
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (!token) {
+      console.error('No access token found. User needs to login first.');
+      setError('Silakan login terlebih dahulu untuk mengakses POS');
+      return;
+    }
+    
+    try {
+      // Parse user data to check if user has branch assignment
+      if (user) {
+        const userData = JSON.parse(user);
+        console.log('POS - Current user:', userData);
+        
+        if (!userData.branch || !userData.branch.id) {
+          console.error('User is not assigned to any branch');
+          setError('User belum di-assign ke cabang. Hubungi administrator untuk assign ke cabang.');
+          return;
+        }
+        
+        console.log('POS - User branch:', userData.branch.name);
+      }
+      
+      // Set token untuk API interceptor (if using setDevToken for development)
+      if (typeof setDevToken === 'function') {
+        setDevToken(token);
+      }
+      
+      console.log('POS - Using accessToken from login:', token.substring(0, 50) + '...');
+      
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      setError('Data user tidak valid. Silakan login ulang.');
+      return;
+    }
     
     loadInitialData()
   }, [])
@@ -212,6 +273,15 @@ export default function POSKasir() {
     try {
       setLoading(true)
       setError(null)
+      
+      // Verify token before making API calls
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No access token available. Please login first.');
+      }
+      
+      console.log('=== LOADING POS DATA ===');
+      console.log('Using token:', token.substring(0, 50) + '...');
       
       const [productsData, categoriesData, customersData] = await Promise.all([
         fetchProducts(),
@@ -229,10 +299,11 @@ export default function POSKasir() {
       setCategories(categoriesData)
       setCustomers(customersData)
     } catch (err) {
+      console.error('Error loading POS data:', err);
       setError(err.message)
       toast({
         title: "Error",
-        description: "Gagal memuat data produk. " + err.message,
+        description: "Gagal memuat data. " + err.message,
         variant: "destructive"
       })
     } finally {
@@ -293,12 +364,10 @@ export default function POSKasir() {
     return uniqueCategories.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   }, [categories])
 
-  // Calculate totals
+  // Calculate totals with automatic wholesale pricing
   const calculations = useMemo(() => {
     const subtotal = cartItems.reduce((sum, item) => {
-      const price = priceType === 'wholesale' 
-        ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-        : (item.product.sellingPrice || item.product.price || 0)
+      const price = getProductPrice(item.product, item.quantity);
       return sum + (price * item.quantity)
     }, 0)
     
@@ -316,15 +385,28 @@ export default function POSKasir() {
     
     if (existingItem) {
       if (existingItem.quantity < availableStock) {
+        const newQuantity = existingItem.quantity + 1;
         setCartItems(cartItems.map(item =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: newQuantity }
             : item
         ))
-        toast({
-          title: "Produk Ditambahkan",
-          description: `${product.name} berhasil ditambahkan ke keranjang`
-        })
+        
+        // Check if reached wholesale threshold
+        const willUseWholesale = shouldShowWholesaleIndicator(product, newQuantity);
+        const wasWholesale = shouldShowWholesaleIndicator(product, existingItem.quantity);
+        
+        if (willUseWholesale && !wasWholesale) {
+          toast({
+            title: "Harga Grosir Aktif!",
+            description: `${product.name} sekarang menggunakan harga grosir ${formatCurrency(product.wholesalePrice)}`,
+          })
+        } else {
+          toast({
+            title: "Produk Ditambahkan",
+            description: `${product.name} berhasil ditambahkan ke keranjang`
+          })
+        }
       } else {
         toast({
           title: "Stok Tidak Mencukupi",
@@ -351,11 +433,29 @@ export default function POSKasir() {
     const item = cartItems.find(item => item.product.id === productId)
     const availableStock = item?.product?.stock || 999
     if (item && newQuantity <= availableStock) {
+      const oldQuantity = item.quantity;
+      
       setCartItems(cartItems.map(item =>
         item.product.id === productId
           ? { ...item, quantity: newQuantity }
           : item
       ))
+      
+      // Check wholesale threshold changes
+      const willUseWholesale = shouldShowWholesaleIndicator(item.product, newQuantity);
+      const wasWholesale = shouldShowWholesaleIndicator(item.product, oldQuantity);
+      
+      if (willUseWholesale && !wasWholesale) {
+        toast({
+          title: "Harga Grosir Aktif!",
+          description: `${item.product.name} sekarang menggunakan harga grosir ${formatCurrency(item.product.wholesalePrice)}`,
+        })
+      } else if (!willUseWholesale && wasWholesale) {
+        toast({
+          title: "Harga Normal",
+          description: `${item.product.name} kembali menggunakan harga normal`,
+        })
+      }
     } else {
       toast({
         title: "Stok Tidak Mencukupi",
@@ -427,26 +527,26 @@ export default function POSKasir() {
         console.log('Using default customer:', customers[0].id, customers[0].name)
       }
 
-      // Prepare transaction data according to API validation requirements  
+      // Prepare transaction data according to API specification
       const transactionData = {
-        customerId: customerId, // Should be a valid user ID now
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          unitPrice: priceType === 'wholesale' 
-            ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-            : (item.product.sellingPrice || item.product.price || 0),
-          subtotal: (priceType === 'wholesale' 
-            ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-            : (item.product.sellingPrice || item.product.price || 0)) * item.quantity
-        })),
+        // customerId is optional - can be null or omitted for walk-in customers
+        ...(customerId && { customerId: customerId }),
+        items: cartItems.map(item => {
+          const unitPrice = getProductPrice(item.product, item.quantity);
+          return {
+            productId: item.product.id,
+            quantity: item.quantity,
+            unitPrice: unitPrice,
+            subtotal: unitPrice * item.quantity
+          }
+        }),
         subtotal: calculations.subtotal,
-        taxAmount: calculations.tax,
-        discountAmount: calculations.discount,
+        taxAmount: calculations.tax || 0,
+        discountAmount: calculations.discount || 0,
         totalAmount: calculations.total,
-        paymentMethod: paymentMethod, // Already in correct format (CASH or DEBIT_CARD)
-        amountPaid: paymentMethod === 'DEBIT_CARD' ? calculations.total : parseFloat(paymentAmount || 0), // Debit card exact amount
-        changeAmount: paymentMethod === 'CASH' ? (parseFloat(paymentAmount || 0) - calculations.total) : 0,
+        paymentMethod: paymentMethod, // CASH or DEBIT_CARD
+        amountPaid: paymentMethod === 'DEBIT_CARD' ? calculations.total : parseFloat(paymentAmount || 0),
+        changeAmount: paymentMethod === 'CASH' ? Math.max(0, parseFloat(paymentAmount || 0) - calculations.total) : 0,
         notes: notes || `${customerInfo.name || 'Walk-in Customer'} - ${paymentMethod} payment`
       }
 
@@ -523,13 +623,18 @@ export default function POSKasir() {
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
-              <Package className="w-6 h-6 text-red-600" />
+              <User className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="mb-2 text-lg font-medium text-gray-900">Gagal Memuat Data</h3>
+            <h3 className="mb-2 text-lg font-medium text-gray-900">POS Tidak Dapat Diakses</h3>
             <p className="mb-4 text-gray-600">{error}</p>
-            <Button onClick={loadInitialData} variant="outline">
-              Coba Lagi
-            </Button>
+            <div className="space-x-2">
+              <Button onClick={() => window.location.href = '/login'} variant="default">
+                Login
+              </Button>
+              <Button onClick={loadInitialData} variant="outline">
+                Coba Lagi
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -540,8 +645,36 @@ export default function POSKasir() {
     <div className="container p-6 mx-auto max-w-7xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Point of Sale (POS)</h1>
-        <p className="mt-1 text-gray-600">Sistem kasir untuk transaksi penjualan</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Point of Sale (POS)</h1>
+            <p className="mt-1 text-gray-600">Sistem kasir untuk transaksi penjualan</p>
+          </div>
+          {/* User Info */}
+          <div className="text-right">
+            {(() => {
+              try {
+                const userData = JSON.parse(localStorage.getItem('user') || '{}');
+                return (
+                  <div className="px-4 py-2 rounded-lg bg-blue-50">
+                    <p className="text-sm font-medium text-blue-900">
+                      {userData.full_name || userData.fullName || userData.username}
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      {userData.branch?.name} ({userData.role})
+                    </p>
+                  </div>
+                );
+              } catch {
+                return (
+                  <div className="px-4 py-2 rounded-lg bg-red-50">
+                    <p className="text-sm text-red-600">User tidak login</p>
+                  </div>
+                );
+              }
+            })()}
+          </div>
+        </div>
       </div>
 
       {/* Progress Steps */}
@@ -601,15 +734,20 @@ export default function POSKasir() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={priceType} onValueChange={setPriceType}>
-                  <SelectTrigger className="w-full md:w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="wholesale">Grosir</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-col w-full md:w-40">
+                  <Select value={priceType} onValueChange={setPriceType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="wholesale">Force Grosir</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto grosir jika qty ≥ min stok
+                  </p>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -631,10 +769,13 @@ export default function POSKasir() {
                         <div className="flex items-end justify-between">
                           <div>
                             <p className="font-bold text-blue-600">
-                              {formatCurrency(priceType === 'wholesale' 
-                                ? (product.wholesalePrice || product.sellingPrice || 0)
-                                : (product.sellingPrice || product.price || 0))}
+                              {formatCurrency(getProductPrice(product, 1))}
                             </p>
+                            {product.wholesalePrice && product.minStock > 0 && (
+                              <p className="text-xs font-medium text-orange-600">
+                                Grosir: {formatCurrency(product.wholesalePrice)} (≥{product.minStock} {product.unit || 'Pcs'})
+                              </p>
+                            )}
                             <p className="text-xs text-gray-500">
                               Stok: {product.stock || 'N/A'} {product.unit || 'Pcs'}
                             </p>
@@ -684,11 +825,14 @@ export default function POSKasir() {
                         <div className="flex-1">
                           <h4 className="text-sm font-medium line-clamp-2">{item.product.name}</h4>
                           <p className="text-xs text-gray-500">{item.product.sku}</p>
-                          <p className="text-sm font-semibold text-blue-600">
-                            {formatCurrency(priceType === 'wholesale' 
-                              ? (item.product.wholesalePrice || item.product.sellingPrice || 0)
-                              : (item.product.sellingPrice || item.product.price || 0))}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-blue-600">
+                              {formatCurrency(getProductPrice(item.product, item.quantity))}
+                            </p>
+                            {shouldShowWholesaleIndicator(item.product, item.quantity) && (
+                              <Badge variant="secondary" className="text-xs">Grosir</Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button

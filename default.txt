@@ -27,3 +27,32 @@
     }
 }
 
+📊 Seeding Summary:
+======================================================================
+👤 Users: 3
+   - Admin: 1
+   - Branch Manager: 1
+   - Cashier: 1
+
+🏢 Branches: 1
+   - HD Motopart (ACTIVE)
+
+🔑 Login Credentials:
+======================================================================
+Admin:
+  Username: admin
+  Password: Admin123!
+  Email: admin@hdmotopart.com
+
+Branch Manager:
+  Username: manager_hd
+  Password: Manager123!
+  Email: manager@hdmotopart.com
+
+Cashier:
+  Username: cashier_hd
+  Password: Cashier123!
+  Email: cashier@hdmotopart.com
+======================================================================
+
+✅ HD Motopart seeding finished successfully!
