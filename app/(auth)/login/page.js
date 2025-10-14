@@ -1,19 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Store } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { authAPI } from '@/lib/api';
-import { setAuthToken, getAuthToken } from '@/lib/auth';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Store } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { authAPI } from "@/lib/api";
+import { setAuthToken, getAuthToken } from "@/lib/auth";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const router = useRouter();
 
@@ -21,7 +27,7 @@ export default function LoginPage() {
     // Check if already authenticated
     const token = getAuthToken();
     if (token) {
-      router.push('/dashboard');
+      router.push("/dashboard");
     }
   }, [router]);
 
@@ -32,25 +38,27 @@ export default function LoginPage() {
     try {
       const response = await authAPI.login({
         username: username,
-        password: password
+        password: password,
       });
 
       // Response structure: {success, data: {accessToken, refreshToken, user}}
       if (response.success && response.data) {
         setAuthToken(response.data.accessToken, response.data.refreshToken);
-        
+
         // Store user info from login response
         if (response.data.user) {
-          localStorage.setItem('user', JSON.stringify(response.data.user));
+          localStorage.setItem("user", JSON.stringify(response.data.user));
         }
-        
-        toast.success('Login berhasil!');
-        router.push('/dashboard');
+
+        toast.success("Login berhasil!");
+        router.push("/dashboard");
       } else {
-        toast.error('Login response format tidak valid');
+        toast.error("Login response format tidak valid");
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || error.message || 'Login gagal');
+      toast.error(
+        error.response?.data?.error || error.message || "Login gagal"
+      );
     } finally {
       setLoginLoading(false);
     }
@@ -66,10 +74,10 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            POS Motor
+            HD MOTOPART
           </CardTitle>
           <CardDescription className="text-base">
-            Sistem Konfigurasi & Manajemen
+            Sistem Manajemen Penjualan & Stok Suku Cadang
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,15 +117,10 @@ export default function LoginPage() {
                   <span>Masuk...</span>
                 </div>
               ) : (
-                'Masuk'
+                "Masuk"
               )}
             </Button>
           </form>
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Kredensial default: <span className="font-semibold">admin / admin123</span>
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
