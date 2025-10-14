@@ -132,6 +132,7 @@ const DashboardLayout = ({ children }) => {
       label: 'Produk', 
       icon: Package, 
       roles: ['ADMIN', 'BRANCH_MANAGER'], 
+      href: '#', // Add href for parent menu
       submenu: [
         { 
           id: 'categories', 
@@ -144,7 +145,7 @@ const DashboardLayout = ({ children }) => {
           id: 'brands', 
           label: 'Brand/Merk', 
           icon: Package, 
-          roles: ['ADMIN', 'BRANCH_MANAGER'], 
+          roles: ['ADMIN'], 
           href: '/brands' 
         },
         { 
@@ -161,6 +162,7 @@ const DashboardLayout = ({ children }) => {
       label: 'Inventory', 
       icon: Warehouse, 
       roles: ['ADMIN', 'BRANCH_MANAGER'], 
+      href: '#', // Add href for parent menu
       submenu: [
         { 
           id: 'stock-management', 
@@ -232,6 +234,7 @@ const DashboardLayout = ({ children }) => {
       label: 'Pengaturan', 
       icon: Settings, 
       roles: ['ADMIN', 'BRANCH_MANAGER'], 
+      href: '#', // Add href for parent menu
       submenu: [
         { 
           id: 'company', 
@@ -299,7 +302,7 @@ const DashboardLayout = ({ children }) => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="animate-pulse">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></div>
+          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600"></div>
         </div>
       </div>
     );
@@ -308,22 +311,22 @@ const DashboardLayout = ({ children }) => {
   if (ngrokError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-orange-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+        <div className="max-w-md p-6 mx-auto text-center">
+          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-red-600 to-orange-600">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Ngrok Connection Error</h2>
-          <p className="text-gray-600 mb-4">Unable to connect to the API server. This might be due to:</p>
-          <ul className="text-left text-sm text-gray-500 mb-6 space-y-1">
+          <h2 className="mb-2 text-xl font-semibold text-gray-900">Ngrok Connection Error</h2>
+          <p className="mb-4 text-gray-600">Unable to connect to the API server. This might be due to:</p>
+          <ul className="mb-6 space-y-1 text-sm text-left text-gray-500">
             <li>• Ngrok tunnel has expired or been terminated</li>
             <li>• Ngrok browser warning (click "Visit Site" to bypass)</li>
             <li>• API server is not running on the backend</li>
             <li>• NEXT_PUBLIC_API_URL environment variable needs updating</li>
             <li>• Network connection issues</li>
           </ul>
-          <div className="text-xs text-gray-400 mb-4">
+          <div className="mb-4 text-xs text-gray-400">
             Current API URL: {process.env.NEXT_PUBLIC_API_URL || 'Not configured'}
           </div>
           <Button 
@@ -341,7 +344,7 @@ const DashboardLayout = ({ children }) => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-pink-600 rounded-full mx-auto mb-4"></div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-red-600 to-pink-600"></div>
           <p>User data not found. Redirecting to login...</p>
         </div>
       </div>
@@ -349,7 +352,7 @@ const DashboardLayout = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Sidebar */}
       <div
         className={`${
@@ -359,12 +362,12 @@ const DashboardLayout = ({ children }) => {
         {/* Logo */}
         <div className="p-6 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md transform hover:scale-105 transition-transform duration-300">
+            <div className="flex items-center justify-center w-10 h-10 transition-transform duration-300 transform shadow-md bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:scale-105">
               <Store className="w-6 h-6 text-white" />
             </div>
             {sidebarOpen && (
-              <div className="animate-in fade-in-50 slide-in-from-left-5 duration-300">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <div className="duration-300 animate-in fade-in-50 slide-in-from-left-5">
+                <h1 className="text-xl font-bold text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
                   POS Motor
                 </h1>
                 <p className="text-xs text-muted-foreground">Konfigurasi</p>
@@ -405,7 +408,7 @@ const DashboardLayout = ({ children }) => {
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'animate-in zoom-in-50 duration-300' : ''}`} />
                     {sidebarOpen && (
-                      <span className="font-medium flex-1 text-left animate-in fade-in-50 slide-in-from-left-5 duration-300">
+                      <span className="flex-1 font-medium text-left duration-300 animate-in fade-in-50 slide-in-from-left-5">
                         {item.label}
                       </span>
                     )}
@@ -431,7 +434,7 @@ const DashboardLayout = ({ children }) => {
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'animate-in zoom-in-50 duration-300' : ''}`} />
                     {sidebarOpen && (
-                      <span className="font-medium flex-1 text-left animate-in fade-in-50 slide-in-from-left-5 duration-300">
+                      <span className="flex-1 font-medium text-left duration-300 animate-in fade-in-50 slide-in-from-left-5">
                         {item.label}
                       </span>
                     )}
@@ -440,7 +443,7 @@ const DashboardLayout = ({ children }) => {
                 
                 {/* Submenu */}
                 {hasSubmenu && submenuOpen && sidebarOpen && (
-                  <div className="ml-4 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                  <div className="mt-1 ml-4 space-y-1 duration-200 animate-in slide-in-from-top-2">
                     {item.submenu.map((subItem) => {
                       const SubIcon = subItem.icon;
                       const isSubActive = isActiveSubItem(subItem);
@@ -470,7 +473,7 @@ const DashboardLayout = ({ children }) => {
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all duration-200 hover:scale-105"
+            className="flex items-center w-full gap-3 px-4 py-3 text-red-600 transition-all duration-200 rounded-lg hover:bg-red-50 hover:scale-105"
           >
             <LogOut className="w-5 h-5" />
             {sidebarOpen && <span className="font-medium">Keluar</span>}
@@ -479,16 +482,16 @@ const DashboardLayout = ({ children }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+        <header className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="hover:bg-gray-100 transition-colors duration-200"
+                className="transition-colors duration-200 hover:bg-gray-100"
               >
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
@@ -504,8 +507,8 @@ const DashboardLayout = ({ children }) => {
             
             {/* User Info */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-gray-200">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
+              <div className="flex items-center gap-3 px-4 py-2 border border-gray-200 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50">
+                <div className="flex items-center justify-center w-10 h-10 font-semibold text-white rounded-full shadow-md bg-gradient-to-r from-blue-500 to-purple-500">
                   {currentUser?.username?.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex flex-col">
@@ -520,7 +523,7 @@ const DashboardLayout = ({ children }) => {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
-                className="hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
+                className="transition-colors duration-200 hover:bg-red-50 hover:text-red-600"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -530,8 +533,8 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="animate-in fade-in-50 slide-in-from-bottom-5 duration-500">
+        <main className="flex-1 p-6 overflow-y-auto">
+          <div className="duration-500 animate-in fade-in-50 slide-in-from-bottom-5">
             {children}
           </div>
         </main>

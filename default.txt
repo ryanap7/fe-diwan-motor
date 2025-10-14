@@ -1,0 +1,29 @@
+{
+    "success": true,
+    "message": "Brands retrieved successfully",
+    "data": {
+        "brands": [
+            {
+                "id": "313ea827-afd5-4470-8f76-8f9ae0a27884",
+                "name": "Default",
+                "description": "Default",
+                "isActive": true,
+                "createdAt": "2025-10-14T18:40:50.398Z",
+                "updatedAt": "2025-10-14T18:40:50.398Z",
+                "_count": {
+                    "products": 0
+                }
+            }
+        ],
+        "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 1,
+            "totalPages": 1
+        }
+    },
+    "meta": {
+        "timestamp": "2025-10-14T18:40:52.792Z"
+    }
+}
+
