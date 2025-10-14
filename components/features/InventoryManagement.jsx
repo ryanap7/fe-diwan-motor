@@ -184,27 +184,43 @@ const InventoryManagement = () => {
       console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
       console.log('Current token:', localStorage.getItem('token')?.substring(0, 20) + '...');
 
-      const [productsRes, branchesRes] = await Promise.all([
-        productsAPI.getAll(),
+      // Try to get stock overview first (new endpoint that includes stock per branch)
+      const [stockRes, branchesRes] = await Promise.all([
+        stockAPI.getStockOverview(),
         branchesAPI.getAll()
       ]);
 
-      console.log('Products Response:', productsRes);
+      console.log('Stock Overview Response:', stockRes);
       console.log('Branches Response:', branchesRes);
 
-      // Handle API response structure sesuai dengan format yang benar
-      if (productsRes?.success && productsRes.data?.products) {
-        setProducts(productsRes.data.products);
-        
-        // Fetch stock information for each product
-        fetchProductStocks(productsRes.data.products);
-      } else if (productsRes?.data?.products) {
+      // Handle stock overview response (products with stock information)
+      if (stockRes?.success && stockRes.data?.products) {
+        setProducts(stockRes.data.products);
+        console.log('Loaded products with stock data:', stockRes.data.products.length);
+      } else if (stockRes?.data?.products) {
         // Handle case where success field might not exist
-        setProducts(productsRes.data.products);
-        fetchProductStocks(productsRes.data.products);
+        setProducts(stockRes.data.products);
+        console.log('Loaded products with stock data (no success flag):', stockRes.data.products.length);
       } else {
-        console.warn('No products data found in response');
-        setProducts([]);
+        // Fallback to regular products API
+        console.log('Stock overview not available, falling back to products API');
+        try {
+          const productsRes = await productsAPI.getAll();
+          if (productsRes?.success && productsRes.data?.products) {
+            setProducts(productsRes.data.products);
+            // Fetch stock information for each product
+            fetchProductStocks(productsRes.data.products);
+          } else if (productsRes?.data?.products) {
+            setProducts(productsRes.data.products);
+            fetchProductStocks(productsRes.data.products);
+          } else {
+            console.warn('No products data found in fallback response');
+            setProducts([]);
+          }
+        } catch (fallbackError) {
+          console.error('Fallback products API also failed:', fallbackError);
+          setProducts([]);
+        }
       }
 
       if (branchesRes?.success && branchesRes.data?.branches) {
@@ -345,13 +361,23 @@ const InventoryManagement = () => {
 
   // Calculate total stock across all branches for a product
   const getTotalStock = (product) => {
-    const stockInfo = productStocks[product.id];
+    // First check if the product has totalStock from the new API
+    if (product.totalStock !== undefined) {
+      return product.totalStock;
+    }
     
+    // Check if stocksByBranch exists and calculate total
+    if (product.stocksByBranch && Array.isArray(product.stocksByBranch)) {
+      return product.stocksByBranch.reduce((sum, branch) => sum + (parseInt(branch.quantity) || 0), 0);
+    }
+    
+    // Check the productStocks cache
+    const stockInfo = productStocks[product.id];
     if (stockInfo?.totalStock !== undefined) {
       return stockInfo.totalStock;
     }
     
-    // Fallback to product data if API stock info not available
+    // Fallback to legacy product data
     if (product.stock_per_branch) {
       return Object.values(product.stock_per_branch).reduce((sum, stock) => sum + (parseInt(stock) || 0), 0);
     }
@@ -361,14 +387,20 @@ const InventoryManagement = () => {
 
   // Get stock for specific branch
   const getBranchStock = (product, branchId) => {
-    const stockInfo = productStocks[product.id];
-    
-    if (stockInfo?.stocksByBranch) {
-      const branchStock = stockInfo.stocksByBranch.find(branch => branch.branchId === branchId);
-      return branchStock ? branchStock.quantity : 0;
+    // First check if the product has stocksByBranch from the new API
+    if (product.stocksByBranch && Array.isArray(product.stocksByBranch)) {
+      const branchStock = product.stocksByBranch.find(branch => branch.branchId === branchId);
+      return branchStock ? parseInt(branchStock.quantity) || 0 : 0;
     }
     
-    // Fallback to product data if API stock info not available
+    // Check the productStocks cache
+    const stockInfo = productStocks[product.id];
+    if (stockInfo?.stocksByBranch) {
+      const branchStock = stockInfo.stocksByBranch.find(branch => branch.branchId === branchId);
+      return branchStock ? parseInt(branchStock.quantity) || 0 : 0;
+    }
+    
+    // Fallback to legacy product data
     if (product.stock_per_branch) {
       return product.stock_per_branch[branchId] || 0;
     }
@@ -687,38 +719,6 @@ const InventoryManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* API Status Info */}
-      <div className="p-4 border border-green-200 rounded-lg bg-green-50">
-        <div className="flex items-start gap-3">
-          <Package className="w-5 h-5 text-green-600 mt-0.5" />
-          <div className="flex-1">
-            <h4 className="font-medium text-green-800">Stock Management API Ready</h4>
-            <p className="text-sm text-green-700 mt-1">
-              Backend API untuk stock management (<code>/api/stocks/adjust/</code>) sudah tersedia dan siap digunakan.
-              Fitur tambah/kurangi stok akan langsung memperbarui database.
-            </p>
-            <p className="text-xs text-green-600 mt-2">
-              <strong>Status:</strong> ✅ Endpoint <code>POST /api/stocks/adjust/{'{productId}'}</code> aktif dan berfungsi
-            </p>
-            {/* Debug Info */}
-            <details className="mt-2">
-              <summary className="text-xs cursor-pointer text-green-700 hover:text-green-800">
-                🔍 Debug Info (klik untuk melihat)
-              </summary>
-              <div className="mt-1 text-xs text-green-600 bg-green-100 p-2 rounded">
-                <p><strong>Total Products:</strong> {Array.isArray(products) ? products.length : 0}</p>
-                <p><strong>Total Branches:</strong> {Array.isArray(branches) ? branches.length : 0}</p>
-                {Array.isArray(products) && products.length > 0 && (
-                  <p><strong>Sample Product ID:</strong> {products[0]?.id}</p>
-                )}
-                {Array.isArray(branches) && branches.length > 0 && (
-                  <p><strong>Sample Branch ID:</strong> {branches[0]?.id}</p>
-                )}
-              </div>
-            </details>
-          </div>
-        </div>
-      </div>
 
       <div className="flex items-center justify-between">
         <div>
@@ -726,20 +726,20 @@ const InventoryManagement = () => {
           <p className="text-sm text-muted-foreground">Manajemen stok produk per cabang</p>
         </div>
         <div className="flex gap-2">
-          <Button
+          {/* <Button
             onClick={() => setTransferDialogOpen(true)}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <ArrowLeftRight className="w-4 h-4 mr-2" />
             Transfer Stok
-          </Button>
-          <Button
+          </Button> */}
+          {/* <Button
             onClick={() => setAdjustmentDialogOpen(true)}
             className="bg-green-600 hover:bg-green-700"
           >
             <Edit3 className="w-4 h-4 mr-2" />
             Penyesuaian Stok
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -780,7 +780,7 @@ const InventoryManagement = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="flex gap-2">
+                {/* <div className="flex gap-2">
                   <Button
                     onClick={() => setOpnameDialogOpen(true)}
                     variant="outline"
@@ -789,7 +789,7 @@ const InventoryManagement = () => {
                     <ClipboardList className="w-4 h-4 mr-2" />
                     Stock Opname
                   </Button>
-                </div>
+                </div> */}
               </div>
             </CardContent>
           </Card>
@@ -838,7 +838,7 @@ const InventoryManagement = () => {
                             <Button
                               size="sm"
                               variant="link"
-                              className="p-0 h-auto text-xs text-blue-600 hover:text-blue-800"
+                              className="h-auto p-0 text-xs text-blue-600 hover:text-blue-800"
                               onClick={() => {
                                 setSelectedProduct(product);
                                 setStockDetailDialogOpen(true);
@@ -873,7 +873,7 @@ const InventoryManagement = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                            className="text-xs text-green-700 border-green-200 bg-green-50 hover:bg-green-100"
                             onClick={() => {
                               setSelectedProduct(product);
                               setQuickAddDialogOpen(true);
@@ -885,7 +885,7 @@ const InventoryManagement = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                            className="text-xs text-red-700 border-red-200 bg-red-50 hover:bg-red-100"
                             onClick={() => {
                               setSelectedProduct(product);
                               setQuickReduceDialogOpen(true);
@@ -894,7 +894,7 @@ const InventoryManagement = () => {
                             <Minus className="w-3 h-3 mr-1" />
                             Kurangi Stok
                           </Button>
-                          <Button
+                          {/* <Button
                             size="sm"
                             variant="outline"
                             onClick={() => {
@@ -906,7 +906,7 @@ const InventoryManagement = () => {
                           >
                             <ArrowLeftRight className="w-3 h-3 mr-1" />
                             Transfer
-                          </Button>
+                          </Button> */}
                         </div>
                       </div>
                     </div>

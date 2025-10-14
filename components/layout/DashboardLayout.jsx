@@ -175,14 +175,14 @@ const DashboardLayout = ({ children }) => {
           id: 'purchase-orders', 
           label: 'Purchase Orders', 
           icon: ShoppingBag, 
-          roles: ['ADMIN', 'BRANCH_MANAGER'], 
+          roles: ['ADMIN'], 
           href: '/purchase-orders' 
         },
         { 
           id: 'stock-movements', 
           label: 'Stock Movements', 
           icon: BarChart3, 
-          roles: ['ADMIN', 'BRANCH_MANAGER'], 
+          roles: ['ADMIN'], 
           href: '/stock-movements' 
         },
       ]
