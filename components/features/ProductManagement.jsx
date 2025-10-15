@@ -275,6 +275,7 @@ const ProductManagement = () => {
       // Auto-generate values for new product
       const firstBrandId =
         Array.isArray(brands) && brands.length > 0 ? brands[0].id : "";
+      console.log('Auto-selecting first brand:', firstBrandId, 'from brands:', brands);
       setFormData({
         sku: generateSKU(), // Auto-generate SKU
         barcode: generateBarcode(), // Auto-generate Barcode
@@ -320,6 +321,8 @@ const ProductManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submit attempt with data:', formData);
+    console.log('Current brands state:', brands);
     setSaving(true);
 
     try {
@@ -838,7 +841,6 @@ const ProductManagement = () => {
                   value={formData.sku}
                   onChange={(e) => handleChange("sku", e.target.value)}
                   placeholder="contoh: BR-MTR-001"
-                  required
                 />
               </div>
               <div className="space-y-2">
@@ -894,7 +896,6 @@ const ProductManagement = () => {
               <Select
                 value={formData.brandId}
                 onValueChange={(value) => handleChange("brandId", value)}
-                required
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih brand" />
@@ -1027,8 +1028,8 @@ const ProductManagement = () => {
                   Jumlah minimum untuk mendapat harga grosir
                 </p>
                 {formData.minOrderWholesale && formData.wholesalePrice && (
-                  <div className="p-2 mt-2 bg-green-50 border border-green-200 rounded">
-                    <p className="text-xs text-green-700 font-medium">
+                  <div className="p-2 mt-2 border border-green-200 rounded bg-green-50">
+                    <p className="text-xs font-medium text-green-700">
                       ✅ Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
                     </p>
                     <p className="text-xs text-green-600">
