@@ -52,7 +52,15 @@ const DashboardLayout = ({ children }) => {
       // Check if user data is already in localStorage from login
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
-        setCurrentUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        setCurrentUser(userData);
+        
+        // Auto-redirect CASHIER to POS page
+        if (userData.role === "CASHIER" && pathname !== "/pos") {
+          router.push("/pos");
+          return;
+        }
+        
         setLoading(false);
         return;
       }
@@ -70,6 +78,12 @@ const DashboardLayout = ({ children }) => {
       if (response.data.success && response.data.data) {
         setCurrentUser(response.data.data);
         localStorage.setItem("user", JSON.stringify(response.data.data));
+        
+        // Auto-redirect CASHIER to POS page
+        if (response.data.data.role === "CASHIER" && pathname !== "/pos") {
+          router.push("/pos");
+          return;
+        }
       } else {
         throw new Error("Invalid response format");
       }
@@ -202,7 +216,7 @@ const DashboardLayout = ({ children }) => {
           id: "stock-movements",
           label: "Pergerakan Stok",
           icon: BarChart3,
-          roles: ["ADMIN"],
+          roles: ["ADMIN", "BRANCH_MANAGER"],
           href: "/stock-movements",
         },
       ],
@@ -218,37 +232,37 @@ const DashboardLayout = ({ children }) => {
       id: "customers",
       label: "Customer",
       icon: Users,
-      roles: ["ADMIN"],
+      roles: ["ADMIN", "BRANCH_MANAGER", "CASHIER"],
       href: "/customers",
     },
     {
       id: "pos",
       label: "POS Kasir",
       icon: CreditCard,
-      roles: ["ADMIN", "BRANCH_MANAGER", "CASHIER"],
+      roles: ["CASHIER"],
       href: "/pos",
     },
     {
       id: "pos-transactions",
       label: "Transaksi",
       icon: ShoppingCart,
-      roles: ["ADMIN", "BRANCH_MANAGER"],
+      roles: ["ADMIN", "BRANCH_MANAGER","CASHIER"],
       href: "/transactions",
     },
-    {
-      id: "reporting-analytics",
-      label: "Laporan & Analisis",
-      icon: PieChart,
-      roles: ["ADMIN", "BRANCH_MANAGER"],
-      href: "/reports",
-    },
-    {
-      id: "activity-logs",
-      label: "Log Aktivitas",
-      icon: FileText,
-      roles: ["ADMIN"],
-      href: "/activity-logs",
-    },
+    // {
+    //   id: "reporting-analytics",
+    //   label: "Laporan & Analisis",
+    //   icon: PieChart,
+    //   roles: ["ADMIN", "BRANCH_MANAGER"],
+    //   href: "/reports",
+    // },
+    // {
+    //   id: "activity-logs",
+    //   label: "Log Aktivitas",
+    //   icon: FileText,
+    //   roles: ["ADMIN"],
+    //   href: "/activity-logs",
+    // },
     // {
     //   id: "settings",
     //   label: "Pengaturan",
@@ -277,11 +291,11 @@ const DashboardLayout = ({ children }) => {
   // Filter menu items based on user role
   const filterMenuByRole = (items, userRole) => {
     return items
-      .filter((item) => item.roles.includes(userRole))
+      .filter((item) => item.roles.length === 0 || item.roles.includes(userRole))
       .map((item) => {
         if (item.submenu) {
           const filteredSubmenu = item.submenu.filter((subItem) =>
-            subItem.roles.includes(userRole)
+            subItem.roles.length === 0 || subItem.roles.includes(userRole)
           );
           return { ...item, submenu: filteredSubmenu };
         }
@@ -292,6 +306,16 @@ const DashboardLayout = ({ children }) => {
   const menuItems = currentUser
     ? filterMenuByRole(allMenuItems, currentUser.role)
     : [];
+
+  // Route protection for CASHIER role
+  useEffect(() => {
+    if (currentUser && currentUser.role === "CASHIER") {
+      const allowedPaths = ["/pos", "/transactions", "/customers"];
+      if (!allowedPaths.includes(pathname)) {
+        router.push("/pos");
+      }
+    }
+  }, [currentUser, pathname, router]);
 
   // Get current page title based on pathname
   const getCurrentPageTitle = () => {

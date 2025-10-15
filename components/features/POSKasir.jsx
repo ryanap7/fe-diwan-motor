@@ -197,8 +197,9 @@ export default function POSKasir() {
     phone: '',
     type: 'walk-in' // walk-in or registered
   })
-  const [paymentMethod, setPaymentMethod] = useState('CASH') // CASH or DEBIT_CARD
+  const [paymentMethod, setPaymentMethod] = useState('CASH') // Only CASH payment allowed
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [processing, setProcessing] = useState(false)
   const [notes, setNotes] = useState('')
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [priceType, setPriceType] = useState('normal') // normal or wholesale
@@ -376,7 +377,17 @@ export default function POSKasir() {
   // Add item to cart
   const addToCart = (product) => {
     const existingItem = cartItems.find(item => item.product.id === product.id)
-    const availableStock = product.stock || 999 // Default high stock if not specified
+    const availableStock = product.stock || 0 // Default to 0 if stock not specified
+    
+    // Check stock availability
+    if (availableStock <= 0) {
+      toast({
+        title: "Stok Habis",
+        description: `${product.name} tidak tersedia (stok: ${availableStock})`,
+        variant: "destructive"
+      })
+      return
+    }
     
     if (existingItem) {
       if (existingItem.quantity < availableStock) {
@@ -410,6 +421,16 @@ export default function POSKasir() {
         })
       }
     } else {
+      // Check stock before adding new item
+      if (availableStock < 1) {
+        toast({
+          title: "Stok Tidak Mencukupi",
+          description: `${product.name} hanya tersisa ${availableStock} unit`,
+          variant: "destructive"
+        })
+        return
+      }
+      
       setCartItems([...cartItems, { product, quantity: 1 }])
       toast({
         title: "Produk Ditambahkan",
@@ -465,6 +486,20 @@ export default function POSKasir() {
     setCartItems(cartItems.filter(item => item.product.id !== productId))
   }
 
+  // Validate stock before payment
+  const validateStockBeforePayment = async () => {
+    for (const item of cartItems) {
+      const availableStock = item.product.stock || 0
+      if (item.quantity > availableStock) {
+        return {
+          isValid: false,
+          message: `${item.product.name} tidak cukup stok (tersedia: ${availableStock}, dibutuhkan: ${item.quantity})`
+        }
+      }
+    }
+    return { isValid: true, message: "Stock validation passed" }
+  }
+
   // Clear cart
   const clearCart = () => {
     setCartItems([])
@@ -476,23 +511,30 @@ export default function POSKasir() {
 
   // Process payment
   const processPayment = async () => {
+    if (processing) return; // Prevent double submission
+    
+    setProcessing(true);
     try {
-      // Validation untuk payment method
-      if (paymentMethod === 'CASH') {
-        const amount = parseFloat(paymentAmount || 0)
-        if (!paymentAmount || amount < calculations.total) {
-          toast({
-            title: "Jumlah Pembayaran Kurang",
-            description: "Jumlah pembayaran harus minimal sama dengan total",
-            variant: "destructive"
-          })
-          return
-        }
+      // Validation untuk pembayaran tunai (CASH only)
+      const amount = parseFloat(paymentAmount || 0)
+      if (!paymentAmount || amount < calculations.total) {
+        toast({
+          title: "Jumlah Pembayaran Kurang",
+          description: `Minimum pembayaran: ${formatCurrency(calculations.total)}`,
+          variant: "destructive"
+        })
+        return
       }
-      
-      // Untuk debit card, set payment amount otomatis ke total amount
-      if (paymentMethod === 'DEBIT_CARD') {
-        setPaymentAmount(calculations.total.toString())
+
+      // Additional validation untuk stock sebelum proses pembayaran
+      const stockValidation = await validateStockBeforePayment()
+      if (!stockValidation.isValid) {
+        toast({
+          title: "Validasi Stok Gagal",
+          description: stockValidation.message,
+          variant: "destructive"
+        })
+        return
       }
 
       // Handle customer creation if needed
@@ -539,10 +581,10 @@ export default function POSKasir() {
         taxAmount: calculations.tax || 0,
         discountAmount: calculations.discount || 0,
         totalAmount: calculations.total,
-        paymentMethod: paymentMethod, // CASH or DEBIT_CARD
-        amountPaid: paymentMethod === 'DEBIT_CARD' ? calculations.total : parseFloat(paymentAmount || 0),
-        changeAmount: paymentMethod === 'CASH' ? Math.max(0, parseFloat(paymentAmount || 0) - calculations.total) : 0,
-        notes: notes || `${customerInfo.name || 'Walk-in Customer'} - ${paymentMethod} payment`
+        paymentMethod: 'CASH', // Only cash payment allowed
+        amountPaid: parseFloat(paymentAmount || 0),
+        changeAmount: Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
+        notes: notes || `${customerInfo.name || 'Walk-in Customer'} - Pembayaran Tunai`
       }
 
       console.log('Processing transaction:', transactionData)
@@ -585,6 +627,8 @@ export default function POSKasir() {
         description: errorMessage,
         variant: "destructive"
       })
+    } finally {
+      setProcessing(false)
     }
   }
 
@@ -748,40 +792,66 @@ export default function POSKasir() {
             <CardContent>
               <ScrollArea className="h-96">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {filteredProducts.map(product => (
-                    <Card key={product.id} className="transition-shadow cursor-pointer hover:shadow-md"
-                          onClick={() => addToCart(product)}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h3 className="text-sm font-semibold line-clamp-2">{product.name}</h3>
-                            <p className="text-xs text-gray-500">{product.sku}</p>
-                            <Badge variant="outline" className="mt-1 text-xs">
-                              {product.brand?.name || product.brand || 'No Brand'}
-                            </Badge>
+                  {filteredProducts.map(product => {
+                    const availableStock = product.stock || 0;
+                    const isOutOfStock = availableStock <= 0;
+                    
+                    return (
+                      <Card key={product.id} className={`transition-shadow ${
+                        isOutOfStock 
+                          ? 'opacity-50 cursor-not-allowed bg-gray-50' 
+                          : 'cursor-pointer hover:shadow-md'
+                      }`}
+                        onClick={() => !isOutOfStock && addToCart(product)}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h3 className="text-sm font-semibold line-clamp-2">{product.name}</h3>
+                              <p className="text-xs text-gray-500">{product.sku}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {product.brand?.name || product.brand || 'No Brand'}
+                                </Badge>
+                                {isOutOfStock && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Habis
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <p className="font-bold text-blue-600">
-                              {formatCurrency(getProductPrice(product, 1))}
-                            </p>
-                            {product.wholesalePrice && product.minStock > 0 && (
-                              <p className="text-xs font-medium text-orange-600">
-                                Grosir: {formatCurrency(product.wholesalePrice)} (≥{product.minStock} {product.unit || 'Pcs'})
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="font-bold text-blue-600">
+                                {formatCurrency(getProductPrice(product, 1))}
                               </p>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              Stok: {product.stock || 'N/A'} {product.unit || 'Pcs'}
-                            </p>
+                              {product.wholesalePrice && product.minStock > 0 && !isOutOfStock && (
+                                <p className="text-xs font-medium text-orange-600">
+                                  Grosir: {formatCurrency(product.wholesalePrice)} (≥{product.minStock} {product.unit || 'Pcs'})
+                                </p>
+                              )}
+                              <p className={`text-xs ${
+                                isOutOfStock ? 'text-red-500 font-medium' : 'text-gray-500'
+                              }`}>
+                                Stok: {availableStock} {product.unit || 'Pcs'}
+                                {availableStock > 0 && availableStock <= 5 && (
+                                  <span className="ml-1 text-orange-500">(Terbatas)</span>
+                                )}
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              className="w-8 h-8 p-0"
+                              disabled={isOutOfStock}
+                              variant={isOutOfStock ? "secondary" : "default"}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <Button size="sm" className="w-8 h-8 p-0">
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
                 {filteredProducts.length === 0 && (
                   <div className="py-8 text-center">
@@ -924,50 +994,39 @@ export default function POSKasir() {
 
                     {currentStep === 3 && (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button 
-                            variant={paymentMethod === 'CASH' ? 'default' : 'outline'}
-                            onClick={() => {
-                              setPaymentMethod('CASH')
-                              setPaymentAmount('') // Reset amount for manual input
-                            }}
-                            className="flex items-center justify-center space-x-2"
-                          >
-                            <Banknote className="w-4 h-4" />
-                            <span>Tunai</span>
-                          </Button>
-                          <Button 
-                            variant={paymentMethod === 'DEBIT_CARD' ? 'default' : 'outline'}
-                            onClick={() => {
-                              setPaymentMethod('DEBIT_CARD')
-                              setPaymentAmount(calculations.total.toString()) // Auto-set exact amount
-                            }}
-                            className="flex items-center justify-center space-x-2"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            <span>Debit Card</span>
-                          </Button>
+                        <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+                          <div className="flex items-center space-x-2 text-blue-800">
+                            <Banknote className="w-5 h-5" />
+                            <span className="font-medium">Pembayaran Tunai</span>
+                          </div>
+                          <p className="mt-1 text-sm text-blue-600">
+                            Hanya pembayaran tunai yang diterima
+                          </p>
                         </div>
 
-                        {paymentMethod === 'CASH' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="payment-amount">Jumlah Bayar</Label>
-                            <Input
-                              id="payment-amount"
-                              type="number"
-                              placeholder="0"
-                              value={paymentAmount}
-                              onChange={(e) => setPaymentAmount(e.target.value)}
-                            />
-                            {paymentAmount && parseFloat(paymentAmount) >= calculations.total && (
-                              <div className="text-sm">
-                                <span className="font-semibold text-green-600">
-                                  Kembalian: {formatCurrency(parseFloat(paymentAmount) - calculations.total)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-amount">Jumlah Bayar *</Label>
+                          <Input
+                            id="payment-amount"
+                            type="number"
+                            placeholder={`Minimum: ${formatCurrency(calculations.total)}`}
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            className={parseFloat(paymentAmount) < calculations.total ? "border-red-300" : ""}
+                          />
+                          {paymentAmount && parseFloat(paymentAmount) < calculations.total && (
+                            <p className="text-sm text-red-600">
+                              Jumlah bayar harus minimal {formatCurrency(calculations.total)}
+                            </p>
+                          )}
+                          {paymentAmount && parseFloat(paymentAmount) >= calculations.total && (
+                            <div className="text-sm">
+                              <span className="font-semibold text-green-600">
+                                Kembalian: {formatCurrency(parseFloat(paymentAmount) - calculations.total)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="notes">Catatan (opsional)</Label>
@@ -986,9 +1045,14 @@ export default function POSKasir() {
                           </Button>
                           <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
                             <DialogTrigger asChild>
-                              <Button className="flex-1">
+                              <Button 
+                                className="flex-1"
+                                disabled={!paymentAmount || parseFloat(paymentAmount) < calculations.total || processing}
+                              >
                                 <Receipt className="w-4 h-4 mr-2" />
-                                Bayar
+                                {!paymentAmount || parseFloat(paymentAmount) < calculations.total 
+                                  ? 'Jumlah Bayar Kurang' 
+                                  : 'Bayar'}
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -1007,27 +1071,41 @@ export default function POSKasir() {
                                   </div>
                                   <div className="flex justify-between">
                                     <span>Metode:</span>
-                                    <span>{paymentMethod === 'CASH' ? 'Tunai' : 'Debit Card'}</span>
+                                    <span className="flex items-center space-x-1">
+                                      <Banknote className="w-4 h-4" />
+                                      <span>Tunai</span>
+                                    </span>
                                   </div>
-                                  {paymentMethod === 'CASH' && (
-                                    <>
-                                      <div className="flex justify-between">
-                                        <span>Bayar:</span>
-                                        <span>{formatCurrency(parseFloat(paymentAmount) || 0)}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span>Kembalian:</span>
-                                        <span>{formatCurrency((parseFloat(paymentAmount) || 0) - calculations.total)}</span>
-                                      </div>
-                                    </>
-                                  )}
+                                  <div className="flex justify-between">
+                                    <span>Bayar:</span>
+                                    <span className="font-medium text-green-600">
+                                      {formatCurrency(parseFloat(paymentAmount) || 0)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Kembalian:</span>
+                                    <span className="font-medium text-blue-600">
+                                      {formatCurrency(Math.max(0, (parseFloat(paymentAmount) || 0) - calculations.total))}
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="flex space-x-2">
                                   <Button variant="outline" onClick={() => setShowPaymentDialog(false)} className="flex-1">
                                     Batal
                                   </Button>
-                                  <Button onClick={processPayment} className="flex-1">
-                                    Konfirmasi
+                                  <Button 
+                                    onClick={processPayment} 
+                                    className="flex-1"
+                                    disabled={!paymentAmount || parseFloat(paymentAmount) < calculations.total || processing}
+                                  >
+                                    {processing ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Memproses...
+                                      </>
+                                    ) : (
+                                      'Konfirmasi Pembayaran'
+                                    )}
                                   </Button>
                                 </div>
                               </div>
