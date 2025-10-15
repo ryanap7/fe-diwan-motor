@@ -200,6 +200,16 @@ const ProductManagement = () => {
         extractedCategories
       );
       console.log("Extracted Brands:", extractedBrands.length, extractedBrands);
+      
+      // Debug minOrderWholesale field
+      if (extractedProducts.length > 0) {
+        console.log('First product minOrderWholesale fields check:', {
+          minOrderWholesale: extractedProducts[0].minOrderWholesale,
+          min_order_wholesale: extractedProducts[0].min_order_wholesale,
+          minWholesaleQuantity: extractedProducts[0].minWholesaleQuantity,
+          allKeys: Object.keys(extractedProducts[0])
+        });
+      }
 
       setProducts(extractedProducts);
       setCategories(extractedCategories);
@@ -244,7 +254,7 @@ const ProductManagement = () => {
         sellingPrice: product.sellingPrice || "",
         wholesalePrice: product.wholesalePrice || "",
         minStock: product.minStock || "",
-        minOrderWholesale: product.minOrderWholesale || product.min_order_wholesale || product.minWholesaleQuantity || "",
+        minOrderWholesale: product.minOrderWholesale || product.min_order_wholesale || product.minWholesaleQuantity || (product.wholesalePrice ? "1" : ""),
         weight: product.weight || "",
         dimensions: {
           length: product.dimensions?.length || "",
@@ -341,6 +351,7 @@ const ProductManagement = () => {
 
       console.log('Data to send - minOrderWholesale:', dataToSend.minOrderWholesale);
       console.log('Form data - minOrderWholesale:', formData.minOrderWholesale);
+      console.log('Complete data being sent to API:', JSON.stringify(dataToSend, null, 2));
 
       // Only include mainImage if it has a valid value (not empty string)
       if (formData.mainImage && formData.mainImage.trim() !== "") {
@@ -366,14 +377,16 @@ const ProductManagement = () => {
         dataToSend.weight = weight;
       }
 
+      let apiResponse;
       if (editingProduct) {
-        await productsAPI.update(editingProduct.id, dataToSend);
+        apiResponse = await productsAPI.update(editingProduct.id, dataToSend);
         toast.success("Produk berhasil diperbarui!");
       } else {
-        await productsAPI.create(dataToSend);
+        apiResponse = await productsAPI.create(dataToSend);
         toast.success("Produk berhasil dibuat!");
       }
 
+      console.log('API Response after save:', apiResponse);
       fetchData();
       handleCloseDialog();
     } catch (error) {
@@ -664,6 +677,16 @@ const ProductManagement = () => {
                         {product.wholesalePrice?.toLocaleString("id-ID") || "0"}
                       </span>
                     </div>
+                    {product.wholesalePrice && parseInt(product.wholesalePrice) > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Min Grosir:
+                        </span>
+                        <span className="font-medium text-blue-600">
+                          {product.minOrderWholesale || product.min_order_wholesale || product.minWholesaleQuantity || "1"} unit+
+                        </span>
+                      </div>
+                    )}
                     {product.promo &&
                       product.promo.is_active &&
                       product.promo.discount_percentage > 0 && (
@@ -1004,13 +1027,18 @@ const ProductManagement = () => {
                   Jumlah minimum untuk mendapat harga grosir
                 </p>
                 {formData.minOrderWholesale && formData.wholesalePrice && (
-                  <p className="text-xs text-green-600">
-                    Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
-                  </p>
+                  <div className="p-2 mt-2 bg-green-50 border border-green-200 rounded">
+                    <p className="text-xs text-green-700 font-medium">
+                      ✅ Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Hemat Rp {(parseInt(formData.sellingPrice || 0) - parseInt(formData.wholesalePrice || 0)).toLocaleString('id-ID')}/unit
+                    </p>
+                  </div>
                 )}
                 {!formData.wholesalePrice && (
                   <p className="text-xs text-orange-500">
-                    Isi harga grosir terlebih dahulu
+                    ⚠️ Isi harga grosir terlebih dahulu
                   </p>
                 )}
               </div>
