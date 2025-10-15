@@ -212,13 +212,13 @@ const DashboardLayout = ({ children }) => {
         //   roles: ["ADMIN", "BRANCH_MANAGER"],
         //   href: "/purchase-orders",
         // },
-        {
-          id: "stock-movements",
-          label: "Pergerakan Stok",
-          icon: BarChart3,
-          roles: ["ADMIN", "BRANCH_MANAGER"],
-          href: "/stock-movements",
-        },
+        // {
+        //   id: "stock-movements",
+        //   label: "Pergerakan Stok",
+        //   icon: BarChart3,
+        //   roles: ["ADMIN", "BRANCH_MANAGER"],
+        //   href: "/stock-movements",
+        // },
       ],
     },
     // {
