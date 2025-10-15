@@ -54,13 +54,13 @@ const DashboardLayout = ({ children }) => {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         setCurrentUser(userData);
-        
+
         // Auto-redirect CASHIER to POS page
         if (userData.role === "CASHIER" && pathname !== "/pos") {
           router.push("/pos");
           return;
         }
-        
+
         setLoading(false);
         return;
       }
@@ -78,7 +78,7 @@ const DashboardLayout = ({ children }) => {
       if (response.data.success && response.data.data) {
         setCurrentUser(response.data.data);
         localStorage.setItem("user", JSON.stringify(response.data.data));
-        
+
         // Auto-redirect CASHIER to POS page
         if (response.data.data.role === "CASHIER" && pathname !== "/pos") {
           router.push("/pos");
@@ -228,13 +228,13 @@ const DashboardLayout = ({ children }) => {
     //   roles: ["ADMIN"],
     //   href: "/suppliers",
     // },
-    {
-      id: "customers",
-      label: "Customer",
-      icon: Users,
-      roles: ["ADMIN", "BRANCH_MANAGER", "CASHIER"],
-      href: "/customers",
-    },
+    // {
+    //   id: "customers",
+    //   label: "Customer",
+    //   icon: Users,
+    //   roles: ["ADMIN", "BRANCH_MANAGER", "CASHIER"],
+    //   href: "/customers",
+    // },
     {
       id: "pos",
       label: "POS Kasir",
@@ -246,7 +246,7 @@ const DashboardLayout = ({ children }) => {
       id: "pos-transactions",
       label: "Transaksi",
       icon: ShoppingCart,
-      roles: ["ADMIN", "BRANCH_MANAGER","CASHIER"],
+      roles: ["ADMIN", "BRANCH_MANAGER"],
       href: "/transactions",
     },
     // {
@@ -291,11 +291,14 @@ const DashboardLayout = ({ children }) => {
   // Filter menu items based on user role
   const filterMenuByRole = (items, userRole) => {
     return items
-      .filter((item) => item.roles.length === 0 || item.roles.includes(userRole))
+      .filter(
+        (item) => item.roles.length === 0 || item.roles.includes(userRole)
+      )
       .map((item) => {
         if (item.submenu) {
-          const filteredSubmenu = item.submenu.filter((subItem) =>
-            subItem.roles.length === 0 || subItem.roles.includes(userRole)
+          const filteredSubmenu = item.submenu.filter(
+            (subItem) =>
+              subItem.roles.length === 0 || subItem.roles.includes(userRole)
           );
           return { ...item, submenu: filteredSubmenu };
         }

@@ -69,6 +69,8 @@ const CategoryManagement = () => {
       console.log("CategoryManagement - Starting to fetch data...");
       const response = await categoriesAPI.getAll();
 
+      console.log("DF", response);
+
       // Safely extract data from API response with multiple format support
       const extractArrayData = (response) => {
         // Handle direct array
@@ -95,47 +97,45 @@ const CategoryManagement = () => {
       };
 
       let categoryData = extractArrayData(response);
-      
+
       // Filter out soft-deleted categories (those with deletedAt not null)
-      categoryData = categoryData.filter(cat => !cat.deletedAt);
-      
+      categoryData = categoryData.filter((cat) => !cat.deletedAt);
+
       // Flatten the structure - convert children array to parent-child relationships
       const flattenCategories = (categories) => {
         const flattened = [];
-        
-        categories.forEach(category => {
+
+        categories.forEach((category) => {
           // Add the parent category
           const parentCategory = { ...category };
           delete parentCategory.children; // Remove children array
           flattened.push(parentCategory);
-          
+
           // Add all children as separate entries with parentId
           if (category.children && category.children.length > 0) {
-            category.children.forEach(child => {
-              if (!child.deletedAt) { // Only include non-deleted children
+            category.children.forEach((child) => {
+              if (!child.deletedAt) {
+                // Only include non-deleted children
                 flattened.push({
                   ...child,
-                  parentId: category.id
+                  parentId: category.id,
                 });
               }
             });
           }
         });
-        
+
         return flattened;
       };
-      
+
       const flattenedCategories = flattenCategories(categoryData);
-      
-      console.log("CategoryManagement - Raw API Response:", response);
-      console.log("CategoryManagement - Extracted Data:", categoryData);
-      console.log("CategoryManagement - Flattened Categories:", flattenedCategories);
+
+      console.log(
+        "CategoryManagement - Flattened Categories:",
+        flattenedCategories
+      );
 
       setCategories(flattenedCategories);
-      
-      if (categoryData.length === 0) {
-        console.log("No categories found");
-      }
     } catch (error) {
       console.error("Failed to load categories:", error);
       console.error("Error details:", {
@@ -312,18 +312,19 @@ const CategoryManagement = () => {
       const indent = "　".repeat(level); // Using Japanese space for proper indentation
       const icon = level === 0 ? "📁" : "📄";
       const children = getChildCategories(category.id);
-      
+
       return (
         <div key={category.id}>
           <SelectItem value={category.id} className="font-medium">
-            {indent}{icon} {category.name}
+            {indent}
+            {icon} {category.name}
           </SelectItem>
-          {children.map(child => renderCategory(child, level + 1))}
+          {children.map((child) => renderCategory(child, level + 1))}
         </div>
       );
     };
 
-    return getParentCategories().map(parent => renderCategory(parent));
+    return getParentCategories().map((parent) => renderCategory(parent));
   };
 
   const renderCategoryTree = () => {
@@ -378,16 +379,8 @@ const CategoryManagement = () => {
                             {parent.name}
                           </h3>
                           <Badge
-                            variant={
-                              parent.isActive
-                                ? "default"
-                                : "secondary"
-                            }
-                            className={
-                              parent.isActive
-                                ? "bg-green-500"
-                                : ""
-                            }
+                            variant={parent.isActive ? "default" : "secondary"}
+                            className={parent.isActive ? "bg-green-500" : ""}
                           >
                             {parent.isActive ? "Aktif" : "Nonaktif"}
                           </Badge>
@@ -553,8 +546,18 @@ const CategoryManagement = () => {
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
                 Refresh
               </>
@@ -650,10 +653,16 @@ const CategoryManagement = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active" className="font-medium text-green-600">
+                  <SelectItem
+                    value="active"
+                    className="font-medium text-green-600"
+                  >
                     ✅ Aktif
                   </SelectItem>
-                  <SelectItem value="inactive" className="font-medium text-gray-600">
+                  <SelectItem
+                    value="inactive"
+                    className="font-medium text-gray-600"
+                  >
                     ⏸️ Nonaktif
                   </SelectItem>
                 </SelectContent>
