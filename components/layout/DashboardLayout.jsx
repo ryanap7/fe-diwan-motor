@@ -202,7 +202,7 @@ const DashboardLayout = ({ children }) => {
           id: "stock-movements",
           label: "Pergerakan Stok",
           icon: BarChart3,
-          roles: ["ADMIN", "BRANCH_MANAGER"],
+          roles: ["ADMIN"],
           href: "/stock-movements",
         },
       ],
