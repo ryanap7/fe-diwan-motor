@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Edit, Trash2, UserCheck, Store, Shield, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { usersAPI, branchesAPI, setDevToken } from '@/lib/api';
+import { usersAPI, branchesAPI } from '@/lib/api';
 
 const UserManagement = () => {
   const { toast } = useToast();
@@ -34,9 +34,13 @@ const UserManagement = () => {
   });
   const [saving, setSaving] = useState(false);
 
-  // Setup JWT token for testing
+  // Verifikasi token tersedia sebelum fetch data
   useEffect(() => {
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
   }, []);
 
   useEffect(() => {
@@ -292,12 +296,12 @@ const UserManagement = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader>
-              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2 mt-2"></div>
+              <div className="w-3/4 h-6 bg-gray-200 rounded"></div>
+              <div className="w-1/2 h-4 mt-2 bg-gray-200 rounded"></div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -314,14 +318,14 @@ const UserManagement = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Pengguna</h3>
           <p className="text-sm text-muted-foreground">Total: {users.length} pengguna</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
         >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Pengguna Baru
@@ -332,14 +336,14 @@ const UserManagement = () => {
       {!Array.isArray(users) || users.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Users className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No users yet</h3>
-            <p className="text-muted-foreground mb-6">Start by adding your first user</p>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">No users yet</h3>
+            <p className="mb-6 text-muted-foreground">Start by adding your first user</p>
             <Button
               onClick={() => handleOpenDialog()}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add First User
@@ -347,7 +351,7 @@ const UserManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.isArray(users) && users.map((user) => {
             const role = getRoleById(user.role || user.role_id);
             const branch = user.branch || getBranchById(user.branchId || user.branch_id);
@@ -355,17 +359,17 @@ const UserManagement = () => {
             return (
               <Card
                 key={user.id}
-                className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
+                className="overflow-hidden transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 group"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-500 opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                <CardHeader className="pb-3 relative">
+                <div className="absolute top-0 right-0 w-32 h-32 -mt-16 -mr-16 transition-transform duration-500 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 opacity-5 group-hover:scale-150"></div>
+                <CardHeader className="relative pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                    <div className="flex items-center flex-1 gap-3">
+                      <div className="flex items-center justify-center w-12 h-12 text-lg font-bold text-white rounded-full shadow-md bg-gradient-to-r from-blue-500 to-purple-500">
                         {user.username?.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">
-                        <CardTitle className="text-lg mb-1">{user.username}</CardTitle>
+                        <CardTitle className="mb-1 text-lg">{user.username}</CardTitle>
                         {(role || user.role) && (
                           <Badge className={`${getRoleBadgeColor(role?.name || user.role)} hover:${getRoleBadgeColor(role?.name || user.role)} text-white text-xs`}>
                             {role?.name || user.role}
@@ -375,16 +379,16 @@ const UserManagement = () => {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3 relative">
+                <CardContent className="relative space-y-3">
                   {branch ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Store className="w-4 h-4 flex-shrink-0" />
+                      <Store className="flex-shrink-0 w-4 h-4" />
                       <span className="truncate">{branch.name}</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Store className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-gray-400 italic">No branch assigned</span>
+                      <Store className="flex-shrink-0 w-4 h-4" />
+                      <span className="italic text-gray-400">No branch assigned</span>
                     </div>
                   )}
                   
@@ -395,12 +399,12 @@ const UserManagement = () => {
                     </div>
                   )}
 
-                  <div className="pt-4 flex gap-2">
+                  <div className="flex gap-2 pt-4">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenDialog(user)}
-                      className="flex-1 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                      className="flex-1 transition-colors duration-200 hover:bg-blue-50 hover:border-blue-300"
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       Edit
@@ -413,7 +417,7 @@ const UserManagement = () => {
                         setDeleteDialogOpen(true);
                       }}
                       disabled={user.username === 'admin'}
-                      className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors duration-200 disabled:opacity-50"
+                      className="transition-colors duration-200 hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -436,7 +440,7 @@ const UserManagement = () => {
               {editingUser ? 'Update user information and assignments' : 'Create a new user account'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username <span className="text-red-500">*</span></Label>
               <Input
@@ -525,12 +529,12 @@ const UserManagement = () => {
                 id="isActive"
                 checked={formData.isActive}
                 onChange={(e) => handleChange('isActive', e.target.checked)}
-                className="rounded border-gray-300"
+                className="border-gray-300 rounded"
               />
               <Label htmlFor="isActive" className="text-sm font-normal">Active User</Label>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
               <p className="text-xs text-blue-900">
                 <strong>💡 Info:</strong> To assign Branch Managers and Cashiers to branches, go to <strong>Branches</strong> menu and click the <strong>"Assign"</strong> button on each branch card.
               </p>
@@ -548,7 +552,7 @@ const UserManagement = () => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {saving ? (
                   <>

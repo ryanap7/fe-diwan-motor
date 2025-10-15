@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2 } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
-import { transactionsAPI, categoriesAPI, setDevToken } from '@/lib/api'
+import { transactionsAPI, categoriesAPI } from '@/lib/api'
 
 // API functions untuk POS - menggunakan endpoint products biasa karena endpoint POS belum ready
 const fetchProducts = async (params = {}) => {
@@ -251,11 +251,6 @@ export default function POSKasir() {
         }
         
         console.log('POS - User branch:', userData.branch.name);
-      }
-      
-      // Set token untuk API interceptor (if using setDevToken for development)
-      if (typeof setDevToken === 'function') {
-        setDevToken(token);
       }
       
       console.log('POS - Using accessToken from login:', token.substring(0, 50) + '...');

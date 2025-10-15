@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Package, Plus, Edit, Trash2, Power, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { brandsAPI, setDevToken } from '@/lib/api';
+import { brandsAPI } from '@/lib/api';
 
 const BrandManagement = () => {
   const { toast } = useToast();
@@ -28,9 +28,13 @@ const BrandManagement = () => {
   });
   const [saving, setSaving] = useState(false);
 
-  // Setup JWT token for testing
+  // Verifikasi token tersedia sebelum fetch data
   useEffect(() => {
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
   }, []);
 
   useEffect(() => {
@@ -220,7 +224,7 @@ const BrandManagement = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="pt-6">
@@ -234,14 +238,14 @@ const BrandManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Kelola Brand/Merk</h3>
           <p className="text-sm text-muted-foreground">Total: {brands.length} brand</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
         >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Brand
@@ -251,14 +255,14 @@ const BrandManagement = () => {
       {brands.length === 0 ? (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Package className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Belum ada brand</h3>
-            <p className="text-muted-foreground mb-6">Mulai dengan menambahkan brand pertama Anda</p>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">Belum ada brand</h3>
+            <p className="mb-6 text-muted-foreground">Mulai dengan menambahkan brand pertama Anda</p>
             <Button
               onClick={() => handleOpenDialog()}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Tambah Brand Pertama
@@ -266,24 +270,24 @@ const BrandManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {brands.map((brand) => (
             <Card
               key={brand.id}
-              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+              className="transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1"
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center shadow-md">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg shadow-md bg-gradient-to-r from-blue-500 to-purple-500">
                     <Package className="w-6 h-6 text-white" />
                   </div>
                   <Badge variant={(brand.isActive ?? brand.is_active) ? 'default' : 'secondary'} className={(brand.isActive ?? brand.is_active) ? 'bg-green-500' : ''}>
                     {(brand.isActive ?? brand.is_active) ? 'Aktif' : 'Nonaktif'}
                   </Badge>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{brand.name}</h3>
+                <h3 className="mb-2 text-lg font-bold text-gray-900">{brand.name}</h3>
                 {brand.description && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{brand.description}</p>
+                  <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{brand.description}</p>
                 )}
                 <div className="flex gap-2 mt-4">
                   <Button
@@ -332,7 +336,7 @@ const BrandManagement = () => {
               {editingBrand ? 'Perbarui informasi brand' : 'Buat brand produk baru'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nama Brand <span className="text-red-500">*</span></Label>
               <Input
@@ -368,7 +372,7 @@ const BrandManagement = () => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {saving ? (
                   <>

@@ -1,7 +1,7 @@
 // Test component untuk memverifikasi API categories dan brands
 import { useState, useEffect } from 'react';
 import { categoriesAPI, brandsAPI } from '../lib/api';
-import { setDevToken } from '../lib/dev-token';
+// Token will be handled automatically by API interceptor from localStorage
 
 const TestCategoriesBrands = () => {
   const [categories, setCategories] = useState([]);
@@ -12,8 +12,11 @@ const TestCategoriesBrands = () => {
   useEffect(() => {
     const testAPI = async () => {
       try {
-        // Set development token
-        setDevToken();
+        // Verify token exists in localStorage
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found. Please login first.');
+        }
         
         // Test API calls
         console.log('Testing categories and brands API...');

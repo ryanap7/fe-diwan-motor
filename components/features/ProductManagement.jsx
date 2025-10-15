@@ -51,7 +51,6 @@ import {
   branchesAPI,
   stockAPI,
 } from "@/lib/api";
-import { setDevToken } from "@/lib/dev-token";
 
 const UOM_OPTIONS = [
   "Pcs",
@@ -132,10 +131,12 @@ const ProductManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Setup JWT token for testing
-    setDevToken(
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I"
-    );
+    // Verifikasi token tersedia sebelum fetch data
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
     fetchData();
   }, []);
 
@@ -243,7 +244,7 @@ const ProductManagement = () => {
         sellingPrice: product.sellingPrice || "",
         wholesalePrice: product.wholesalePrice || "",
         minStock: product.minStock || "",
-        minOrderWholesale: product.minOrderWholesale || "",
+        minOrderWholesale: product.minOrderWholesale || product.min_order_wholesale || product.minWholesaleQuantity || "",
         weight: product.weight || "",
         dimensions: {
           length: product.dimensions?.length || "",
@@ -337,6 +338,9 @@ const ProductManagement = () => {
         isActive: formData.isActive,
         isFeatured: formData.isFeatured,
       };
+
+      console.log('Data to send - minOrderWholesale:', dataToSend.minOrderWholesale);
+      console.log('Form data - minOrderWholesale:', formData.minOrderWholesale);
 
       // Only include mainImage if it has a valid value (not empty string)
       if (formData.mainImage && formData.mainImage.trim() !== "") {
@@ -964,9 +968,13 @@ const ProductManagement = () => {
                 <Input
                   type="number"
                   value={formData.wholesalePrice}
-                  onChange={(e) =>
-                    handleChange("wholesalePrice", e.target.value)
-                  }
+                  onChange={(e) => {
+                    handleChange("wholesalePrice", e.target.value);
+                    // Auto-set minimum 1 untuk minOrderWholesale jika harga grosir diisi
+                    if (e.target.value && !formData.minOrderWholesale) {
+                      handleChange("minOrderWholesale", "1");
+                    }
+                  }}
                   placeholder="0"
                   required
                 />
@@ -981,15 +989,30 @@ const ProductManagement = () => {
                 <Input
                   type="number"
                   value={formData.minOrderWholesale}
-                  onChange={(e) =>
-                    handleChange("minOrderWholesale", e.target.value)
-                  }
+                  onChange={(e) => {
+                    console.log('Min Transaksi Grosir changed:', e.target.value);
+                    handleChange("minOrderWholesale", e.target.value);
+                  }}
                   placeholder="0"
                   required
+                  min="1"
+                  step="1"
+                  disabled={!formData.wholesalePrice}
+                  className={!formData.wholesalePrice ? "bg-gray-50 opacity-50" : ""}
                 />
                 <p className="text-xs text-muted-foreground">
                   Jumlah minimum untuk mendapat harga grosir
                 </p>
+                {formData.minOrderWholesale && formData.wholesalePrice && (
+                  <p className="text-xs text-green-600">
+                    Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
+                  </p>
+                )}
+                {!formData.wholesalePrice && (
+                  <p className="text-xs text-orange-500">
+                    Isi harga grosir terlebih dahulu
+                  </p>
+                )}
               </div>
             </div>
 

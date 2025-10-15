@@ -14,7 +14,7 @@ import {
   FileText, Printer, Eye, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { branchesAPI, transactionsAPI, setDevToken } from '@/lib/api';
+import { branchesAPI, transactionsAPI } from '@/lib/api';
 
 const POSTransactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -41,11 +41,6 @@ const POSTransactions = () => {
     if (!token) {
       toast.error('Silakan login terlebih dahulu');
       return;
-    }
-    
-    // Set token untuk API interceptor (if using setDevToken for development)
-    if (typeof setDevToken === 'function') {
-      setDevToken(token);
     }
     
     console.log('Transactions - Using accessToken from login:', token.substring(0, 50) + '...');
