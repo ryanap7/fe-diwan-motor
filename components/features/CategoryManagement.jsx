@@ -41,7 +41,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { categoriesAPI, setDevToken } from "@/lib/api";
+import { categoriesAPI } from "@/lib/api";
 
 const CategoryManagement = () => {
   const { toast } = useToast();
@@ -59,19 +59,13 @@ const CategoryManagement = () => {
   });
   const [saving, setSaving] = useState(false);
 
-  // Setup JWT token for testing
-  useEffect(() => {
-    setDevToken(
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I"
-    );
-  }, []);
-
   useEffect(() => {
     fetchCategories();
   }, []);
 
   const fetchCategories = async () => {
     try {
+      setLoading(true);
       console.log("CategoryManagement - Starting to fetch data...");
       const response = await categoriesAPI.getAll();
 
@@ -80,7 +74,7 @@ const CategoryManagement = () => {
         // Handle direct array
         if (Array.isArray(response)) return response;
 
-        // Handle API3 structure: { data: { categories: [...] } }
+        // Handle API structure: { data: { categories: [...] } }
         if (
           response?.data?.categories &&
           Array.isArray(response.data.categories)
@@ -100,11 +94,48 @@ const CategoryManagement = () => {
         return [];
       };
 
-      const categoryData = extractArrayData(response);
+      let categoryData = extractArrayData(response);
+      
+      // Filter out soft-deleted categories (those with deletedAt not null)
+      categoryData = categoryData.filter(cat => !cat.deletedAt);
+      
+      // Flatten the structure - convert children array to parent-child relationships
+      const flattenCategories = (categories) => {
+        const flattened = [];
+        
+        categories.forEach(category => {
+          // Add the parent category
+          const parentCategory = { ...category };
+          delete parentCategory.children; // Remove children array
+          flattened.push(parentCategory);
+          
+          // Add all children as separate entries with parentId
+          if (category.children && category.children.length > 0) {
+            category.children.forEach(child => {
+              if (!child.deletedAt) { // Only include non-deleted children
+                flattened.push({
+                  ...child,
+                  parentId: category.id
+                });
+              }
+            });
+          }
+        });
+        
+        return flattened;
+      };
+      
+      const flattenedCategories = flattenCategories(categoryData);
+      
       console.log("CategoryManagement - Raw API Response:", response);
       console.log("CategoryManagement - Extracted Data:", categoryData);
+      console.log("CategoryManagement - Flattened Categories:", flattenedCategories);
 
-      setCategories(categoryData);
+      setCategories(flattenedCategories);
+      
+      if (categoryData.length === 0) {
+        console.log("No categories found");
+      }
     } catch (error) {
       console.error("Failed to load categories:", error);
       console.error("Error details:", {
@@ -132,10 +163,10 @@ const CategoryManagement = () => {
     if (category) {
       setEditingCategory(category);
       setFormData({
-        name: category.name,
+        name: category.name || "",
         description: category.description || "",
-        parent_id: category.parentId || category.parent_id || "",
-        is_active: category.isActive ?? category.is_active ?? true,
+        parent_id: category.parentId || "",
+        is_active: category.isActive ?? true,
       });
     } else {
       setEditingCategory(null);
@@ -200,7 +231,7 @@ const CategoryManagement = () => {
 
   const handleToggleActive = async (category) => {
     try {
-      const currentStatus = category.isActive ?? category.is_active;
+      const currentStatus = category.isActive;
       const newStatus = !currentStatus;
       await categoriesAPI.updateStatus(category.id, newStatus);
 
@@ -228,7 +259,7 @@ const CategoryManagement = () => {
     try {
       // Ask user if they want to cascade delete subcategories
       const hasSubcategories = categories.some(
-        (cat) => (cat.parentId || cat.parent_id) === categoryToDelete.id
+        (cat) => cat.parentId === categoryToDelete.id
       );
       const cascade = hasSubcategories
         ? window.confirm(
@@ -262,13 +293,37 @@ const CategoryManagement = () => {
   };
 
   const getParentCategories = () => {
-    return categories.filter((cat) => !(cat.parentId || cat.parent_id));
+    return categories.filter((cat) => !cat.parentId && !cat.deletedAt);
   };
 
   const getChildCategories = (parentId) => {
     return categories.filter(
-      (cat) => (cat.parentId || cat.parent_id) === parentId
+      (cat) => cat.parentId === parentId && !cat.deletedAt
     );
+  };
+
+  const renderNestedCategoryOptions = () => {
+    const renderCategory = (category, level = 0) => {
+      // Don't show the category we're editing as option
+      if (editingCategory && category.id === editingCategory.id) {
+        return null;
+      }
+
+      const indent = "　".repeat(level); // Using Japanese space for proper indentation
+      const icon = level === 0 ? "📁" : "📄";
+      const children = getChildCategories(category.id);
+      
+      return (
+        <div key={category.id}>
+          <SelectItem value={category.id} className="font-medium">
+            {indent}{icon} {category.name}
+          </SelectItem>
+          {children.map(child => renderCategory(child, level + 1))}
+        </div>
+      );
+    };
+
+    return getParentCategories().map(parent => renderCategory(parent));
   };
 
   const renderCategoryTree = () => {
@@ -278,18 +333,18 @@ const CategoryManagement = () => {
       return (
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <ShoppingBag className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
               Belum ada kategori
             </h3>
-            <p className="text-muted-foreground mb-6">
+            <p className="mb-6 text-muted-foreground">
               Mulai dengan menambahkan kategori pertama Anda
             </p>
             <Button
               onClick={() => handleOpenDialog()}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               <Plus className="w-4 h-4 mr-2" />
               Tambah Kategori Pertama
@@ -308,13 +363,13 @@ const CategoryManagement = () => {
           return (
             <Card
               key={parent.id}
-              className="border-0 shadow-lg overflow-hidden"
+              className="overflow-hidden border-0 shadow-lg"
             >
               <CardContent className="p-0">
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+                <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                    <div className="flex items-center flex-1 gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-lg shadow-md bg-gradient-to-r from-blue-600 to-purple-600">
                         <ShoppingBag className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1">
@@ -324,19 +379,17 @@ const CategoryManagement = () => {
                           </h3>
                           <Badge
                             variant={
-                              parent.isActive ?? parent.is_active
+                              parent.isActive
                                 ? "default"
                                 : "secondary"
                             }
                             className={
-                              parent.isActive ?? parent.is_active
+                              parent.isActive
                                 ? "bg-green-500"
                                 : ""
                             }
                           >
-                            {parent.isActive ?? parent.is_active
-                              ? "Aktif"
-                              : "Nonaktif"}
+                            {parent.isActive ? "Aktif" : "Nonaktif"}
                           </Badge>
                           {childCount > 0 && (
                             <Badge variant="outline" className="text-xs">
@@ -345,7 +398,7 @@ const CategoryManagement = () => {
                           )}
                         </div>
                         {parent.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="mt-1 text-sm text-muted-foreground">
                             {parent.description}
                           </p>
                         )}
@@ -366,15 +419,13 @@ const CategoryManagement = () => {
                         size="sm"
                         onClick={() => handleToggleActive(parent)}
                         className={
-                          parent.isActive ?? parent.is_active
+                          parent.isActive
                             ? "hover:bg-orange-50"
                             : "hover:bg-green-50"
                         }
                       >
                         <Power className="w-3 h-3 mr-1" />
-                        {parent.isActive ?? parent.is_active
-                          ? "Nonaktifkan"
-                          : "Aktifkan"}
+                        {parent.isActive ? "Nonaktifkan" : "Aktifkan"}
                       </Button>
                       <Button
                         variant="outline"
@@ -396,9 +447,9 @@ const CategoryManagement = () => {
                     {children.map((child) => (
                       <div
                         key={child.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100"
                       >
-                        <div className="flex items-center gap-3 flex-1">
+                        <div className="flex items-center flex-1 gap-3">
                           <ChevronRight className="w-4 h-4 text-gray-400" />
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -407,19 +458,19 @@ const CategoryManagement = () => {
                               </span>
                               <Badge
                                 variant={
-                                  child.is_active ? "default" : "secondary"
+                                  child.isActive ? "default" : "secondary"
                                 }
                                 className={
-                                  child.is_active
+                                  child.isActive
                                     ? "text-xs bg-green-500"
                                     : "text-xs"
                                 }
                               >
-                                {child.is_active ? "Aktif" : "Nonaktif"}
+                                {child.isActive ? "Aktif" : "Nonaktif"}
                               </Badge>
                             </div>
                             {child.description && (
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {child.description}
                               </p>
                             )}
@@ -482,7 +533,7 @@ const CategoryManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
             Kelola Kategori Produk
@@ -491,13 +542,32 @@ const CategoryManagement = () => {
             Total: {categories.length} kategori
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Kategori
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={fetchCategories}
+            disabled={loading}
+            className="hover:bg-gray-50"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={() => handleOpenDialog()}
+            className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Kategori
+          </Button>
+        </div>
       </div>
 
       {renderCategoryTree()}
@@ -514,7 +584,7 @@ const CategoryManagement = () => {
                 : "Buat kategori produk baru"}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">
                 Nama Kategori <span className="text-red-500">*</span>
@@ -525,6 +595,8 @@ const CategoryManagement = () => {
                 onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="Masukkan nama kategori"
                 required
+                disabled={saving}
+                className="focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -535,21 +607,16 @@ const CategoryManagement = () => {
                 onValueChange={(value) =>
                   handleChange("parent_id", value === "none" ? "" : value)
                 }
+                disabled={saving}
               >
-                <SelectTrigger>
+                <SelectTrigger className="focus:ring-2 focus:ring-blue-500">
                   <SelectValue placeholder="Pilih kategori induk" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    Tidak Ada (Kategori Utama)
+                  <SelectItem value="none" className="font-medium">
+                    📁 Tidak Ada (Kategori Utama)
                   </SelectItem>
-                  {getParentCategories()
-                    .filter((cat) => cat.id !== editingCategory?.id)
-                    .map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
+                  {renderNestedCategoryOptions()}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -565,8 +632,32 @@ const CategoryManagement = () => {
                 onChange={(e) => handleChange("description", e.target.value)}
                 placeholder="Deskripsi kategori (opsional)"
                 rows={3}
-                className="resize-none"
+                className="resize-none focus:ring-2 focus:ring-blue-500"
+                disabled={saving}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.is_active ? "active" : "inactive"}
+                onValueChange={(value) =>
+                  handleChange("is_active", value === "active")
+                }
+                disabled={saving}
+              >
+                <SelectTrigger className="focus:ring-2 focus:ring-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active" className="font-medium text-green-600">
+                    ✅ Aktif
+                  </SelectItem>
+                  <SelectItem value="inactive" className="font-medium text-gray-600">
+                    ⏸️ Nonaktif
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
@@ -581,7 +672,7 @@ const CategoryManagement = () => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {saving ? (
                   <>
@@ -608,7 +699,7 @@ const CategoryManagement = () => {
               <strong>{categoryToDelete?.name}</strong> secara permanen.
               {categoryToDelete &&
                 getChildCategories(categoryToDelete.id).length > 0 && (
-                  <span className="block mt-2 text-orange-600 font-semibold">
+                  <span className="block mt-2 font-semibold text-orange-600">
                     ⚠️ Kategori ini memiliki{" "}
                     {getChildCategories(categoryToDelete.id).length}{" "}
                     sub-kategori. Sub-kategori akan menjadi kategori utama.

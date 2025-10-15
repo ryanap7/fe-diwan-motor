@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
-import { suppliersAPI, setDevToken } from '@/lib/api';
+import { suppliersAPI } from '@/lib/api';
 
 const SupplierManagement = () => {
   const { toast } = useToast();
@@ -49,8 +49,12 @@ const SupplierManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Set JWT token untuk API calls
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDY3MTksImV4cCI6MTc2MTA1MTUxOX0.bkc5J4eRmToxZs9HyPDs7fAa0_6GnoLE1kKIBaTzkLM');
+    // Verifikasi token tersedia sebelum fetch data
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
     fetchSupplierData();
   }, []);
 

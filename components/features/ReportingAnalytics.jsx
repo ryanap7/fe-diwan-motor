@@ -53,21 +53,24 @@ const ReportingAnalytics = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = { 
+        Authorization: `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      };
 
       const [transactionsRes, productsRes, inventoryRes, branchesRes, categoriesRes] = await Promise.all([
-        axios.get('/api/transactions', { headers }),
-        axios.get('/api/products', { headers }),
-        axios.get('/api/stocks', { headers }),
-        axios.get('/api/branches', { headers }),
-        axios.get('/api/categories', { headers })
+        axios.get('https://api.diwanmotor.com/api/transactions', { headers }),
+        axios.get('https://api.diwanmotor.com/api/products', { headers }),
+        axios.get('https://api.diwanmotor.com/api/stocks', { headers }),
+        axios.get('https://api.diwanmotor.com/api/branches', { headers }),
+        axios.get('https://api.diwanmotor.com/api/categories', { headers })
       ]);
 
-      setTransactions(transactionsRes.data || []);
-      setProducts(productsRes.data || []);
-      setInventory(inventoryRes.data || []);
-      setBranches(branchesRes.data || []);
-      setCategories(categoriesRes.data || []);
+      setTransactions(transactionsRes.data?.data?.transactions || []);
+      setProducts(productsRes.data?.data || []);
+      setInventory(inventoryRes.data?.data || []);
+      setBranches(branchesRes.data?.data || []);
+      setCategories(categoriesRes.data?.data || []);
     } catch (error) {
       toast.error('Gagal memuat data');
       console.error(error);
@@ -79,15 +82,15 @@ const ReportingAnalytics = () => {
   const generateReports = () => {
     // Filter transactions based on date range and branch
     const filteredTransactions = transactions.filter(t => {
-      const tDate = new Date(t.transaction_date);
+      const tDate = new Date(t.transactionDate || t.transaction_date);
       const fromDate = new Date(filters.date_from);
       const toDate = new Date(filters.date_to);
       toDate.setHours(23, 59, 59, 999);
 
       const dateMatch = tDate >= fromDate && tDate <= toDate;
-      const branchMatch = !filters.branch_id || t.branch_id === filters.branch_id;
+      const branchMatch = !filters.branch_id || t.branchId === filters.branch_id || t.branch_id === filters.branch_id;
       
-      return dateMatch && branchMatch && t.status === 'completed';
+      return dateMatch && branchMatch && (t.status === 'COMPLETED' || t.status === 'completed');
     });
 
     // Generate Sales Report
@@ -104,11 +107,12 @@ const ReportingAnalytics = () => {
     // Daily sales summary
     const dailySales = {};
     filteredTransactions.forEach(t => {
-      const date = new Date(t.transaction_date).toISOString().split('T')[0];
+      const date = new Date(t.transactionDate || t.transaction_date).toISOString().split('T')[0];
       if (!dailySales[date]) {
         dailySales[date] = { date, revenue: 0, transactions: 0, items: 0 };
       }
-      dailySales[date].revenue += t.total;
+      const total = parseFloat(t.totalAmount || t.total || 0);
+      dailySales[date].revenue += total;
       dailySales[date].transactions += 1;
       dailySales[date].items += t.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
     });
@@ -117,19 +121,21 @@ const ReportingAnalytics = () => {
     const productSales = {};
     filteredTransactions.forEach(t => {
       t.items?.forEach(item => {
-        if (!productSales[item.product_id]) {
-          productSales[item.product_id] = {
-            product_id: item.product_id,
-            product_name: item.product_name,
-            sku: item.sku,
+        const productId = item.productId || item.product_id;
+        if (!productSales[productId]) {
+          productSales[productId] = {
+            product_id: productId,
+            product_name: item.productName || item.product_name,
+            sku: item.productSku || item.sku || item.product?.sku,
             quantity: 0,
             revenue: 0,
             transactions: 0
           };
         }
-        productSales[item.product_id].quantity += item.quantity;
-        productSales[item.product_id].revenue += item.subtotal;
-        productSales[item.product_id].transactions += 1;
+        productSales[productId].quantity += item.quantity;
+        const subtotal = parseFloat(item.subtotal || item.subTotal || 0);
+        productSales[productId].revenue += subtotal;
+        productSales[productId].transactions += 1;
       });
     });
 
@@ -137,8 +143,9 @@ const ReportingAnalytics = () => {
     const categorySales = {};
     filteredTransactions.forEach(t => {
       t.items?.forEach(item => {
-        const product = products.find(p => p.id === item.product_id);
-        const categoryId = product?.category_id || 'uncategorized';
+        const productId = item.productId || item.product_id;
+        const product = products.find(p => p.id === productId);
+        const categoryId = product?.categoryId || product?.category_id || 'uncategorized';
         const category = categories.find(c => c.id === categoryId);
         const categoryName = category?.name || 'Uncategorized';
 
@@ -151,23 +158,28 @@ const ReportingAnalytics = () => {
           };
         }
         categorySales[categoryId].quantity += item.quantity;
-        categorySales[categoryId].revenue += item.subtotal;
+        const subtotal = parseFloat(item.subtotal || item.subTotal || 0);
+        categorySales[categoryId].revenue += subtotal;
       });
     });
 
     // Sales by cashier
     const cashierSales = {};
     filteredTransactions.forEach(t => {
-      if (!cashierSales[t.cashier_id]) {
-        cashierSales[t.cashier_id] = {
-          cashier_id: t.cashier_id,
-          cashier_name: t.cashier_name,
+      const cashierId = t.cashierId || t.cashier_id;
+      const cashierName = t.cashier?.fullName || t.cashier?.username || t.cashierName || t.cashier_name || 'Unknown';
+      
+      if (!cashierSales[cashierId]) {
+        cashierSales[cashierId] = {
+          cashier_id: cashierId,
+          cashier_name: cashierName,
           transactions: 0,
           revenue: 0
         };
       }
-      cashierSales[t.cashier_id].transactions += 1;
-      cashierSales[t.cashier_id].revenue += t.total;
+      cashierSales[cashierId].transactions += 1;
+      const total = parseFloat(t.totalAmount || t.total || 0);
+      cashierSales[cashierId].revenue += total;
     });
 
     // Best selling products (top 10)
@@ -181,7 +193,10 @@ const ReportingAnalytics = () => {
       .slice(0, 10);
 
     // Total summary
-    const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
+    const totalRevenue = filteredTransactions.reduce((sum, t) => {
+      const amount = parseFloat(t.totalAmount || t.total || 0);
+      return sum + amount;
+    }, 0);
     const totalTransactions = filteredTransactions.length;
     const totalItems = filteredTransactions.reduce((sum, t) => 
       sum + (t.items?.reduce((s, item) => s + item.quantity, 0) || 0), 0
@@ -207,16 +222,19 @@ const ReportingAnalytics = () => {
   const generateInventoryReport = () => {
     // Current stock levels
     const stockLevels = inventory.map(inv => {
-      const product = products.find(p => p.id === inv.product_id);
-      const branch = branches.find(b => b.id === inv.branch_id);
+      const productId = inv.productId || inv.product_id;
+      const branchId = inv.branchId || inv.branch_id;
+      const product = products.find(p => p.id === productId);
+      const branch = branches.find(b => b.id === branchId);
+      const purchasePrice = parseFloat(product?.purchasePrice || product?.purchase_price || 0);
       
       return {
         ...inv,
         product_name: product?.name || 'Unknown',
         sku: product?.sku || '-',
         branch_name: branch?.name || 'Unknown',
-        purchase_price: product?.purchase_price || 0,
-        stock_value: (product?.purchase_price || 0) * inv.quantity
+        purchase_price: purchasePrice,
+        stock_value: purchasePrice * inv.quantity
       };
     });
 
@@ -233,16 +251,17 @@ const ReportingAnalytics = () => {
     // Stock by branch
     const stockByBranch = {};
     stockLevels.forEach(item => {
-      if (!stockByBranch[item.branch_id]) {
-        stockByBranch[item.branch_id] = {
-          branch_id: item.branch_id,
+      const branchId = item.branchId || item.branch_id;
+      if (!stockByBranch[branchId]) {
+        stockByBranch[branchId] = {
+          branch_id: branchId,
           branch_name: item.branch_name,
           total_items: 0,
           total_value: 0
         };
       }
-      stockByBranch[item.branch_id].total_items += item.quantity;
-      stockByBranch[item.branch_id].total_value += item.stock_value;
+      stockByBranch[branchId].total_items += item.quantity;
+      stockByBranch[branchId].total_value += item.stock_value;
     });
 
     setInventoryReport({
@@ -261,14 +280,18 @@ const ReportingAnalytics = () => {
 
   const generateFinancialReport = (filteredTransactions) => {
     // Calculate revenue
-    const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
+    const totalRevenue = filteredTransactions.reduce((sum, t) => {
+      const amount = parseFloat(t.totalAmount || t.total || 0);
+      return sum + amount;
+    }, 0);
     
     // Calculate COGS (Cost of Goods Sold)
     let totalCOGS = 0;
     filteredTransactions.forEach(t => {
       t.items?.forEach(item => {
-        const product = products.find(p => p.id === item.product_id);
-        const purchasePrice = product?.purchase_price || 0;
+        const productId = item.productId || item.product_id;
+        const product = products.find(p => p.id === productId);
+        const purchasePrice = parseFloat(product?.purchasePrice || product?.purchase_price || 0);
         totalCOGS += purchasePrice * item.quantity;
       });
     });

@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ShoppingCart, Plus, Eye, CheckCircle, Clock, AlertTriangle, Truck, Package2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { suppliersAPI, productsAPI, branchesAPI, setDevToken } from '@/lib/api';
+import { suppliersAPI, productsAPI, branchesAPI } from '@/lib/api';
 
 const PurchaseOrderManagement = () => {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -45,8 +45,12 @@ const PurchaseOrderManagement = () => {
   });
 
   useEffect(() => {
-    // Set JWT token untuk API calls
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NzViZGJhZjQ0NmIzNzk5NDQyZDgxMjgiLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjp7ImlkIjoiNjc1YmQ5ZTc0NDZiMzc5OTQ0MmQ4MTFkIiwibmFtZSI6IlN1cGVyIEFkbWluIiwic2x1ZyI6InN1cGVyX2FkbWluIn0sImJyYW5jaCI6eyJpZCI6IjY3NWJkYTYyNDQ2YjM3OTk0NDJkODExZiIsIm5hbWUiOiJIZWFkIE9mZmljZSIsInNsdWciOiJoZWFkX29mZmljZSJ9LCJpYXQiOjE3MzQzMzQwODIsImV4cCI6MTczNDQ3NzI4Mn0.ws8AneYGQK0Qr5ThtVeUYrNYrmwKdHZjKl2si64t1Rs');
+    // Verifikasi token tersedia sebelum fetch data
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
     
     fetchPurchaseOrderData();
     

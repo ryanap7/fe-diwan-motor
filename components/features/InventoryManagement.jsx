@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, ArrowLeftRight, Edit3, ClipboardList, Barcode, Calendar, Plus, Minus, Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { productsAPI, branchesAPI, stockAPI, setDevToken } from '@/lib/api';
+import { productsAPI, branchesAPI, stockAPI } from '@/lib/api';
 
 const InventoryManagement = () => {
   const [products, setProducts] = useState([]);
@@ -72,19 +72,12 @@ const InventoryManagement = () => {
   });
 
   useEffect(() => {
-    // Check if token exists, if not set dev token
-    const checkAndSetToken = () => {
-      const existingToken = localStorage.getItem('token');
-      if (!existingToken) {
-        // Set JWT token untuk API calls
-        setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NzViZGJhZjQ0NmIzNzk5NDQyZDgxMjgiLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjp7ImlkIjoiNjc1YmQ5ZTc0NDZiMzc5OTQ0MmQ4MTFkIiwibmFtZSI6IlN1cGVyIEFkbWluIiwic2x1ZyI6InN1cGVyX2FkbWluIn0sImJyYW5jaCI6eyJpZCI6IjY3NWJkYTYyNDQ2YjM3OTk0NDJkODExZiIsIm5hbWUiOiJIZWFkIE9mZmljZSIsInNsdWciOiJoZWFkX29mZmljZSJ9LCJpYXQiOjE3MzQzMzQwODIsImV4cCI6MTczNDQ3NzI4Mn0.ws8AneYGQK0Qr5ThtVeUYrNYrmwKdHZjKl2si64t1Rs');
-        console.log('Token set for inventory API calls');
-      } else {
-        console.log('Existing token found:', existingToken.substring(0, 20) + '...');
-      }
-    };
-
-    checkAndSetToken();
+    // Verifikasi token tersedia sebelum fetch data
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
     
     // Test API connectivity first
     testAPIConnectivity().then((isConnected) => {

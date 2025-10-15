@@ -14,7 +14,7 @@ import {
   Phone, Mail, MapPin, Calendar, TrendingUp, Package
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { customersAPI, setDevToken } from '@/lib/api';
+import { customersAPI } from '@/lib/api';
 
 const CustomerManagement = () => {
   const { toast } = useToast();
@@ -45,7 +45,12 @@ const CustomerManagement = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setDevToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYWZmYzE1Yy1lZjI3LTQwNjEtYmQ1Mi00OTA0MTc3ZjVlZDQiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBjb21wYW55LmNvbSIsInJvbGUiOiJBRE1JTiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjA0NDIwMDgsImV4cCI6MTc2MTA0NjgwOH0.XRp-8-vVfmkuKvI8H52mMxeqYCl8uFo--NtKDpG7A3I');
+    // Verifikasi token tersedia sebelum fetch data
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No authentication token found. Please login first.');
+      return;
+    }
     fetchCustomerData();
   }, []);
 
