@@ -559,11 +559,13 @@ const ProductManagement = () => {
               <SelectContent>
                 <SelectItem value="all">Semua Kategori</SelectItem>
                 {Array.isArray(categories) &&
-                  categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
+                  categories
+                    .filter((cat) => cat.isActive === true)
+                    .map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
               </SelectContent>
             </Select>
             <Select value={filterBrand} onValueChange={setFilterBrand}>
@@ -879,11 +881,13 @@ const ProductManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {Array.isArray(categories) &&
-                    categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
+                    categories
+                      .filter((cat) => cat.isActive === true)
+                      .map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
