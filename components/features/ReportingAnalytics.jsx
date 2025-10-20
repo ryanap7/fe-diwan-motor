@@ -59,11 +59,11 @@ const ReportingAnalytics = () => {
       };
 
       const [transactionsRes, productsRes, inventoryRes, branchesRes, categoriesRes] = await Promise.all([
-        axios.get('https://api.diwanmotor.com/api/transactions', { headers }),
-        axios.get('https://api.diwanmotor.com/api/products', { headers }),
-        axios.get('https://api.diwanmotor.com/api/stocks', { headers }),
-        axios.get('https://api.diwanmotor.com/api/branches', { headers }),
-        axios.get('https://api.diwanmotor.com/api/categories', { headers })
+        axios.get('https://api.diwanmotor.com/api/transactions?limit=1000', { headers }),
+        axios.get('https://api.diwanmotor.com/api/products?limit=1000', { headers }),
+        axios.get('https://api.diwanmotor.com/api/stocks?limit=1000', { headers }),
+        axios.get('https://api.diwanmotor.com/api/branches?limit=1000', { headers }),
+        axios.get('https://api.diwanmotor.com/api/categories?limit=1000', { headers })
       ]);
 
       setTransactions(transactionsRes.data?.data?.transactions || []);
@@ -354,7 +354,7 @@ const ReportingAnalytics = () => {
     return (
       <Card className="border-0 shadow-lg">
         <CardContent className="pt-12 pb-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="w-12 h-12 mx-auto border-b-2 border-blue-600 rounded-full animate-spin"></div>
           <p className="mt-4 text-muted-foreground">Memuat data laporan...</p>
         </CardContent>
       </Card>
@@ -364,7 +364,7 @@ const ReportingAnalytics = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Reporting & Analytics</h3>
           <p className="text-sm text-muted-foreground">Laporan penjualan, inventory, dan keuangan</p>
@@ -384,7 +384,7 @@ const ReportingAnalytics = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="space-y-2">
               <Label>Tanggal Dari</Label>
               <Input
@@ -454,7 +454,7 @@ const ReportingAnalytics = () => {
           {salesReport && (
             <>
               {/* Sales Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
@@ -509,7 +509,7 @@ const ReportingAnalytics = () => {
               </div>
 
               {/* Detailed Reports */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Best Selling Products */}
                 <Card>
                   <CardHeader>
@@ -542,8 +542,8 @@ const ReportingAnalytics = () => {
                                 <p className="text-xs text-muted-foreground">{item.sku}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                            <TableCell className="text-right text-green-600 font-semibold">
+                            <TableCell className="font-semibold text-right">{item.quantity}</TableCell>
+                            <TableCell className="font-semibold text-right text-green-600">
                               {formatCurrency(item.revenue)}
                             </TableCell>
                           </TableRow>
@@ -585,7 +585,7 @@ const ReportingAnalytics = () => {
                                 <p className="text-xs text-muted-foreground">{item.sku}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                            <TableCell className="font-semibold text-right">{item.quantity}</TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(item.revenue)}
                             </TableCell>
@@ -628,10 +628,10 @@ const ReportingAnalytics = () => {
                           <TableRow key={index}>
                             <TableCell className="font-medium">{item.category_name}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right font-semibold">
+                            <TableCell className="font-semibold text-right">
                               {formatCurrency(item.revenue)}
                             </TableCell>
-                            <TableCell className="text-right text-blue-600 font-semibold">
+                            <TableCell className="font-semibold text-right text-blue-600">
                               {percentage.toFixed(1)}%
                             </TableCell>
                           </TableRow>
@@ -671,7 +671,7 @@ const ReportingAnalytics = () => {
                         <TableRow key={index}>
                           <TableCell className="font-medium">{item.cashier_name}</TableCell>
                           <TableCell className="text-right">{item.transactions}</TableCell>
-                          <TableCell className="text-right font-semibold">
+                          <TableCell className="font-semibold text-right">
                             {formatCurrency(item.revenue)}
                           </TableCell>
                           <TableCell className="text-right text-blue-600">
@@ -692,7 +692,7 @@ const ReportingAnalytics = () => {
           {inventoryReport && (
             <>
               {/* Inventory Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
@@ -783,11 +783,11 @@ const ReportingAnalytics = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{item.branch_name}</TableCell>
-                          <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                          <TableCell className="font-semibold text-right">{item.quantity}</TableCell>
                           <TableCell className="text-right">
                             {formatCurrency(item.purchase_price)}
                           </TableCell>
-                          <TableCell className="text-right text-blue-600 font-semibold">
+                          <TableCell className="font-semibold text-right text-blue-600">
                             {formatCurrency(item.stock_value)}
                           </TableCell>
                         </TableRow>
@@ -813,8 +813,8 @@ const ReportingAnalytics = () => {
                 </CardHeader>
                 <CardContent>
                   {inventoryReport.lowStock.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-green-600 font-medium">✓ Semua stok aman</p>
+                    <div className="py-8 text-center">
+                      <p className="font-medium text-green-600">✓ Semua stok aman</p>
                     </div>
                   ) : (
                     <Table>
@@ -836,11 +836,11 @@ const ReportingAnalytics = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-sm">{item.branch_name}</TableCell>
-                            <TableCell className="text-right font-bold text-orange-600">
+                            <TableCell className="font-bold text-right text-orange-600">
                               {item.quantity}
                             </TableCell>
                             <TableCell className="text-right">
-                              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                              <span className="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">
                                 Perlu Restock
                               </span>
                             </TableCell>
@@ -878,23 +878,23 @@ const ReportingAnalytics = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
                       <span className="font-medium">Total Pendapatan</span>
                       <span className="text-xl font-bold text-green-600">
                         {formatCurrency(financialReport.profitLoss.revenue)}
                       </span>
                     </div>
                     
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
                       <span className="font-medium">Harga Pokok Penjualan (HPP)</span>
                       <span className="text-xl font-bold text-red-600">
                         {formatCurrency(financialReport.profitLoss.cogs)}
                       </span>
                     </div>
                     
-                    <div className="border-t-2 pt-4"></div>
+                    <div className="pt-4 border-t-2"></div>
                     
-                    <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                    <div className="flex items-center justify-between p-4 border-2 border-green-200 rounded-lg bg-green-50">
                       <div>
                         <p className="font-medium">Laba Kotor</p>
                         <p className="text-sm text-muted-foreground">
@@ -906,7 +906,7 @@ const ReportingAnalytics = () => {
                       </span>
                     </div>
                     
-                    <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <div className="flex items-center justify-between p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
                       <div>
                         <p className="font-medium">Laba Bersih</p>
                         <p className="text-sm text-muted-foreground">
@@ -940,7 +940,7 @@ const ReportingAnalytics = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-green-50">
                       <div>
                         <p className="font-medium">Kas Masuk</p>
                         <p className="text-sm text-muted-foreground">Dari penjualan</p>
@@ -950,7 +950,7 @@ const ReportingAnalytics = () => {
                       </span>
                     </div>
                     
-                    <div className="flex justify-between items-center p-4 bg-red-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-red-50">
                       <div>
                         <p className="font-medium">Kas Keluar</p>
                         <p className="text-sm text-muted-foreground">Pembelian barang</p>
@@ -960,11 +960,11 @@ const ReportingAnalytics = () => {
                       </span>
                     </div>
                     
-                    <div className="border-t-2 pt-4"></div>
+                    <div className="pt-4 border-t-2"></div>
                     
-                    <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <div className="flex items-center justify-between p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
                       <div>
-                        <p className="font-medium text-lg">Arus Kas Bersih</p>
+                        <p className="text-lg font-medium">Arus Kas Bersih</p>
                         <p className="text-sm text-muted-foreground">Kas Masuk - Kas Keluar</p>
                       </div>
                       <span className="text-3xl font-bold text-blue-600">
