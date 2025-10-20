@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Store } from "lucide-react";
+import { Store, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,6 +20,7 @@ import { setAuthToken, getAuthToken } from "@/lib/auth";
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const router = useRouter();
 
@@ -65,15 +66,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 animate-in fade-in-50 slide-in-from-bottom-10 duration-500">
-        <CardHeader className="space-y-1 text-center pb-6">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <Card className="w-full max-w-md duration-500 border-0 shadow-2xl animate-in fade-in-50 slide-in-from-bottom-10">
+        <CardHeader className="pb-6 space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
+            <div className="flex items-center justify-center w-16 h-16 transition-transform duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl hover:scale-105">
               <Store className="w-10 h-10 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
             HD MOTOPART
           </CardTitle>
           <CardDescription className="text-base">
@@ -96,15 +97,28 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Kata Sandi</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Masukkan kata sandi"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan kata sandi"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute text-gray-500 transition-colors duration-200 transform -translate-y-1/2 right-3 top-1/2 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
             <Button
               type="submit"
@@ -113,7 +127,7 @@ export default function LoginPage() {
             >
               {loginLoading ? (
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
                   <span>Masuk...</span>
                 </div>
               ) : (

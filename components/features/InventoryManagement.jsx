@@ -1010,7 +1010,7 @@ const InventoryManagement = () => {
                               {Math.abs(movement.quantity)} unit
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {movement.branch?.name} • {movement.reason}
+                              {movement.branch?.name || 'Cabang'} • {movement.reason || 'Penyesuaian stok'}
                             </p>
                             {movement.notes && (
                               <p className="mt-1 text-xs text-gray-500">{movement.notes}</p>
@@ -1022,11 +1022,15 @@ const InventoryManagement = () => {
                               movement.type === 'OUT' ? 'destructive' : 
                               'secondary'
                             }>
-                              {movement.type}
+                              {movement.type === 'IN' ? 'Barang Masuk' : 
+                               movement.type === 'OUT' ? 'Barang Keluar' : 
+                               movement.type}
                             </Badge>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {movement.created_at ? new Date(movement.created_at).toLocaleDateString('id-ID') : 'N/A'}
-                            </p>
+                            {movement.created_at && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {new Date(movement.created_at).toLocaleDateString('id-ID')}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
