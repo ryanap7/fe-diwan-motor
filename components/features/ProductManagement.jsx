@@ -129,6 +129,14 @@ const ProductManagement = () => {
     isFeatured: false, // Disabled by default
   });
   const [saving, setSaving] = useState(false);
+  
+  // Stock Management State
+  const [stockData, setStockData] = useState({
+    action: 'insert', // 'insert' or 'remove'
+    quantity: '',
+    notes: '',
+    reason: ''
+  });
 
   useEffect(() => {
     // Verifikasi token tersedia sebelum fetch data
@@ -305,12 +313,28 @@ const ProductManagement = () => {
         isFeatured: false, // Disabled by default
       });
     }
+    
+    // Reset stock data
+    setStockData({
+      action: 'insert',
+      quantity: '',
+      notes: '',
+      reason: ''
+    });
+    
     setDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingProduct(null);
+    // Reset stock data
+    setStockData({
+      action: 'insert',
+      quantity: '',
+      notes: '',
+      reason: ''
+    });
   };
 
   const calculateMargin = (purchase, selling) => {
@@ -384,9 +408,22 @@ const ProductManagement = () => {
       if (editingProduct) {
         apiResponse = await productsAPI.update(editingProduct.id, dataToSend);
         toast.success("Produk berhasil diperbarui!");
+        
+        // Handle stock adjustment for existing product
+        if (stockData.quantity && parseInt(stockData.quantity) > 0) {
+          await handleStockAdjustment(editingProduct.id);
+        }
       } else {
         apiResponse = await productsAPI.create(dataToSend);
         toast.success("Produk berhasil dibuat!");
+        
+        // Handle stock adjustment for new product
+        if (stockData.quantity && parseInt(stockData.quantity) > 0) {
+          const newProductId = apiResponse.data?.id || apiResponse.id;
+          if (newProductId) {
+            await handleStockAdjustment(newProductId);
+          }
+        }
       }
 
       console.log('API Response after save:', apiResponse);
@@ -400,6 +437,60 @@ const ProductManagement = () => {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Handle stock adjustment
+  const handleStockAdjustment = async (productId) => {
+    try {
+      // Get user branch ID from localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const branchId = userData.branch?.id;
+      
+      if (!branchId) {
+        toast.error('User belum di-assign ke cabang. Hubungi administrator.');
+        return;
+      }
+
+      // Struktur request sesuai API spec
+      const stockAdjustmentData = {
+        branchId: branchId,
+        quantity: parseInt(stockData.quantity),
+        type: stockData.action === 'insert' ? 'IN' : 'OUT',
+        reason: stockData.reason || (stockData.action === 'insert' ? 'Manual stock increase' : 'Manual stock decrease'),
+        notes: stockData.notes || `Stock ${stockData.action} via product form`
+      };
+
+      console.log('Stock adjustment data:', stockAdjustmentData);
+      console.log('Posting to endpoint:', `/api/stocks/adjust/${productId}`);
+      
+      // Post to stock adjustment API dengan productId sebagai parameter URL
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/stocks/adjust/${productId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(stockAdjustmentData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Stock adjustment failed');
+      }
+
+      const result = await response.json();
+      console.log('Stock adjustment success:', result);
+      
+      const actionText = stockData.action === 'insert' ? 'ditambahkan' : 'dikurangi';
+      toast.success(`Stock berhasil ${actionText}: ${stockData.quantity} unit`);
+      
+    } catch (error) {
+      console.error('Stock adjustment error:', error);
+      toast.error(
+        `Gagal melakukan adjustment stock: ${error.message || 'Unknown error'}`
+      );
     }
   };
 
@@ -439,6 +530,10 @@ const ProductManagement = () => {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleStockChange = (field, value) => {
+    setStockData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleImageFileChange = (e) => {
@@ -510,50 +605,64 @@ const ProductManagement = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="pt-6">
-              <div className="h-32 bg-gray-200 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="border-0 shadow-md animate-pulse rounded-xl">
+              <CardContent className="p-0">
+                <div className="h-40 bg-gray-200 sm:h-48 rounded-t-xl"></div>
+                <div className="p-3 space-y-3 sm:p-4">
+                  <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                  <div className="w-3/4 h-5 bg-gray-200 rounded"></div>
+                  <div className="w-1/2 h-3 bg-gray-200 rounded"></div>
+                  <div className="flex justify-between">
+                    <div className="w-16 h-4 bg-gray-200 rounded"></div>
+                    <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Kelola Produk</h3>
-          <p className="text-sm text-muted-foreground">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-center sm:text-left">
+          <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Total: {filteredProducts.length} produk
           </p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
-          className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
+          className="w-full px-6 py-3 text-sm font-semibold text-white transition-all duration-300 transform shadow-lg sm:w-auto sm:px-4 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105 rounded-xl"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Tambah Produk
+          <span className="hidden sm:inline">Tambah Produk</span>
+          <span className="sm:hidden">Tambah</span>
         </Button>
       </div>
 
-      <Card className="border-0 shadow-lg">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
+      {/* Search & Filter - Mobile Responsive */}
+      <Card className="border-0 shadow-md rounded-xl">
+        <CardContent className="p-3 sm:p-4 md:pt-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="relative sm:col-span-2 lg:col-span-1">
+              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3.5" />
               <Input
-                placeholder="Cari produk (nama/SKU)..."
+                placeholder="Cari produk..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="py-3 pl-10 text-sm border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger>
+              <SelectTrigger className="py-3 text-sm border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <SelectValue placeholder="Semua Kategori" />
               </SelectTrigger>
               <SelectContent>
@@ -569,7 +678,7 @@ const ProductManagement = () => {
               </SelectContent>
             </Select>
             <Select value={filterBrand} onValueChange={setFilterBrand}>
-              <SelectTrigger>
+              <SelectTrigger className="py-3 text-sm border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <SelectValue placeholder="Semua Brand" />
               </SelectTrigger>
               <SelectContent>
@@ -587,8 +696,8 @@ const ProductManagement = () => {
       </Card>
 
       {filteredProducts.length === 0 ? (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="pt-12 pb-12 text-center">
+        <Card className="border-0 shadow-md rounded-xl">
+          <CardContent className="py-8 text-center sm:pt-12 sm:pb-12">
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Package className="w-8 h-8 text-blue-600" />
             </div>
@@ -614,7 +723,8 @@ const ProductManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        // Product Grid - Mobile Responsive
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((product) => {
             const margin = calculateMargin(
               product.purchase_price,
@@ -628,56 +738,55 @@ const ProductManagement = () => {
             return (
               <Card
                 key={product.id}
-                className="overflow-hidden transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1"
+                className="overflow-hidden transition-all duration-300 transform border-0 shadow-md hover:shadow-lg hover:-translate-y-1 rounded-xl"
               >
                 {mainImage && (
-                  <div className="relative h-40 overflow-hidden bg-gray-100">
+                  <div className="relative h-40 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 sm:h-48">
                     <img
                       src={mainImage}
                       alt={product.name}
-                      className="object-cover w-full h-full"
+                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
                       onError={(e) => {
                         e.target.style.display = "none";
                       }}
                     />
                   </div>
                 )}
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <Badge variant="outline" className="mb-2 text-xs">
+                    <div className="flex-1 min-w-0">
+                      <Badge variant="outline" className="mb-2 font-mono text-xs bg-gray-50">
                         {product.sku}
                       </Badge>
-                      <h3 className="mb-1 text-lg font-bold text-gray-900 line-clamp-2">
+                      <h3 className="mb-1 text-sm font-bold leading-tight text-gray-900 sm:text-base line-clamp-2">
                         {product.name}
                       </h3>
-                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                        <span>{product.category?.name || "No Category"}</span>
-                        <span>•</span>
-                        <span>{product.brand?.name || "No Brand"}</span>
+                      <div className="flex items-center gap-1 mb-2 text-xs sm:gap-2 text-muted-foreground">
+                        <span className="truncate">{product.category?.name || "No Category"}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="hidden truncate sm:inline">{product.brand?.name || "No Brand"}</span>
                       </div>
                     </div>
                     <Badge
                       variant={product.isActive ? "default" : "secondary"}
-                      className={product.isActive ? "bg-green-500" : ""}
+                      className={`ml-2 text-xs rounded-full ${product.isActive ? "bg-green-500 hover:bg-green-600" : "bg-gray-400"}`}
                     >
                       {product.isActive ? "Aktif" : "Nonaktif"}
                     </Badge>
                   </div>
 
-                  <div className="pt-3 mb-3 space-y-2 border-t">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Harga Jual:</span>
-                      <span className="font-semibold">
-                        Rp{" "}
-                        {product.sellingPrice?.toLocaleString("id-ID") || "0"}
+                  <div className="pt-3 mb-3 space-y-2 border-t border-gray-100">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="font-medium text-muted-foreground">Harga Jual:</span>
+                      <span className="font-bold text-right text-blue-600">
+                        Rp {product.sellingPrice?.toLocaleString("id-ID") || "0"}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">
                         Harga Grosir:
                       </span>
-                      <span>
+                      <span className="text-right">
                         Rp{" "}
                         {product.wholesalePrice?.toLocaleString("id-ID") || "0"}
                       </span>
@@ -687,7 +796,7 @@ const ProductManagement = () => {
                         <span className="text-muted-foreground">
                           Min Grosir:
                         </span>
-                        <span className="font-medium text-blue-600">
+                        <span className="font-medium text-right text-blue-600">
                           {product.minOrderWholesale || product.min_order_wholesale || product.minWholesaleQuantity || "1"} unit+
                         </span>
                       </div>
@@ -707,11 +816,11 @@ const ProductManagement = () => {
                     <div className="flex justify-between pt-2 text-xs border-t">
                       <span className="text-muted-foreground">Margin:</span>
                       <span
-                        className={
+                        className={`text-right ${
                           parseFloat(margin) > 20
                             ? "text-green-600 font-semibold"
                             : "text-orange-600"
-                        }
+                        }`}
                       >
                         {margin}%
                       </span>
@@ -729,10 +838,12 @@ const ProductManagement = () => {
                         <Badge
                           key={idx}
                           variant="outline"
-                          className="text-xs bg-blue-50"
+                          className="text-xs truncate bg-blue-50 max-w-16 sm:max-w-none"
                         >
-                          <Tag className="w-2 h-2 mr-1" />
-                          {typeof tag === "string" ? tag.trim() : tag}
+                          <Tag className="flex-shrink-0 w-2 h-2 mr-1" />
+                          <span className="truncate">
+                            {typeof tag === "string" ? tag.trim() : tag}
+                          </span>
                         </Badge>
                       ))}
                       {(() => {
@@ -753,8 +864,72 @@ const ProductManagement = () => {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
+                  <div className="pt-2 space-y-2">
+                    {/* Mobile Layout - Stacked buttons */}
+                    <div className="flex flex-col gap-2 sm:hidden">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDialog(product)}
+                        className="w-full py-2.5 text-sm font-medium transition-all duration-200 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300 rounded-xl"
+                      >
+                        <Edit className="w-3 h-3 mr-2" />
+                        Ubah Produk
+                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProductForPromo(product);
+                            if (product.promo && product.promo.is_active) {
+                              setPromoFormData({
+                                discount_percentage:
+                                  product.promo.discount_percentage || "",
+                                is_active: product.promo.is_active,
+                              });
+                            } else {
+                              setPromoFormData({
+                                discount_percentage: "",
+                                is_active: true,
+                              });
+                            }
+                            setPromoDialogOpen(true);
+                          }}
+                          className="flex-1 py-2 text-xs font-medium transition-all duration-200 border-2 border-orange-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300 rounded-xl"
+                        >
+                          <Percent className="w-3 h-3 mr-1" />
+                          Promo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleActive(product)}
+                          className={`flex-1 py-2 text-xs font-medium transition-all duration-200 border-2 rounded-xl ${
+                            product.is_active
+                              ? "border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                              : "border-green-200 hover:bg-green-50 hover:border-green-300"
+                          }`}
+                        >
+                          <Power className="w-3 h-3 mr-1" />
+                          {product.is_active ? "Off" : "On"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setProductToDelete(product);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="flex-1 py-2 text-xs font-medium transition-all duration-200 border-2 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 rounded-xl"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Desktop Layout - Horizontal buttons */}
+                    <div className="hidden gap-2 sm:flex">
                       <Button
                         variant="outline"
                         size="sm"
@@ -769,7 +944,6 @@ const ProductManagement = () => {
                         size="sm"
                         onClick={() => {
                           setSelectedProductForPromo(product);
-                          // Pre-fill form if promo exists
                           if (product.promo && product.promo.is_active) {
                             setPromoFormData({
                               discount_percentage:
@@ -1047,6 +1221,143 @@ const ProductManagement = () => {
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Stock Management Section */}
+            <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+              <h4 className="mb-3 text-sm font-semibold text-blue-800">
+                📦 Manajemen Stok
+              </h4>
+              
+              {/* Check if user has branch assignment */}
+              {(() => {
+                try {
+                  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+                  const branchId = userData.branch?.id;
+                  const branchName = userData.branch?.name;
+                  
+                  if (!branchId) {
+                    return (
+                      <div className="p-3 mb-3 border border-red-200 rounded bg-red-50">
+                        <p className="text-sm font-medium text-red-700">
+                          ⚠️ Stock Management Tidak Tersedia
+                        </p>
+                        <p className="text-xs text-red-600">
+                          User belum di-assign ke cabang. Hubungi administrator untuk assign user ke cabang.
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <div className="p-2 mb-3 bg-blue-100 border border-blue-200 rounded">
+                      <p className="text-xs text-blue-700">
+                        🏢 Stock akan di-adjust untuk cabang: <strong>{branchName}</strong>
+                      </p>
+                    </div>
+                  );
+                } catch {
+                  return (
+                    <div className="p-3 mb-3 border border-red-200 rounded bg-red-50">
+                      <p className="text-sm font-medium text-red-700">
+                        ⚠️ Error loading user data
+                      </p>
+                    </div>
+                  );
+                }
+              })()}
+              
+              {(() => {
+                try {
+                  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+                  const userHasBranch = userData.branch?.id;
+                  
+                  return (
+                    <div className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${!userHasBranch ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="space-y-2">
+                        <Label>Aksi Stok</Label>
+                        <Select
+                          value={stockData.action}
+                          onValueChange={(value) => handleStockChange("action", value)}
+                          disabled={!userHasBranch}
+                        >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="insert">➕ Tambah Stok</SelectItem>
+                      <SelectItem value="remove">➖ Kurangi Stok</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                        <div className="space-y-2">
+                          <Label>Jumlah</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={stockData.quantity}
+                            onChange={(e) => handleStockChange("quantity", e.target.value)}
+                            placeholder="0"
+                            disabled={!userHasBranch}
+                          />
+                          <p className="text-xs text-blue-600">
+                            Unit yang akan {stockData.action === 'insert' ? 'ditambahkan ke' : 'dikurangi dari'} stok
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Alasan</Label>
+                          <Input
+                            value={stockData.reason}
+                            onChange={(e) => handleStockChange("reason", e.target.value)}
+                            placeholder={stockData.action === 'insert' ? 'Pembelian, produksi, dll' : 'Rusak, kehilangan, dll'}
+                            disabled={!userHasBranch}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Catatan</Label>
+                          <Input
+                            value={stockData.notes}
+                            onChange={(e) => handleStockChange("notes", e.target.value)}
+                            placeholder="Catatan tambahan (opsional)"
+                            disabled={!userHasBranch}
+                          />
+                        </div>
+                      </div>
+                    );
+                } catch {
+                  return (
+                    <div className="opacity-50 pointer-events-none">
+                      <p className="text-sm text-red-600">Error loading form</p>
+                    </div>
+                  );
+                }
+              })()}
+              {stockData.quantity && parseInt(stockData.quantity) > 0 && (
+                <div className={`p-2 mt-3 border rounded ${
+                  stockData.action === 'insert' 
+                    ? 'border-green-200 bg-green-50' 
+                    : 'border-orange-200 bg-orange-50'
+                }`}>
+                  <p className={`text-xs font-medium ${
+                    stockData.action === 'insert' ? 'text-green-700' : 'text-orange-700'
+                  }`}>
+                    {stockData.action === 'insert' ? '✅' : '⚠️'} 
+                    {stockData.action === 'insert' ? ' Akan menambah' : ' Akan mengurangi'} stok sebanyak {stockData.quantity} unit
+                  </p>
+                  <p className={`text-xs ${
+                    stockData.action === 'insert' ? 'text-green-600' : 'text-orange-600'
+                  }`}>
+                    Alasan: {stockData.reason || (stockData.action === 'insert' ? 'Manual stock increase' : 'Manual stock decrease')}
+                  </p>
+                </div>
+              )}
+              {!stockData.quantity && (
+                <div className="p-2 mt-3 border border-gray-200 rounded bg-gray-50">
+                  <p className="text-xs text-gray-600">
+                    💡 Kosongkan jumlah jika tidak ingin melakukan adjustment stok
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Hidden Image Upload - Default Empty */}

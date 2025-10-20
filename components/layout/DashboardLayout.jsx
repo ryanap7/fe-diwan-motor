@@ -27,7 +27,7 @@ import { getAuthToken, removeAuthToken } from "@/lib/auth";
 
 const DashboardLayout = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Default false for mobile-first
   const [loading, setLoading] = useState(true);
   const [ngrokError, setNgrokError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -39,6 +39,25 @@ const DashboardLayout = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        // Desktop - keep sidebar open
+        setSidebarOpen(true);
+      } else {
+        // Mobile - close sidebar
+        setSidebarOpen(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const checkAuth = async () => {
@@ -347,6 +366,13 @@ const DashboardLayout = ({ children }) => {
     return pathname === subItem.href;
   };
 
+  // Close sidebar when clicking menu item on mobile
+  const handleMenuClick = () => {
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -417,26 +443,34 @@ const DashboardLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
         className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-white border-r border-gray-200 transition-all duration-300 ease-in-out flex flex-col shadow-lg`}
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${
+          sidebarOpen ? "w-64" : "lg:w-20"
+        } fixed lg:relative z-50 bg-white border-r border-gray-200 transition-all duration-300 ease-in-out flex flex-col shadow-lg h-full`}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 sm:p-6">
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 transition-transform duration-300 transform shadow-md bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:scale-105">
               <Store className="w-6 h-6 text-white" />
             </div>
-            {sidebarOpen && (
-              <div className="duration-300 animate-in fade-in-50 slide-in-from-left-5">
-                <h1 className="text-xl font-bold text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
-                  HD MOTOPART
-                </h1>
-                <p className="text-xs text-muted-foreground">Konfigurasi</p>
-              </div>
-            )}
+            <div className="duration-300 animate-in fade-in-50 slide-in-from-left-5 lg:block">
+              <h1 className="text-lg font-bold text-transparent sm:text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
+                HD MOTOPART
+              </h1>
+              <p className="text-xs text-muted-foreground">Konfigurasi</p>
+            </div>
           </Link>
         </div>
 
@@ -481,32 +515,29 @@ const DashboardLayout = ({ children }) => {
                         isActive ? "animate-in zoom-in-50 duration-300" : ""
                       }`}
                     />
-                    {sidebarOpen && (
-                      <span className="flex-1 font-medium text-left duration-300 animate-in fade-in-50 slide-in-from-left-5">
-                        {item.label}
-                      </span>
-                    )}
-                    {sidebarOpen && (
-                      <svg
-                        className={`w-4 h-4 transition-transform duration-200 ${
-                          submenuOpen ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    )}
+                    <span className="flex-1 font-medium text-left duration-300 animate-in fade-in-50 slide-in-from-left-5 lg:block">
+                      {item.label}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 lg:block ${
+                        submenuOpen ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
                   </button>
                 ) : (
                   <Link
                     href={item.href}
+                    onClick={handleMenuClick}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive
                         ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md transform scale-105"
@@ -518,16 +549,14 @@ const DashboardLayout = ({ children }) => {
                         isActive ? "animate-in zoom-in-50 duration-300" : ""
                       }`}
                     />
-                    {sidebarOpen && (
-                      <span className="flex-1 font-medium text-left duration-300 animate-in fade-in-50 slide-in-from-left-5">
-                        {item.label}
-                      </span>
-                    )}
+                    <span className="flex-1 font-medium text-left duration-300 animate-in fade-in-50 slide-in-from-left-5">
+                      {item.label}
+                    </span>
                   </Link>
                 )}
 
                 {/* Submenu */}
-                {hasSubmenu && submenuOpen && sidebarOpen && (
+                {hasSubmenu && submenuOpen && (
                   <div className="mt-1 ml-4 space-y-1 duration-200 animate-in slide-in-from-top-2">
                     {item.submenu.map((subItem) => {
                       const SubIcon = subItem.icon;
@@ -536,6 +565,7 @@ const DashboardLayout = ({ children }) => {
                         <Link
                           key={subItem.id}
                           href={subItem.href}
+                          onClick={handleMenuClick}
                           className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ${
                             isSubActive
                               ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-sm"
@@ -563,43 +593,47 @@ const DashboardLayout = ({ children }) => {
             className="flex items-center w-full gap-3 px-4 py-3 text-red-600 transition-all duration-200 rounded-lg hover:bg-red-50 hover:scale-105"
           >
             <LogOut className="w-5 h-5" />
-            {sidebarOpen && <span className="font-medium">Keluar</span>}
+            <span className="font-medium">Keluar</span>
           </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden lg:ml-0">
         {/* Header */}
-        <header className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+        <header className="px-4 py-3 bg-white border-b border-gray-200 shadow-sm sm:px-6 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="transition-colors duration-200 hover:bg-gray-100"
+                className="transition-colors duration-200 lg:hover:bg-gray-100"
               >
-                {sidebarOpen ? (
-                  <X className="w-5 h-5" />
-                ) : (
-                  <Menu className="w-5 h-5" />
-                )}
+                <Menu className="w-5 h-5" />
               </Button>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-gray-900 sm:text-xl lg:text-2xl">
                   {getCurrentPageTitle()}
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="hidden text-sm sm:block text-muted-foreground">
                   Kelola konfigurasi sistem Anda
                 </p>
               </div>
             </div>
 
             {/* User Info */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 px-4 py-2 border border-gray-200 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50">
-                <div className="flex items-center justify-center w-10 h-10 font-semibold text-white rounded-full shadow-md bg-gradient-to-r from-blue-500 to-purple-500">
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Mobile - Show only avatar */}
+              <div className="flex items-center gap-2 sm:hidden">
+                <div className="flex items-center justify-center w-8 h-8 font-semibold text-white rounded-full shadow-md bg-gradient-to-r from-blue-500 to-purple-500">
+                  {currentUser?.username?.charAt(0).toUpperCase()}
+                </div>
+              </div>
+
+              {/* Desktop - Show full user info */}
+              <div className="hidden gap-3 px-3 py-2 border border-gray-200 rounded-lg sm:flex bg-gradient-to-r from-blue-50 to-purple-50 lg:px-4">
+                <div className="flex items-center justify-center w-8 h-8 font-semibold text-white rounded-full shadow-md lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-500">
                   {currentUser?.username?.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex flex-col">
@@ -616,17 +650,17 @@ const DashboardLayout = ({ children }) => {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
-                className="transition-colors duration-200 hover:bg-red-50 hover:text-red-600"
+                className="w-8 h-8 transition-colors duration-200 sm:w-10 sm:h-10 hover:bg-red-50 hover:text-red-600"
                 title="Logout"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-3 overflow-y-auto sm:p-4 lg:p-6">
           <div className="duration-500 animate-in fade-in-50 slide-in-from-bottom-5">
             {children}
           </div>

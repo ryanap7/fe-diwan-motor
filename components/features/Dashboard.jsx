@@ -269,15 +269,15 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-3">
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
+                <div className="w-24 h-4 bg-gray-200 rounded"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
+                <div className="w-16 h-8 mb-2 bg-gray-200 rounded"></div>
+                <div className="w-20 h-3 bg-gray-200 rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -289,12 +289,12 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full -mr-32 -mt-32"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-10 rounded-full -ml-24 -mb-24"></div>
+      <Card className="relative overflow-hidden text-white border-0 shadow-lg bg-gradient-to-r from-green-600 to-emerald-600">
+        <div className="absolute top-0 right-0 w-64 h-64 -mt-32 -mr-32 bg-white rounded-full opacity-10"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 -mb-24 -ml-24 bg-white rounded-full opacity-10"></div>
         <CardHeader className="relative z-10">
           <CardTitle className="text-3xl font-bold">Dashboard POS & Inventory</CardTitle>
-          <CardDescription className="text-white/90 text-base mt-2">
+          <CardDescription className="mt-2 text-base text-white/90">
             Ringkasan bisnis toko motor Anda - Pendapatan, Stok, dan Performa Penjualan
           </CardDescription>
         </CardHeader>
@@ -302,17 +302,17 @@ const Dashboard = () => {
 
       {/* Main Revenue Stats */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Performa Penjualan</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Performa Penjualan</h3>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {mainStatCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <Card
                 key={index}
-                className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group"
+                className="overflow-hidden transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1 group"
               >
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500`}></div>
-                <CardHeader className="pb-3 relative">
+                <CardHeader className="relative pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {stat.title}
@@ -323,7 +323,7 @@ const Dashboard = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="relative">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                  <div className="mb-1 text-2xl font-bold text-gray-900">
                     {stat.value}
                   </div>
                   <p className="text-xs text-muted-foreground">{stat.description}</p>
@@ -336,8 +336,8 @@ const Dashboard = () => {
 
       {/* Secondary Stats */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistik Inventory & Customer</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Statistik Inventory & Customer</h3>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {secondaryStatCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
@@ -346,7 +346,7 @@ const Dashboard = () => {
                 className={`border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden group ${stat.alert ? 'ring-2 ring-yellow-400' : ''}`}
               >
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500`}></div>
-                <CardHeader className="pb-3 relative">
+                <CardHeader className="relative pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {stat.title}
@@ -357,7 +357,7 @@ const Dashboard = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="relative">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                  <div className="mb-1 text-2xl font-bold text-gray-900">
                     {stat.value}
                   </div>
                   <p className="text-xs text-muted-foreground">{stat.description}</p>
@@ -369,11 +369,11 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Section - 3 Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Top Products */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <TrendingUp className="w-5 h-5 text-green-600" />
               Produk Terlaris
             </CardTitle>
@@ -381,11 +381,11 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             {stats.topProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Belum ada data penjualan</p>
+              <p className="py-4 text-sm text-center text-muted-foreground">Belum ada data penjualan</p>
             ) : (
               <div className="space-y-3">
                 {stats.topProducts.map((product, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div key={index} className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
                         index === 0 ? 'bg-yellow-500' : 
@@ -395,12 +395,12 @@ const Dashboard = () => {
                         {index + 1}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{product.product_name}</p>
+                        <p className="text-sm font-medium">{product.product_name}</p>
                         <p className="text-xs text-muted-foreground">{product.quantity} unit terjual</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-sm text-green-600">{formatCurrency(product.revenue)}</p>
+                      <p className="text-sm font-semibold text-green-600">{formatCurrency(product.revenue)}</p>
                     </div>
                   </div>
                 ))}
@@ -412,7 +412,7 @@ const Dashboard = () => {
         {/* Recent Transactions */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <ShoppingCart className="w-5 h-5 text-blue-600" />
               Transaksi Terbaru
             </CardTitle>
@@ -420,18 +420,18 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             {stats.recentTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Belum ada transaksi</p>
+              <p className="py-4 text-sm text-center text-muted-foreground">Belum ada transaksi</p>
             ) : (
               <div className="space-y-3">
                 {stats.recentTransactions.map((transaction, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div key={index} className="flex items-center justify-between p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100">
                     <div>
-                      <p className="font-medium text-sm">{transaction.invoice_number}</p>
+                      <p className="text-sm font-medium">{transaction.invoice_number}</p>
                       <p className="text-xs text-muted-foreground">{transaction.customer_name}</p>
                       <p className="text-xs text-muted-foreground">{formatDate(transaction.transaction_date)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-sm text-green-600">{formatCurrency(transaction.total)}</p>
+                      <p className="text-sm font-semibold text-green-600">{formatCurrency(transaction.total)}</p>
                     </div>
                   </div>
                 ))}
@@ -443,7 +443,7 @@ const Dashboard = () => {
         {/* Low Stock Alert */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <AlertTriangle className="w-5 h-5 text-orange-600" />
               Stok Menipis
             </CardTitle>
@@ -451,21 +451,21 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             {stats.lowStockItems.length === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-green-600 font-medium">✓ Semua stok aman</p>
+              <div className="py-4 text-center">
+                <p className="text-sm font-medium text-green-600">✓ Semua stok aman</p>
                 <p className="text-xs text-muted-foreground">Tidak ada produk yang stoknya menipis</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {stats.lowStockItems.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div key={index} className="flex items-center justify-between p-3 border border-orange-200 rounded-lg bg-orange-50">
                     <div>
-                      <p className="font-medium text-sm">{item.product_name}</p>
+                      <p className="text-sm font-medium">{item.product_name}</p>
                       <p className="text-xs text-muted-foreground">{item.sku}</p>
                       <p className="text-xs text-muted-foreground">{item.branch_name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg text-orange-600">{item.quantity}</p>
+                      <p className="text-lg font-bold text-orange-600">{item.quantity}</p>
                       <p className="text-xs text-muted-foreground">unit</p>
                     </div>
                   </div>
