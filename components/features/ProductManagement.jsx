@@ -755,10 +755,10 @@ const ProductManagement = () => {
             </Select>
             <Select value={filterBrand} onValueChange={setFilterBrand}>
               <SelectTrigger className="py-3 text-sm border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <SelectValue placeholder="Semua Brand" />
+                <SelectValue placeholder="Merek Barang" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Brand</SelectItem>
+                <SelectItem value="all">Merek Barang</SelectItem>
                 {Array.isArray(brands) &&
                   brands.map((brand) => (
                     <SelectItem key={brand.id} value={brand.id}>
