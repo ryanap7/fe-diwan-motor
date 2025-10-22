@@ -1,0 +1,6 @@
+1. Kategori - Kategori yang sudah di buat itu bisa tersusun secara berurutan  A-Z
+2. Brand - Pengen ada brand lagi ( role brand apakah sama kaya kategori)
+4. Produk - ada gambar (optional)
+5. Produk - ada tag tanda lokasi barang, ini sebagai note saja (optional)
+6. Produk - ada barcode (optional)
+7. Kasir - Tambahkan menu diskon manual takut ada kebutuhan memerlukan diskon
