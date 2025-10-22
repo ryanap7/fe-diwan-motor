@@ -42,6 +42,8 @@ import {
   Image as ImageIcon,
   Tag,
   Percent,
+  MapPin,
+  QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -99,6 +101,8 @@ const ProductManagement = () => {
     discount_percentage: "",
     is_active: true,
   });
+  
+  const [autoGenerateBarcode, setAutoGenerateBarcode] = useState(true);
 
   const [formData, setFormData] = useState({
     sku: "",
@@ -152,49 +156,79 @@ const ProductManagement = () => {
     try {
       setLoading(true);
 
-      const [productsRes, categoriesRes, brandsRes, branchesRes] =
-        await Promise.all([
-          productsAPI.getAll(),
-          categoriesAPI.getAll(),
-          brandsAPI.getAll(),
-          branchesAPI.getAll(),
-        ]);
+      // Fetch all data with individual error handling
+      const results = await Promise.allSettled([
+        productsAPI.getAll(),
+        categoriesAPI.getAll(),
+        brandsAPI.getAll(),
+        branchesAPI.getAll(),
+      ]);
+
+      const [productsRes, categoriesRes, brandsRes, branchesRes] = results;
+
+      // Handle individual API failures
+      if (productsRes.status === 'rejected') {
+        console.error("Products API failed:", productsRes.reason);
+      }
+      if (categoriesRes.status === 'rejected') {
+        console.error("Categories API failed:", categoriesRes.reason);
+        toast.error("Gagal memuat data kategori: " + categoriesRes.reason.message);
+      }
+      if (brandsRes.status === 'rejected') {
+        console.error("Brands API failed:", brandsRes.reason);
+        toast.error("Gagal memuat data brand: " + brandsRes.reason.message);
+      }
+      if (branchesRes.status === 'rejected') {
+        console.error("Branches API failed:", branchesRes.reason);
+      }
+
+      // Extract successful responses
+      const productsData = productsRes.status === 'fulfilled' ? productsRes.value : null;
+      const categoriesData = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
+      const brandsData = brandsRes.status === 'fulfilled' ? brandsRes.value : null;
+      const branchesData = branchesRes.status === 'fulfilled' ? branchesRes.value : null;
 
       // Handle API response - correct structure based on API testing
-      console.log("Products API Response:", productsRes);
-      console.log("Categories API Response:", categoriesRes);
-      console.log("Brands API Response:", brandsRes);
+      console.log("Products API Response:", productsData);
+      console.log("Categories API Response:", categoriesData);
+      console.log("Brands API Response:", brandsData);
 
-      const extractedProducts = Array.isArray(productsRes?.data?.products)
-        ? productsRes.data.products
-        : Array.isArray(productsRes?.data?.data)
-        ? productsRes.data.data
-        : Array.isArray(productsRes?.data)
-        ? productsRes.data
+      const extractedProducts = Array.isArray(productsData?.data?.products)
+        ? productsData.data.products
+        : Array.isArray(productsData?.data?.data)
+        ? productsData.data.data
+        : Array.isArray(productsData?.data)
+        ? productsData.data
         : [];
 
-      const extractedCategories = Array.isArray(categoriesRes?.data?.categories)
-        ? categoriesRes.data.categories
-        : Array.isArray(categoriesRes?.data?.data)
-        ? categoriesRes.data.data
-        : Array.isArray(categoriesRes?.data)
-        ? categoriesRes.data
+      const extractedCategories = Array.isArray(categoriesData?.data?.categories)
+        ? categoriesData.data.categories
+        : Array.isArray(categoriesData?.data?.data)
+        ? categoriesData.data.data
+        : Array.isArray(categoriesData?.data)
+        ? categoriesData.data
+        : Array.isArray(categoriesData)
+        ? categoriesData
         : [];
 
-      const extractedBrands = Array.isArray(brandsRes?.data?.brands)
-        ? brandsRes.data.brands
-        : Array.isArray(brandsRes?.data?.data)
-        ? brandsRes.data.data
-        : Array.isArray(brandsRes?.data)
-        ? brandsRes.data
+      const extractedBrands = Array.isArray(brandsData?.data?.brands)
+        ? brandsData.data.brands
+        : Array.isArray(brandsData?.data?.data)
+        ? brandsData.data.data
+        : Array.isArray(brandsData?.data)
+        ? brandsData.data
+        : Array.isArray(brandsData)
+        ? brandsData
         : [];
 
-      const extractedBranches = Array.isArray(branchesRes?.data?.branches)
-        ? branchesRes.data.branches
-        : Array.isArray(branchesRes?.data?.data)
-        ? branchesRes.data.data
-        : Array.isArray(branchesRes?.data)
-        ? branchesRes.data
+      const extractedBranches = Array.isArray(branchesData?.data?.branches)
+        ? branchesData.data.branches
+        : Array.isArray(branchesData?.data?.data)
+        ? branchesData.data.data
+        : Array.isArray(branchesData?.data)
+        ? branchesData.data
+        : Array.isArray(branchesData)
+        ? branchesData
         : [];
 
       console.log(
@@ -223,6 +257,19 @@ const ProductManagement = () => {
       setCategories(extractedCategories);
       setBrands(extractedBrands);
       setBranches(extractedBranches);
+
+      // Verify data is set correctly
+      console.log("Final state check:");
+      console.log("Categories set to state:", extractedCategories.length, "items");
+      console.log("Brands set to state:", extractedBrands.length, "items");
+      
+      // Log individual category items for debugging
+      if (extractedCategories.length > 0) {
+        console.log("Sample category:", extractedCategories[0]);
+        console.log("Categories with isActive=true:", 
+          extractedCategories.filter(cat => cat && cat.isActive === true).length
+        );
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       console.error("Error details:", {
@@ -278,15 +325,22 @@ const ProductManagement = () => {
         isFeatured:
           product.isFeatured !== undefined ? product.isFeatured : false,
       });
+      
+      // Set autoGenerateBarcode based on existing barcode
+      setAutoGenerateBarcode(!product.barcode || product.barcode === "");
     } else {
       setEditingProduct(null);
       // Auto-generate values for new product
       const firstBrandId =
         Array.isArray(brands) && brands.length > 0 ? brands[0].id : "";
       console.log('Auto-selecting first brand:', firstBrandId, 'from brands:', brands);
+      
+      // Default to auto-generate barcode for new products
+      setAutoGenerateBarcode(true);
+      
       setFormData({
         sku: generateSKU(), // Auto-generate SKU
-        barcode: generateBarcode(), // Auto-generate Barcode
+        barcode: "", // Will be generated based on mode
         name: "",
         description: "",
         categoryId: "",
@@ -328,6 +382,8 @@ const ProductManagement = () => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingProduct(null);
+    // Reset barcode mode to auto-generate
+    setAutoGenerateBarcode(true);
     // Reset stock data
     setStockData({
       action: 'insert',
@@ -347,13 +403,27 @@ const ProductManagement = () => {
     e.preventDefault();
     console.log('Form submit attempt with data:', formData);
     console.log('Current brands state:', brands);
+    
+    // Validasi barcode berdasarkan mode
+    if (!autoGenerateBarcode && (!formData.barcode || formData.barcode.trim() === "")) {
+      toast.error("Barcode harus diisi jika mode manual dipilih!");
+      return;
+    }
+    
     setSaving(true);
 
     try {
+      // Generate barcode if auto mode is selected
+      let finalBarcode = formData.barcode;
+      if (autoGenerateBarcode) {
+        finalBarcode = generateBarcode();
+        console.log("Auto-generated barcode:", finalBarcode);
+      }
+      
       // Struktur data sesuai API3_productcustomer.md
       const dataToSend = {
         sku: formData.sku,
-        barcode: formData.barcode,
+        barcode: finalBarcode,
         name: formData.name,
         description: formData.description,
         categoryId: formData.categoryId,
@@ -415,7 +485,11 @@ const ProductManagement = () => {
         }
       } else {
         apiResponse = await productsAPI.create(dataToSend);
-        toast.success("Produk berhasil dibuat!");
+        if (autoGenerateBarcode) {
+          toast.success(`Produk berhasil dibuat! Barcode: ${finalBarcode}`);
+        } else {
+          toast.success("Produk berhasil dibuat!");
+        }
         
         // Handle stock adjustment for new product
         if (stockData.quantity && parseInt(stockData.quantity) > 0) {
@@ -588,7 +662,9 @@ const ProductManagement = () => {
           (product.name &&
             product.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
           (product.sku &&
-            product.sku.toLowerCase().includes(searchQuery.toLowerCase()));
+            product.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (product.barcode &&
+            product.barcode.toLowerCase().includes(searchQuery.toLowerCase()));
 
         const matchCategory =
           filterCategory === "all" ||
@@ -655,7 +731,7 @@ const ProductManagement = () => {
             <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3.5" />
               <Input
-                placeholder="Cari produk..."
+                placeholder="Cari produk atau barcode..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="py-3 pl-10 text-sm border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -756,7 +832,7 @@ const ProductManagement = () => {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <Badge variant="outline" className="mb-2 font-mono text-xs bg-gray-50">
-                        {product.sku}
+                        {product.barcode || product.sku}
                       </Badge>
                       <h3 className="mb-1 text-sm font-bold leading-tight text-gray-900 sm:text-base line-clamp-2">
                         {product.name}
@@ -766,6 +842,12 @@ const ProductManagement = () => {
                         <span className="hidden sm:inline">•</span>
                         <span className="hidden truncate sm:inline">{product.brand?.name || "No Brand"}</span>
                       </div>
+                      {product.storageLocation && (
+                        <div className="flex items-center gap-1 mb-1 text-xs text-muted-foreground">
+                          <MapPin className="flex-shrink-0 w-3 h-3" />
+                          <span className="truncate">{product.storageLocation}</span>
+                        </div>
+                      )}
                     </div>
                     <Badge
                       variant={product.isActive ? "default" : "secondary"}
@@ -995,19 +1077,19 @@ const ProductManagement = () => {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">
+        <DialogContent className="w-[96vw] max-w-4xl max-h-[92vh] overflow-y-auto p-5 sm:p-6 md:p-8">
+          <DialogHeader className="space-y-3 sm:space-y-4">
+            <DialogTitle className="text-xl font-bold sm:text-2xl md:text-3xl">
               {editingProduct ? "Ubah Produk" : "Tambah Produk Baru"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-base sm:text-lg text-muted-foreground">
               {editingProduct
                 ? "Perbarui informasi produk"
                 : "Buat produk baru dengan detail lengkap"}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Hidden Fields - Auto Generated Values */}
+          <form onSubmit={handleSubmit} className="mt-6 space-y-6 sm:space-y-8">
+            {/* Hidden SKU - Auto Generated */}
             <div style={{ display: "none" }}>
               <div className="space-y-2">
                 <Label>
@@ -1019,18 +1101,10 @@ const ProductManagement = () => {
                   placeholder="contoh: BR-MTR-001"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Barcode</Label>
-                <Input
-                  value={formData.barcode}
-                  onChange={(e) => handleChange("barcode", e.target.value)}
-                  placeholder="Barcode produk"
-                />
-              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>
+            <div className="space-y-3 sm:space-y-4">
+              <Label className="text-base font-semibold sm:text-lg">
                 Nama Produk <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -1038,11 +1112,79 @@ const ProductManagement = () => {
                 onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="contoh: Ban Motor Tubeless 120/70-17"
                 required
+                className="h-12 text-base sm:h-14 sm:text-lg"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>
+            {/* Barcode Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <Label className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+                <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+                Barcode {!autoGenerateBarcode && <span className="text-red-500">*</span>}
+              </Label>
+              
+              <div className="space-y-4 sm:space-y-5">
+                {/* Toggle untuk mode barcode */}
+                <div className="flex flex-col p-4 space-y-4 rounded-lg sm:p-5 bg-gray-50 sm:flex-row sm:space-y-0 sm:space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="autoBarcode"
+                      name="barcodeMode"
+                      checked={autoGenerateBarcode}
+                      onChange={(e) => {
+                        setAutoGenerateBarcode(true);
+                        handleChange("barcode", ""); // Clear manual barcode
+                      }}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <Label htmlFor="autoBarcode" className="text-sm font-medium cursor-pointer">
+                      Generate Otomatis
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="manualBarcode"
+                      name="barcodeMode"
+                      checked={!autoGenerateBarcode}
+                      onChange={(e) => {
+                        setAutoGenerateBarcode(false);
+                        handleChange("barcode", ""); // Clear auto barcode
+                      }}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <Label htmlFor="manualBarcode" className="text-sm font-medium cursor-pointer">
+                      ✏️ Input Manual
+                    </Label>
+                  </div>
+                </div>
+
+                {/* Input barcode */}
+                <Input
+                  value={formData.barcode}
+                  onChange={(e) => handleChange("barcode", e.target.value)}
+                  placeholder={
+                    autoGenerateBarcode 
+                      ? "Akan otomatis di-generate saat menyimpan" 
+                      : "Masukkan barcode produk"
+                  }
+                  disabled={autoGenerateBarcode}
+                  required={!autoGenerateBarcode}
+                  className={`h-12 sm:h-14 text-base sm:text-lg ${autoGenerateBarcode ? "bg-gray-100 text-gray-500" : ""}`}
+                />
+
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {autoGenerateBarcode 
+                    ? "📊 Barcode akan otomatis dibuat berdasarkan data produk" 
+                    : "📝 Masukkan barcode yang sudah ada atau sesuai sistem Anda"
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 sm:space-y-4">
+              <Label className="text-base font-semibold sm:text-lg">
                 Kategori <span className="text-red-500">*</span>
               </Label>
               <Select
@@ -1050,18 +1192,23 @@ const ProductManagement = () => {
                 onValueChange={(value) => handleChange("categoryId", value)}
                 required
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih kategori" />
+                <SelectTrigger className="h-12 text-base sm:h-14 sm:text-lg">
+                  <SelectValue placeholder={loading ? "Memuat kategori..." : "Pilih kategori"} />
                 </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(categories) &&
+                <SelectContent className="text-base sm:text-lg">
+                  {Array.isArray(categories) && categories.length > 0 ? (
                     categories
-                      .filter((cat) => cat.isActive === true)
+                      .filter((cat) => cat && (cat.isActive === true || cat.isActive === undefined))
                       .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
+                        <SelectItem key={cat.id} value={cat.id} className="py-3 text-base sm:text-lg">
                           {cat.name}
                         </SelectItem>
-                      ))}
+                      ))
+                  ) : (
+                    <SelectItem value="" disabled className="py-3 text-base sm:text-lg">
+                      {loading ? "Memuat kategori..." : "Tidak ada kategori tersedia"}
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -1076,15 +1223,20 @@ const ProductManagement = () => {
                 onValueChange={(value) => handleChange("brandId", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih brand" />
+                  <SelectValue placeholder={loading ? "Memuat brand..." : "Pilih brand"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.isArray(brands) &&
+                  {Array.isArray(brands) && brands.length > 0 ? (
                     brands.map((brand) => (
                       <SelectItem key={brand.id} value={brand.id}>
                         {brand.name}
                       </SelectItem>
-                    ))}
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      Tidak ada brand tersedia
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -1126,9 +1278,9 @@ const ProductManagement = () => {
               </p>
             </div> */}
 
-            <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-gray-50">
-              <div className="space-y-2">
-                <Label>
+            <div className="grid grid-cols-1 gap-6 p-5 rounded-lg sm:grid-cols-2 sm:gap-8 sm:p-8 bg-gray-50">
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-base font-semibold sm:text-lg">
                   Harga Beli <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1139,10 +1291,11 @@ const ProductManagement = () => {
                   }
                   placeholder="0"
                   required
+                  className="h-12 text-base sm:h-14 sm:text-lg"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-base font-semibold sm:text-lg">
                   Harga Jual <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1151,9 +1304,10 @@ const ProductManagement = () => {
                   onChange={(e) => handleChange("sellingPrice", e.target.value)}
                   placeholder="0"
                   required
+                  className="h-12 text-base sm:h-14 sm:text-lg"
                 />
                 {formData.purchasePrice && formData.sellingPrice && (
-                  <p className="text-xs text-green-600">
+                  <p className="text-sm font-medium text-green-600 sm:text-base">
                     Margin:{" "}
                     {calculateMargin(
                       formData.purchasePrice,
@@ -1163,8 +1317,8 @@ const ProductManagement = () => {
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label>
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-base font-semibold sm:text-lg">
                   Harga Grosir <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1179,13 +1333,14 @@ const ProductManagement = () => {
                   }}
                   placeholder="0"
                   required
+                  className="h-12 text-base sm:h-14 sm:text-lg"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground sm:text-base">
                   Harga khusus untuk pembelian grosir
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label>
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-base font-semibold sm:text-lg">
                   Min Transaksi Grosir <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1200,17 +1355,17 @@ const ProductManagement = () => {
                   min="1"
                   step="1"
                   disabled={!formData.wholesalePrice}
-                  className={!formData.wholesalePrice ? "bg-gray-50 opacity-50" : ""}
+                  className={`h-10 sm:h-12 text-sm sm:text-base ${!formData.wholesalePrice ? "bg-gray-50 opacity-50" : ""}`}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Jumlah minimum untuk mendapat harga grosir
                 </p>
                 {formData.minOrderWholesale && formData.wholesalePrice && (
-                  <div className="p-2 mt-2 border border-green-200 rounded bg-green-50">
-                    <p className="text-xs font-medium text-green-700">
+                  <div className="p-2 mt-2 border border-green-200 rounded sm:p-3 bg-green-50">
+                    <p className="text-xs font-medium text-green-700 sm:text-sm">
                       ✅ Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
                     </p>
-                    <p className="text-xs text-green-600">
+                    <p className="text-xs text-green-600 sm:text-sm">
                       Hemat Rp {(parseInt(formData.sellingPrice || 0) - parseInt(formData.wholesalePrice || 0)).toLocaleString('id-ID')}/unit
                     </p>
                   </div>
@@ -1224,8 +1379,8 @@ const ProductManagement = () => {
             </div>
 
             {/* Stock Management Section */}
-            <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-              <h4 className="mb-3 text-sm font-semibold text-blue-800">
+            <div className="p-4 border border-blue-200 rounded-lg sm:p-6 bg-blue-50">
+              <h4 className="mb-3 text-sm font-semibold text-blue-800 sm:mb-4 sm:text-base">
                 📦 Manajemen Stok
               </h4>
               
@@ -1273,25 +1428,25 @@ const ProductManagement = () => {
                   const userHasBranch = userData.branch?.id;
                   
                   return (
-                    <div className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${!userHasBranch ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="space-y-2">
-                        <Label>Aksi Stok</Label>
+                    <div className={`grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 ${!userHasBranch ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="space-y-3 sm:space-y-4">
+                        <Label className="text-base font-semibold sm:text-lg">Aksi Stok</Label>
                         <Select
                           value={stockData.action}
                           onValueChange={(value) => handleStockChange("action", value)}
                           disabled={!userHasBranch}
                         >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 text-base sm:h-14 sm:text-lg">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="insert">➕ Tambah Stok</SelectItem>
-                      <SelectItem value="remove">➖ Kurangi Stok</SelectItem>
+                    <SelectContent className="text-base sm:text-lg">
+                      <SelectItem value="insert" className="py-3 text-base sm:text-lg">➕ Tambah Stok</SelectItem>
+                      <SelectItem value="remove" className="py-3 text-base sm:text-lg">➖ Kurangi Stok</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                        <div className="space-y-2">
-                          <Label>Jumlah</Label>
+                        <div className="space-y-3 sm:space-y-4">
+                          <Label className="text-base font-semibold sm:text-lg">Jumlah</Label>
                           <Input
                             type="number"
                             min="0"
@@ -1299,27 +1454,30 @@ const ProductManagement = () => {
                             onChange={(e) => handleStockChange("quantity", e.target.value)}
                             placeholder="0"
                             disabled={!userHasBranch}
+                            className="h-12 text-base sm:h-14 sm:text-lg"
                           />
-                          <p className="text-xs text-blue-600">
+                          <p className="text-sm font-medium text-blue-600 sm:text-base">
                             Unit yang akan {stockData.action === 'insert' ? 'ditambahkan ke' : 'dikurangi dari'} stok
                           </p>
                         </div>
-                        <div className="space-y-2">
-                          <Label>Alasan</Label>
+                        <div className="space-y-3 sm:space-y-4">
+                          <Label className="text-base font-semibold sm:text-lg">Alasan</Label>
                           <Input
                             value={stockData.reason}
                             onChange={(e) => handleStockChange("reason", e.target.value)}
                             placeholder={stockData.action === 'insert' ? 'Pembelian, produksi, dll' : 'Rusak, kehilangan, dll'}
                             disabled={!userHasBranch}
+                            className="h-12 text-base sm:h-14 sm:text-lg"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>Catatan</Label>
+                        <div className="space-y-2 sm:space-y-3">
+                          <Label className="text-sm font-medium sm:text-base">Catatan</Label>
                           <Input
                             value={stockData.notes}
                             onChange={(e) => handleStockChange("notes", e.target.value)}
                             placeholder="Catatan tambahan (opsional)"
                             disabled={!userHasBranch}
+                            className="h-10 text-sm sm:h-12 sm:text-base"
                           />
                         </div>
                       </div>
@@ -1360,10 +1518,10 @@ const ProductManagement = () => {
               )}
             </div>
 
-            {/* Hidden Image Upload - Default Empty */}
-            <div style={{ display: "none" }}>
-              <Label className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" />
+            {/* Image Upload */}
+            <div className="space-y-3 sm:space-y-4">
+              <Label className="flex items-center gap-3 text-base font-semibold sm:text-lg">
+                <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                 Gambar Produk (Maksimal 3)
               </Label>
               <Input
@@ -1371,26 +1529,26 @@ const ProductManagement = () => {
                 accept="image/*"
                 multiple
                 onChange={handleImageFileChange}
-                className="cursor-pointer"
+                className="h-12 text-base cursor-pointer sm:h-14 sm:text-lg"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground sm:text-base">
                 Upload gambar dari perangkat Anda (JPG, PNG, max 3 gambar)
               </p>
 
               {/* Image Preview */}
               {formData.images.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-3 sm:gap-3">
                   {formData.images.map((img, index) => (
                     <div key={index} className="relative group">
                       <img
                         src={img}
                         alt={`Preview ${index + 1}`}
-                        className="object-cover w-full h-24 border rounded"
+                        className="object-cover w-full h-20 border rounded sm:h-24"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(index)}
-                        className="absolute flex items-center justify-center w-5 h-5 text-white transition-opacity bg-red-500 rounded-full opacity-0 top-1 right-1 group-hover:opacity-100"
+                        className="absolute flex items-center justify-center w-5 h-5 text-sm text-white transition-opacity bg-red-500 rounded-full opacity-0 sm:w-6 sm:h-6 top-1 right-1 group-hover:opacity-100 sm:text-base"
                       >
                         ×
                       </button>
@@ -1398,6 +1556,42 @@ const ProductManagement = () => {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Storage Location & Tags */}
+            <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2">
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-base font-semibold sm:text-lg">
+                  <MapPin className="inline w-5 h-5 mr-2 sm:w-6 sm:h-6" />
+                  Lokasi Penyimpanan
+                </Label>
+                <Input
+                  value={formData.storageLocation}
+                  onChange={(e) =>
+                    handleChange("storageLocation", e.target.value)
+                  }
+                  placeholder="contoh: Rak A-3, Gudang Utama"
+                  className="h-12 text-base sm:h-14 sm:text-lg"
+                />
+                <p className="text-sm text-muted-foreground sm:text-base">
+                  📍 Lokasi fisik barang di gudang/toko (opsional)
+                </p>
+              </div>
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-base font-semibold sm:text-lg">
+                  <Tag className="inline w-5 h-5 mr-2 sm:w-6 sm:h-6" />
+                  Tags
+                </Label>
+                <Input
+                  value={formData.tags}
+                  onChange={(e) => handleChange("tags", e.target.value)}
+                  placeholder="contoh: Motor, Sparepart, Populer"
+                  className="h-12 text-base sm:h-14 sm:text-lg"
+                />
+                <p className="text-sm text-muted-foreground sm:text-base">
+                  🏷️ Tag untuk kategori atau pencarian (pisahkan dengan koma)
+                </p>
+              </div>
             </div>
 
             {/* <div className="space-y-2" style={{ display: "none" }}>
@@ -1459,15 +1653,15 @@ const ProductManagement = () => {
               </p>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <input
                 type="checkbox"
                 id="isActive"
                 checked={formData.isActive}
                 onChange={(e) => handleChange("isActive", e.target.checked)}
-                className="rounded"
+                className="w-4 h-4 rounded sm:w-5 sm:h-5"
               />
-              <Label htmlFor="isActive">Produk Aktif</Label>
+              <Label htmlFor="isActive" className="text-sm font-medium cursor-pointer sm:text-base">Produk Aktif</Label>
             </div>
 
             {/* Hidden Product Featured - Disabled by Default */}
@@ -1493,7 +1687,7 @@ const ProductManagement = () => {
                     <strong>SKU:</strong> {formData.sku}
                   </p>
                   <p>
-                    <strong>Barcode:</strong> {formData.barcode}
+                    <strong>Barcode:</strong> {formData.barcode || "Auto-generate"}
                   </p>
                   <p>
                     <strong>Brand:</strong>{" "}
@@ -1505,11 +1699,11 @@ const ProductManagement = () => {
                     <strong>Unit:</strong> {formData.unit}
                   </p>
                   <p>
-                    <strong>Storage Location:</strong>{" "}
-                    {formData.storageLocation}
+                    <strong>📍 Storage Location:</strong>{" "}
+                    {formData.storageLocation || "Gudang (Default)"}
                   </p>
                   <p>
-                    <strong>Tags:</strong> {formData.tags}
+                    <strong>🏷️ Tags:</strong> {formData.tags || "Product (Default)"}
                   </p>
                   <p>
                     <strong>Product Featured:</strong>{" "}
@@ -1522,16 +1716,17 @@ const ProductManagement = () => {
               </div>
             )} */}
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex flex-col gap-4 pt-6 border-t sm:flex-row sm:justify-end sm:gap-6 sm:pt-8">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCloseDialog}
                 disabled={saving}
+                className="w-full h-12 text-base font-semibold sm:w-auto sm:h-14 sm:text-lg"
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving} className="w-full h-12 text-base font-semibold sm:w-auto sm:h-14 sm:text-lg">
                 {saving ? "Menyimpan..." : editingProduct ? "Update" : "Simpan"}
               </Button>
             </div>
