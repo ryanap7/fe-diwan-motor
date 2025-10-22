@@ -194,13 +194,13 @@ const DashboardLayout = ({ children }) => {
           roles: ["ADMIN", "BRANCH_MANAGER"],
           href: "/categories",
         },
-        // {
-        //   id: 'brands',
-        //   label: 'Brand/Merk',
-        //   icon: Package,
-        //   roles: ['ADMIN'],
-        //   href: '/brands'
-        // },
+        {
+          id: 'brands',
+          label: 'Brand/Merk',
+          icon: Package,
+          roles: ['ADMIN',"BRANCH_MANAGER"],
+          href: '/brands'
+        },
         {
           id: "products-list",
           label: "Daftar Produk",
@@ -224,20 +224,21 @@ const DashboardLayout = ({ children }) => {
           roles: ["ADMIN", "BRANCH_MANAGER"],
           href: "/inventory",
         },
-        // {
-        //   id: "purchase-orders",
-        //   label: "Purchase Orders",
-        //   icon: ShoppingBag,
-        //   roles: ["ADMIN", "BRANCH_MANAGER"],
-        //   href: "/purchase-orders",
-        // },
-        // {
-        //   id: "stock-movements",
-        //   label: "Pergerakan Stok",
-        //   icon: BarChart3,
-        //   roles: ["ADMIN", "BRANCH_MANAGER"],
-        //   href: "/stock-movements",
-        // },
+        {
+          id: "purchase-orders",
+          label: "Purchase Orders",
+          icon: ShoppingBag,
+          roles: ["ADMIN"],
+          href: "/purchase-orders",
+        },
+        {
+          id: "stock-movements",
+          label: "Pergerakan Stok",
+          icon: BarChart3,
+          roles: ["ADMIN"],
+          // roles: [],
+          href: "/stock-movements",
+        },
       ],
     },
     // {
@@ -268,43 +269,43 @@ const DashboardLayout = ({ children }) => {
       roles: ["ADMIN", "BRANCH_MANAGER"],
       href: "/transactions",
     },
-    // {
-    //   id: "reporting-analytics",
-    //   label: "Laporan & Analisis",
-    //   icon: PieChart,
-    //   roles: ["ADMIN", "BRANCH_MANAGER"],
-    //   href: "/reports",
-    // },
-    // {
-    //   id: "activity-logs",
-    //   label: "Log Aktivitas",
-    //   icon: FileText,
-    //   roles: ["ADMIN"],
-    //   href: "/activity-logs",
-    // },
-    // {
-    //   id: "settings",
-    //   label: "Pengaturan",
-    //   icon: Settings,
-    //   roles: ["ADMIN", "BRANCH_MANAGER"],
-    //   href: "#", // Add href for parent menu
-    //   submenu: [
-    //     {
-    //       id: "company",
-    //       label: "Profil Perusahaan",
-    //       icon: Building2,
-    //       roles: ["ADMIN"],
-    //       href: "/company",
-    //     },
-    //     {
-    //       id: "roles",
-    //       label: "Peran Pengguna",
-    //       icon: Users,
-    //       roles: ["ADMIN"],
-    //       href: "/roles",
-    //     },
-    //   ],
-    // },
+    {
+      id: "reporting-analytics",
+      label: "Laporan & Analisis",
+      icon: PieChart,
+      roles: ["ADMIN", "BRANCH_MANAGER"],
+      href: "/reports",
+    },
+    {
+      id: "activity-logs",
+      label: "Log Aktivitas",
+      icon: FileText,
+      roles: ["ADMIN"],
+      href: "/activity-logs",
+    },
+    {
+      id: "settings",
+      label: "Pengaturan",
+      icon: Settings,
+      roles: ["ADMIN", "BRANCH_MANAGER"],
+      href: "#", // Add href for parent menu
+      submenu: [
+        {
+          id: "company",
+          label: "Profil Perusahaan",
+          icon: Building2,
+          roles: ["ADMIN"],
+          href: "/company",
+        },
+        {
+          id: "roles",
+          label: "Peran Pengguna",
+          icon: Users,
+          roles: ["ADMIN"],
+          href: "/roles",
+        },
+      ],
+    },
   ];
 
   // Filter menu items based on user role

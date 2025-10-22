@@ -1,81 +1,150 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import { categoriesAPI, transactionsAPI } from "@/lib/api";
-import {
-  Banknote,
-  Check,
-  CreditCard,
-  Loader2,
-  Minus,
-  Plus,
-  Receipt,
-  Search,
-  ShoppingCart,
-  Trash2,
-  User,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer } from 'lucide-react'
+import { toast } from "@/hooks/use-toast"
+import axios from 'axios'
+import { transactionsAPI, categoriesAPI, stockAPI, customersAPI, productsAPI } from '@/lib/api'
+import { ThermalPrinter } from '@/lib/thermal-printer'
 
-// API functions untuk POS - menggunakan endpoint products biasa karena endpoint POS belum ready
+// API functions untuk POS - mengambil produk dari productsAPI dan stock dari stockAPI
 const fetchProducts = async (params = {}) => {
   try {
-    const token = localStorage.getItem("token") || "";
-    console.log(
-      "POS - Using token for products:",
-      token.substring(0, 50) + "..."
-    );
-
-    const response = await fetch("/api/transactions/products/pos", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Products API Error:", response.status, errorText);
-      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+    console.log('POS - Fetching products and stock data...');
+    
+    // Ambil data produk dengan harga dari products API
+    console.log('Fetching products from products API...');
+    const productsResponse = await productsAPI.getAll(params);
+    console.log('Products API Response:', productsResponse);
+    
+    // Handle products response structure
+    let products = [];
+    if (productsResponse?.success && productsResponse.data?.products) {
+      products = productsResponse.data.products;
+    } else if (Array.isArray(productsResponse?.data)) {
+      products = productsResponse.data;
+    } else if (Array.isArray(productsResponse)) {
+      products = productsResponse;
     }
-
-    const data = await response.json();
-    console.log("Products API Response:", data);
-
-    // Handle API response structure
-    if (data?.success && data.data?.products) {
-      return data.data.products;
-    } else if (Array.isArray(data?.data)) {
-      return data.data;
-    } else if (Array.isArray(data)) {
-      return data;
+    
+    console.log('Products loaded:', products.length);
+    
+    // Ambil data stock dari stock API
+    try {
+      console.log('Fetching stock data from stock API...');
+      const stockResponse = await stockAPI.getStockOverview(params);
+      console.log('Stock API Response:', stockResponse);
+      
+      // Handle stock response structure
+      let stockData = [];
+      if (stockResponse?.success && stockResponse.data?.products) {
+        stockData = stockResponse.data.products;
+      } else if (stockResponse?.success && Array.isArray(stockResponse.data)) {
+        stockData = stockResponse.data;
+      } else if (Array.isArray(stockResponse?.data)) {
+        stockData = stockResponse.data;
+      } else if (Array.isArray(stockResponse)) {
+        stockData = stockResponse;
+      }
+      
+      console.log('Stock data loaded:', stockData.length);
+      
+      // Gabungkan data produk dengan stock data
+      if (stockData.length > 0) {
+        const stockMap = new Map();
+        stockData.forEach(stock => {
+          const productId = stock.productId || stock.id;
+          if (productId) {
+            stockMap.set(productId, {
+              stock: stock.stock || stock.quantity || stock.available || stock.currentStock || stock.totalStock || 0,
+              stockData: stock
+            });
+          }
+        });
+        
+        // Update products dengan stock information
+        products = products.map(product => {
+          const stockInfo = stockMap.get(product.id);
+          return {
+            ...product,
+            stock: stockInfo ? stockInfo.stock : 0,
+            stockData: stockInfo ? stockInfo.stockData : null
+          };
+        });
+        
+        console.log('Products merged with stock data');
+      }
+      
+    } catch (stockError) {
+      console.warn('Stock API error, products will have 0 stock:', stockError);
+      // Jika stock API gagal, set semua stock ke 0
+      products = products.map(product => ({
+        ...product,
+        stock: 0
+      }));
     }
-    return [];
+    
+    if (products.length > 0) {
+      console.log('Final product sample:', products[0]);
+      console.log('Product fields:', Object.keys(products[0]));
+      console.log('Price fields:', {
+        sellingPrice: products[0].sellingPrice,
+        purchasePrice: products[0].purchasePrice,
+        wholesalePrice: products[0].wholesalePrice
+      });
+      console.log('Stock field value:', products[0].stock);
+    }
+    
+    return products;
+    
   } catch (error) {
-    console.error("Error fetching products for POS:", error);
-    return [];
+    console.error('Error fetching products with stock for POS:', error);
+    // Fallback ke products API biasa jika stock API tidak tersedia
+    try {
+      console.log('Falling back to products API...');
+      const token = localStorage.getItem('token') || '';
+      
+      const fallbackResponse = await fetch('/api/products', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!fallbackResponse.ok) {
+        const errorText = await fallbackResponse.text();
+        console.error('Products API Error:', fallbackResponse.status, errorText);
+        throw new Error(`HTTP error! status: ${fallbackResponse.status} - ${errorText}`);
+      }
+
+      const data = await fallbackResponse.json();
+      console.log('Fallback Products API Response:', data);
+      
+      // Handle API response structure
+      if (data?.success && data.data?.products) {
+        return data.data.products;
+      } else if (Array.isArray(data?.data)) {
+        return data.data;
+      } else if (Array.isArray(data)) {
+        return data;
+      }
+      return [];
+      
+    } catch (fallbackError) {
+      console.error('Fallback products fetch also failed:', fallbackError);
+      return [];
+    }
   }
 };
 
@@ -102,31 +171,51 @@ const fetchCategories = async () => {
 // Fetch customers untuk mendapatkan default customer
 const fetchCustomers = async () => {
   try {
-    const response = await fetch("/api/customers", {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Customers API Response:", data);
-
-    if (data?.success && data.data?.customers) {
-      return data.data.customers;
-    } else if (Array.isArray(data?.data)) {
-      return data.data;
-    } else if (Array.isArray(data)) {
-      return data;
+    console.log('POS - Fetching customers...');
+    const response = await customersAPI.getAll();
+    console.log('Customers API Response:', response);
+    
+    // Handle API response structure
+    if (response?.success && response.data?.customers) {
+      return response.data.customers;
+    } else if (Array.isArray(response?.data)) {
+      return response.data;
+    } else if (Array.isArray(response)) {
+      return response;
     }
     return [];
+    
   } catch (error) {
-    console.error("Error fetching customers:", error);
-    return [];
+    console.error('Error fetching customers:', error);
+    // Fallback to direct API call
+    try {
+      const fallbackResponse = await fetch('/api/customers', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!fallbackResponse.ok) {
+        throw new Error(`HTTP error! status: ${fallbackResponse.status}`);
+      }
+
+      const data = await fallbackResponse.json();
+      console.log('Fallback Customers API Response:', data);
+      
+      if (data?.success && data.data?.customers) {
+        return data.data.customers;
+      } else if (Array.isArray(data?.data)) {
+        return data.data;
+      } else if (Array.isArray(data)) {
+        return data;
+      }
+      return [];
+      
+    } catch (fallbackError) {
+      console.error('Fallback customers fetch also failed:', fallbackError);
+      return [];
+    }
   }
 };
 
@@ -227,17 +316,21 @@ export default function POSKasir() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cartItems, setCartItems] = useState([]);
   const [customerInfo, setCustomerInfo] = useState({
-    name: "",
-    phone: "",
-    type: "walk-in", // walk-in or registered
-  });
-  const [paymentMethod, setPaymentMethod] = useState("CASH"); // Only CASH payment allowed
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [processing, setProcessing] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [priceType, setPriceType] = useState("normal"); // normal or wholesale
-
+    name: '',
+    phone: '',
+    type: 'walk-in' // walk-in or registered
+  })
+  const [paymentMethod, setPaymentMethod] = useState('CASH') // Only CASH payment allowed
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [processing, setProcessing] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [priceType, setPriceType] = useState('normal') // normal or wholesale
+  const [discountAmount, setDiscountAmount] = useState('')
+  const [showDiscountConfirmDialog, setShowDiscountConfirmDialog] = useState(false)
+  const [printer, setPrinter] = useState(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+  
   // API Data States
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -245,7 +338,11 @@ export default function POSKasir() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Helper function to get price based on quantity and minStock
+  // Helper function untuk mendapatkan stock value (sekarang sudah di-merge)
+  const getProductStock = (product) => {
+    // Setelah merge, stock sudah ada di field stock
+    return product.stock || 0;
+  };
   const getProductPrice = (product, quantity = 1) => {
     // Auto wholesale: if quantity >= minStock, use wholesalePrice
     const shouldUseWholesale =
@@ -325,18 +422,32 @@ export default function POSKasir() {
       const [productsData, categoriesData, customersData] = await Promise.all([
         fetchProducts(),
         fetchCategories(),
-        fetchCustomers(),
-      ]);
-
-      console.log("=== POS DATA LOADED ===");
-      console.log("Products loaded:", productsData.length, productsData);
-      console.log("Categories loaded:", categoriesData.length, categoriesData);
-      console.log("Customers loaded:", customersData.length, customersData);
-      console.log("=====================");
-
-      setProducts(productsData);
-      setCategories(categoriesData);
-      setCustomers(customersData);
+        fetchCustomers()
+      ])
+      
+      console.log('=== POS DATA LOADED ===')
+      console.log('Products loaded:', productsData.length)
+      console.log('Sample product data:', productsData[0])
+      console.log('Categories loaded:', categoriesData.length)
+      console.log('Customers loaded:', customersData.length)
+      
+      // Check if products have stock information
+      if (productsData.length > 0) {
+        const sampleProduct = productsData[0];
+        console.log('Sample product fields:', Object.keys(sampleProduct));
+        console.log('Price fields:', {
+          sellingPrice: sampleProduct.sellingPrice,
+          purchasePrice: sampleProduct.purchasePrice,
+          wholesalePrice: sampleProduct.wholesalePrice
+        });
+        console.log('Stock field value:', sampleProduct.stock);
+      }
+      console.log('Customers loaded:', customersData.length, customersData)
+      console.log('=====================')
+      
+      setProducts(productsData)
+      setCategories(categoriesData)
+      setCustomers(customersData)
     } catch (err) {
       console.error("Error loading POS data:", err);
       setError(err.message);
@@ -373,14 +484,17 @@ export default function POSKasir() {
         product.category?.name === selectedCategory;
 
       // Check if product has stock (assume stock comes from inventory)
-      const hasStock = product.totalStock > 0 || true; // Fallback to true if stock not available
-
-      const result =
-        matchesSearch &&
-        matchesCategory &&
-        hasStock &&
-        product.isActive !== false;
-
+      const productStock = getProductStock(product);
+      const hasStock = productStock > 0; // Remove fallback untuk debugging stock issues
+      
+      console.log(`Product ${product.name}: stock=${productStock}, hasStock=${hasStock}`);
+      
+      const result = matchesSearch && matchesCategory && product.isActive !== false
+      
+      console.log(`Product ${product.name}: search=${matchesSearch}, category=${matchesCategory}, hasStock=${hasStock}, result=${result}`);
+      console.log(`  - Prices: selling=${product.sellingPrice}, purchase=${product.purchasePrice}, wholesale=${product.wholesalePrice}`);
+      console.log(`  - Stock: ${productStock}`);
+      
       if (!result) {
         console.log("Product filtered out:", product.name, {
           matchesSearch,
@@ -405,27 +519,25 @@ export default function POSKasir() {
     );
   }, [categories]);
 
-  // Calculate totals with automatic wholesale pricing
+  // Calculate totals with automatic wholesale pricing and manual discount
   const calculations = useMemo(() => {
     const subtotal = cartItems.reduce((sum, item) => {
       const price = getProductPrice(item.product, item.quantity);
-      return sum + price * item.quantity;
-    }, 0);
-
-    const discount = 0; // Could be calculated based on business rules
-    const tax = 0; // Could be calculated based on tax rate
-    const total = subtotal - discount + tax;
-
-    return { subtotal, discount, tax, total };
-  }, [cartItems, priceType]);
+      return sum + (price * item.quantity)
+    }, 0)
+    
+    const discount = parseFloat(discountAmount) || 0 // Manual discount from input
+    const tax = 0 // Could be calculated based on tax rate
+    const total = subtotal - discount + tax
+    
+    return { subtotal, discount, tax, total }
+  }, [cartItems, priceType, discountAmount])
 
   // Add item to cart
   const addToCart = (product) => {
-    const existingItem = cartItems.find(
-      (item) => item.product.id === product.id
-    );
-    const availableStock = product.totalStock || 0; // Default to 0 if stock not specified
-
+    const existingItem = cartItems.find(item => item.product.id === product.id)
+    const availableStock = getProductStock(product); // Use helper function untuk mendapatkan stock
+    
     // Check stock availability
     if (availableStock <= 0) {
       toast({
@@ -504,9 +616,9 @@ export default function POSKasir() {
       removeFromCart(productId);
       return;
     }
-
-    const item = cartItems.find((item) => item.product.id === productId);
-    const availableStock = item?.product?.totalStock || 999;
+    
+    const item = cartItems.find(item => item.product.id === productId)
+    const availableStock = item?.product ? getProductStock(item.product) : 999;
     if (item && newQuantity <= availableStock) {
       const oldQuantity = item.quantity;
 
@@ -560,7 +672,7 @@ export default function POSKasir() {
   // Validate stock before payment
   const validateStockBeforePayment = async () => {
     for (const item of cartItems) {
-      const availableStock = item.product.totalStock || 0;
+      const availableStock = getProductStock(item.product);
       if (item.quantity > availableStock) {
         return {
           isValid: false,
@@ -573,11 +685,31 @@ export default function POSKasir() {
 
   // Clear cart
   const clearCart = () => {
-    setCartItems([]);
-    setCustomerInfo({ name: "", phone: "", type: "walk-in" });
-    setPaymentAmount("");
-    setNotes("");
-    setCurrentStep(1);
+    setCartItems([])
+    setCustomerInfo({ name: '', phone: '', type: 'walk-in' })
+    setPaymentAmount('')
+    setDiscountAmount('')
+    setNotes('')
+    setCurrentStep(1)
+  }
+
+  // Handle payment with discount confirmation
+  const handlePaymentClick = () => {
+    const discountValue = parseFloat(discountAmount) || 0;
+    
+    // If there's a discount, show confirmation dialog
+    if (discountValue > 0) {
+      setShowDiscountConfirmDialog(true);
+    } else {
+      // No discount, proceed directly
+      processPayment();
+    }
+  };
+
+  // Confirm discount and process payment
+  const confirmDiscountAndPay = () => {
+    setShowDiscountConfirmDialog(false);
+    processPayment();
   };
 
   // Process payment
@@ -678,8 +810,16 @@ export default function POSKasir() {
       console.log("Processing transaction:", transactionData);
 
       // Create transaction via API
-      const result = await createTransaction(transactionData);
-
+      const result = await createTransaction(transactionData)
+      
+      // Print receipt after successful transaction
+      try {
+        await printReceipt(result)
+      } catch (printError) {
+        console.error('Error printing receipt:', printError)
+        // Don't fail the transaction if printing fails
+      }
+      
       // Reset form
       clearCart();
       setShowPaymentDialog(false);
@@ -719,7 +859,92 @@ export default function POSKasir() {
     } finally {
       setProcessing(false);
     }
-  };
+  }
+
+  // Connect to thermal printer
+  const connectPrinter = async () => {
+    try {
+      setIsConnecting(true)
+      const thermalPrinter = new ThermalPrinter()
+      await thermalPrinter.connect()
+      setPrinter(thermalPrinter)
+      
+      toast({
+        title: "Printer Terhubung",
+        description: "Thermal printer berhasil terhubung",
+      })
+      
+      return thermalPrinter
+    } catch (error) {
+      console.error('Error connecting printer:', error)
+      toast({
+        title: "Gagal Menghubungkan Printer",
+        description: error.message || "Gagal menghubungkan ke thermal printer",
+        variant: "destructive"
+      })
+      return null
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
+  // Print receipt
+  const printReceipt = async (transactionData) => {
+    try {
+      let printerInstance = printer
+      
+      // If no printer connected, try to connect
+      if (!printerInstance) {
+        printerInstance = await connectPrinter()
+        if (!printerInstance) {
+          return // Connection failed
+        }
+      }
+
+      // Prepare receipt data
+      const receiptData = {
+        storeName: "DIWAN MOTOR",
+        storeAddress: "Jl. Contoh No. 123, Kota",
+        phoneNumber: "0812-3456-7890",
+        invoiceNo: transactionData.invoiceNo || transactionData.id || 'INV-' + Date.now(),
+        date: new Date().toLocaleDateString('id-ID'),
+        time: new Date().toLocaleTimeString('id-ID'),
+        customerName: customerInfo.name || 'Walk-in Customer',
+        customerPhone: customerInfo.phone || '-',
+        items: cartItems.map(item => ({
+          name: item.product.name,
+          quantity: item.quantity,
+          unitPrice: getProductPrice(item.product, item.quantity),
+          subtotal: getProductPrice(item.product, item.quantity) * item.quantity
+        })),
+        subtotal: calculations.subtotal,
+        discount: calculations.discount || 0,
+        tax: calculations.tax || 0,
+        total: calculations.total,
+        amountPaid: parseFloat(paymentAmount || 0),
+        change: Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
+        paymentMethod: 'TUNAI'
+      }
+
+      console.log('Printing receipt:', receiptData)
+      
+      // Print the receipt
+      await printerInstance.printReceipt(receiptData)
+      
+      toast({
+        title: "Struk Dicetak",
+        description: "Struk berhasil dicetak ke thermal printer",
+      })
+      
+    } catch (error) {
+      console.error('Error printing receipt:', error)
+      toast({
+        title: "Gagal Mencetak Struk",
+        description: error.message || "Gagal mencetak struk ke thermal printer",
+        variant: "destructive"
+      })
+    }
+  }
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -905,8 +1130,8 @@ export default function POSKasir() {
             <CardContent>
               <ScrollArea className="h-96">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {filteredProducts.map((product) => {
-                    const availableStock = product.totalStock || 0;
+                  {filteredProducts.map(product => {
+                    const availableStock = getProductStock(product);
                     const isOutOfStock = availableStock <= 0;
 
                     return (
@@ -1006,11 +1231,26 @@ export default function POSKasir() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Keranjang ({cartItems.length})</span>
-                {cartItems.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={clearCart}>
-                    <Trash2 className="w-4 h-4" />
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={connectPrinter}
+                    disabled={isConnecting}
+                    className={printer ? "border-green-500 text-green-600" : ""}
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Printer className="w-4 h-4" />
+                    )}
                   </Button>
-                )}
+                  {cartItems.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={clearCart}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1078,6 +1318,29 @@ export default function POSKasir() {
                       </div>
                     ))}
                   </ScrollArea>
+
+                  <Separator />
+
+                  {/* Discount Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="discount" className="flex items-center gap-2 text-sm font-medium">
+                      <Percent className="w-4 h-4" />
+                      Diskon Kasir
+                    </Label>
+                    <Input
+                      id="discount"
+                      type="number"
+                      placeholder="0"
+                      value={discountAmount}
+                      onChange={(e) => setDiscountAmount(e.target.value)}
+                      className="w-full"
+                      min="0"
+                      max={calculations.subtotal}
+                    />
+                    <p className="text-xs text-gray-500">
+                      Masukkan nominal diskon dalam rupiah
+                    </p>
+                  </div>
 
                   <Separator />
 
@@ -1313,8 +1576,8 @@ export default function POSKasir() {
                                   >
                                     Batal
                                   </Button>
-                                  <Button
-                                    onClick={processPayment}
+                                  <Button 
+                                    onClick={handlePaymentClick} 
                                     className="flex-1"
                                     disabled={
                                       !paymentAmount ||
@@ -1346,6 +1609,52 @@ export default function POSKasir() {
           </Card>
         </div>
       </div>
+      
+      {/* Discount Confirmation Dialog */}
+      <AlertDialog open={showDiscountConfirmDialog} onOpenChange={setShowDiscountConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Percent className="w-5 h-5 text-orange-500" />
+              Konfirmasi Diskon Kasir
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Anda akan memberikan diskon kasir sebesar:</p>
+              <div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+                <div className="text-lg font-bold text-orange-700">
+                  {formatCurrency(parseFloat(discountAmount) || 0)}
+                </div>
+              </div>
+              <div className="text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>{formatCurrency(calculations.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-orange-600">
+                  <span>Diskon:</span>
+                  <span>-{formatCurrency(parseFloat(discountAmount) || 0)}</span>
+                </div>
+                <div className="flex justify-between pt-1 font-semibold border-t">
+                  <span>Total Bayar:</span>
+                  <span>{formatCurrency(calculations.total)}</span>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-red-600">
+                Pastikan diskon sudah sesuai sebelum melanjutkan pembayaran.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDiscountAndPay}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Ya, Lanjutkan Pembayaran
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
-  );
+  )
 }
