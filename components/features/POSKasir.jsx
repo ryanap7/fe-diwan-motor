@@ -946,30 +946,31 @@ export default function POSKasir() {
 
       // Prepare receipt data with proper validation
       const receiptData = {
-        storeName: "DIWAN MOTOR",
-        storeAddress: "Jl. Contoh No. 123, Kota",
-        phoneNumber: "0812-3456-7890",
+        storeName: String(transactionData?.storeName || "DIWAN MOTOR"),
+        storeAddress: String(transactionData?.storeAddress || "Jl. Contoh No. 123, Kota"),
+        phoneNumber: String(transactionData?.phoneNumber || "0812-3456-7890"),
         invoiceNo: String(transactionData?.invoiceNo || transactionData?.id || 'INV-' + Date.now()),
-        date: new Date().toLocaleDateString('id-ID'),
-        time: new Date().toLocaleTimeString('id-ID'),
+        date: String(new Date().toLocaleDateString('id-ID')),
+        time: String(new Date().toLocaleTimeString('id-ID')),
         customerName: String(customerInfo?.name || 'Walk-in Customer'),
         customerPhone: String(customerInfo?.phone || '-'),
-        items: cartItems.map(item => {
-          const unitPrice = getProductPrice(item.product, item.quantity) || 0;
+        items: Array.isArray(cartItems) ? cartItems.map(item => {
+          const unitPrice = Number(getProductPrice(item?.product, item?.quantity) || 0);
+          const quantity = Number(item?.quantity || 0);
           return {
             name: String(item?.product?.name || 'Produk'),
-            quantity: Number(item?.quantity || 0),
-            unitPrice: Number(unitPrice),
-            subtotal: Number(unitPrice * item.quantity)
+            quantity: quantity,
+            unitPrice: unitPrice,
+            subtotal: Number(unitPrice * quantity)
           };
-        }),
+        }).filter(item => item.name && item.quantity > 0) : [],
         subtotal: Number(calculations?.subtotal || 0),
         discount: Number(calculations?.discount || 0),
         tax: Number(calculations?.tax || 0),
         total: Number(calculations?.total || 0),
         amountPaid: Number(parseFloat(paymentAmount || 0)),
         change: Number(Math.max(0, parseFloat(paymentAmount || 0) - (calculations?.total || 0))),
-        paymentMethod: 'TUNAI'
+        paymentMethod: String('TUNAI')
       }
 
       console.log('Validated receipt data:', receiptData);
@@ -990,6 +991,7 @@ export default function POSKasir() {
               throw new Error('Printer instance tidak valid atau method printReceipt tidak tersedia');
             }
             
+            // Simple call to printReceipt - let the thermal printer handle the validation
             await printerInstance.printReceipt(receiptData);
             console.log('Print receipt completed successfully');
             resolve();
