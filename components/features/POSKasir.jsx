@@ -16,7 +16,7 @@ import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, 
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, categoriesAPI, stockAPI, customersAPI, productsAPI } from '@/lib/api'
-import { ThermalPrinter } from '@/lib/thermal-printer'
+import ThermalPrinter from '@/lib/thermal-printer'
 
 // API functions untuk POS - mengambil produk dari productsAPI dan stock dari stockAPI
 const fetchProducts = async (params = {}) => {
@@ -330,6 +330,7 @@ export default function POSKasir() {
   const [showDiscountConfirmDialog, setShowDiscountConfirmDialog] = useState(false)
   const [printer, setPrinter] = useState(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   
   // API Data States
   const [products, setProducts] = useState([]);
@@ -865,8 +866,19 @@ export default function POSKasir() {
   const connectPrinter = async () => {
     try {
       setIsConnecting(true)
+      
+      // Check if Web Bluetooth is supported
+      if (!navigator.bluetooth) {
+        throw new Error('Web Bluetooth tidak didukung di browser ini');
+      }
+      
+      console.log('Creating thermal printer instance...');
       const thermalPrinter = new ThermalPrinter()
+      
+      console.log('Connecting to thermal printer...');
       await thermalPrinter.connect()
+      
+      console.log('Thermal printer connected successfully');
       setPrinter(thermalPrinter)
       
       toast({
@@ -890,7 +902,16 @@ export default function POSKasir() {
 
   // Print receipt
   const printReceipt = async (transactionData) => {
+    if (isPrinting) {
+      console.log('Already printing, skipping...');
+      return;
+    }
+
+    let printTimeout;
     try {
+      setIsPrinting(true);
+      console.log('Starting print process...', transactionData);
+      
       let printerInstance = printer
       
       // If no printer connected, try to connect
@@ -901,48 +922,110 @@ export default function POSKasir() {
         }
       }
 
-      // Prepare receipt data
+      // Add loading toast with delay protection
+      const loadingToast = toast({
+        title: "Mencetak Struk...",
+        description: "Mohon tunggu, sedang mencetak struk",
+        duration: 5000,
+      });
+
+      // Set a timeout to prevent getting stuck
+      printTimeout = setTimeout(() => {
+        console.warn('Print process taking too long, continuing...');
+        toast({
+          title: "Proses Print Lama",
+          description: "Proses print memakan waktu lebih lama dari biasanya",
+          variant: "destructive"
+        });
+      }, 2000);
+
+      // Ensure calculations is available and valid
+      if (!calculations || typeof calculations !== 'object') {
+        throw new Error('Data perhitungan tidak tersedia');
+      }
+
+      // Prepare receipt data with proper validation
       const receiptData = {
         storeName: "DIWAN MOTOR",
         storeAddress: "Jl. Contoh No. 123, Kota",
         phoneNumber: "0812-3456-7890",
-        invoiceNo: transactionData.invoiceNo || transactionData.id || 'INV-' + Date.now(),
+        invoiceNo: String(transactionData?.invoiceNo || transactionData?.id || 'INV-' + Date.now()),
         date: new Date().toLocaleDateString('id-ID'),
         time: new Date().toLocaleTimeString('id-ID'),
-        customerName: customerInfo.name || 'Walk-in Customer',
-        customerPhone: customerInfo.phone || '-',
-        items: cartItems.map(item => ({
-          name: item.product.name,
-          quantity: item.quantity,
-          unitPrice: getProductPrice(item.product, item.quantity),
-          subtotal: getProductPrice(item.product, item.quantity) * item.quantity
-        })),
-        subtotal: calculations.subtotal,
-        discount: calculations.discount || 0,
-        tax: calculations.tax || 0,
-        total: calculations.total,
-        amountPaid: parseFloat(paymentAmount || 0),
-        change: Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
+        customerName: String(customerInfo?.name || 'Walk-in Customer'),
+        customerPhone: String(customerInfo?.phone || '-'),
+        items: cartItems.map(item => {
+          const unitPrice = getProductPrice(item.product, item.quantity) || 0;
+          return {
+            name: String(item?.product?.name || 'Produk'),
+            quantity: Number(item?.quantity || 0),
+            unitPrice: Number(unitPrice),
+            subtotal: Number(unitPrice * item.quantity)
+          };
+        }),
+        subtotal: Number(calculations?.subtotal || 0),
+        discount: Number(calculations?.discount || 0),
+        tax: Number(calculations?.tax || 0),
+        total: Number(calculations?.total || 0),
+        amountPaid: Number(parseFloat(paymentAmount || 0)),
+        change: Number(Math.max(0, parseFloat(paymentAmount || 0) - (calculations?.total || 0))),
         paymentMethod: 'TUNAI'
       }
 
-      console.log('Printing receipt:', receiptData)
+      console.log('Validated receipt data:', receiptData);
       
-      // Print the receipt
-      await printerInstance.printReceipt(receiptData)
+      // Ensure all critical fields are valid
+      if (!receiptData.invoiceNo || receiptData.items.length === 0) {
+        throw new Error('Data struk tidak lengkap');
+      }
+
+      // Print the receipt with delay
+      await new Promise((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            console.log('About to call printReceipt with data:', receiptData);
+            
+            // Validate the printer instance exists and has printReceipt method
+            if (!printerInstance || typeof printerInstance.printReceipt !== 'function') {
+              throw new Error('Printer instance tidak valid atau method printReceipt tidak tersedia');
+            }
+            
+            await printerInstance.printReceipt(receiptData);
+            console.log('Print receipt completed successfully');
+            resolve();
+          } catch (err) {
+            console.error('Error in printReceipt call:', err);
+            reject(err);
+          }
+        }, 500); // Small delay to ensure data is ready
+      });
+
+      // Clear timeout since print succeeded
+      if (printTimeout) {
+        clearTimeout(printTimeout);
+        printTimeout = null;
+      }
       
       toast({
         title: "Struk Dicetak",
         description: "Struk berhasil dicetak ke thermal printer",
-      })
+      });
       
     } catch (error) {
-      console.error('Error printing receipt:', error)
+      // Clear timeout on error
+      if (printTimeout) {
+        clearTimeout(printTimeout);
+        printTimeout = null;
+      }
+      
+      console.error('Error printing receipt:', error);
       toast({
         title: "Gagal Mencetak Struk",
         description: error.message || "Gagal mencetak struk ke thermal printer",
         variant: "destructive"
-      })
+      });
+    } finally {
+      setIsPrinting(false);
     }
   }
 
@@ -1236,10 +1319,10 @@ export default function POSKasir() {
                     variant="outline" 
                     size="sm" 
                     onClick={connectPrinter}
-                    disabled={isConnecting}
+                    disabled={isConnecting || isPrinting}
                     className={printer ? "border-green-500 text-green-600" : ""}
                   >
-                    {isConnecting ? (
+                    {isConnecting || isPrinting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Printer className="w-4 h-4" />
