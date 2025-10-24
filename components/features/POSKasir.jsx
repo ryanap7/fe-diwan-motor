@@ -17,6 +17,8 @@ import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, categoriesAPI, stockAPI, customersAPI, productsAPI } from '@/lib/api'
 import ThermalPrinter from '@/lib/thermal-printer'
+import CashierLoadingScreen from '@/components/ui/CashierLoadingScreen'
+import CashierStatusNotification from '@/components/ui/CashierStatusNotification'
 
 // API functions untuk POS - mengambil produk dari productsAPI dan stock dari stockAPI
 const fetchProducts = async (params = {}) => {
@@ -370,7 +372,7 @@ export default function POSKasir() {
     );
   };
 
-  // Load initial data
+  // Load initial data with optimization for cashier role
   useEffect(() => {
     // Check if user is logged in and has valid token
     const token = localStorage.getItem("token");
@@ -387,6 +389,12 @@ export default function POSKasir() {
       if (user) {
         const userData = JSON.parse(user);
         console.log("POS - Current user:", userData);
+
+        // Check user role for POS access optimization
+        const userRole = userData.role || userData.user_role;
+        if (userRole === 'CASHIER' || userRole === 'KASIR' || userRole === 'cashier') {
+          console.log("POS - Cashier detected, optimizing data loading...");
+        }
 
         if (!userData.branch || !userData.branch.id) {
           console.error("User is not assigned to any branch");
@@ -409,7 +417,8 @@ export default function POSKasir() {
       return;
     }
 
-    loadInitialData();
+    // Load initial data with prioritization for cashier
+    loadInitialDataOptimized();
   }, []);
 
   // Monitor printer connection status
@@ -504,6 +513,74 @@ export default function POSKasir() {
       setProducts(productsData)
       setCategories(categoriesData)
       setCustomers(customersData)
+    } catch (err) {
+      console.error("Error loading POS data:", err);
+      setError(err.message);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data. " + err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Optimized data loading for cashier role
+  const loadInitialDataOptimized = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Verify token before making API calls
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No access token available. Please login first.");
+      }
+
+      // Get user role to optimize loading priority
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userRole = userData.role || userData.user_role;
+      const isCashier = userRole === 'CASHIER' || userRole === 'KASIR' || userRole === 'cashier';
+
+      console.log("=== LOADING POS DATA (OPTIMIZED) ===");
+      console.log("Using token:", token.substring(0, 50) + "...");
+      console.log("User role:", userRole, "- Is Cashier:", isCashier);
+
+      if (isCashier) {
+        // For cashier: Load products first (most important), then categories, then customers
+        console.log("Cashier detected - Priority loading: Products first");
+        
+        // Load products immediately
+        const productsData = await fetchProducts();
+        console.log('Products loaded first:', productsData.length);
+        setProducts(productsData);
+        
+        // Load categories and customers in parallel after products
+        const [categoriesData, customersData] = await Promise.all([
+          fetchCategories(),
+          fetchCustomers()
+        ]);
+        
+        console.log('Categories & Customers loaded:', categoriesData.length, customersData.length);
+        setCategories(categoriesData);
+        setCustomers(customersData);
+        
+      } else {
+        // For other roles: Load all in parallel (original behavior)
+        const [productsData, categoriesData, customersData] = await Promise.all([
+          fetchProducts(),
+          fetchCategories(),
+          fetchCustomers()
+        ]);
+        
+        setProducts(productsData);
+        setCategories(categoriesData);
+        setCustomers(customersData);
+      }
+      
+      console.log('=== POS DATA LOADED (OPTIMIZED) ===');
+      
     } catch (err) {
       console.error("Error loading POS data:", err);
       setError(err.message);
@@ -1134,14 +1211,22 @@ export default function POSKasir() {
     }).format(amount);
   };
 
-  // Loading state
+  // Loading state with cashier-specific screen
   if (loading) {
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    const userRole = userData.role || userData.user_role;
+    const isCashier = userRole === 'CASHIER' || userRole === 'KASIR' || userRole === 'cashier';
+    
+    if (isCashier) {
+      return <CashierLoadingScreen message="Menyiapkan sistem kasir untuk Anda..." />;
+    }
+    
     return (
       <div className="container p-6 mx-auto max-w-7xl">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
-            <p className="text-gray-600">Memuat data produk...</p>
+            <p className="text-gray-600">Memuat data POS...</p>
           </div>
         </div>
       </div>
@@ -1180,6 +1265,20 @@ export default function POSKasir() {
 
   return (
     <div className="container p-6 mx-auto max-w-7xl">
+      {/* Cashier Status Notification */}
+      <CashierStatusNotification 
+        productsLoaded={products.length > 0}
+        printerConnected={printerConnectionStatus.isConnected}
+        userRole={(() => {
+          try {
+            const userData = JSON.parse(localStorage.getItem("user") || "{}");
+            return userData.role || userData.user_role || '';
+          } catch {
+            return '';
+          }
+        })()}
+      />
+      
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between">
@@ -1266,23 +1365,36 @@ export default function POSKasir() {
               </div>
             </div>
             
-            {/* User Info */}
+            {/* User Info with Cashier Welcome */}
             <div className="text-right">
               {(() => {
                 try {
                   const userData = JSON.parse(
                     localStorage.getItem("user") || "{}"
                   );
+                  const userRole = userData.role || userData.user_role;
+                  const isCashier = userRole === 'CASHIER' || userRole === 'KASIR' || userRole === 'cashier';
+                  
                   return (
-                    <div className="px-4 py-2 rounded-lg bg-blue-50">
-                      <p className="text-sm font-medium text-blue-900">
-                        {userData.full_name ||
-                          userData.fullName ||
-                          userData.username}
-                      </p>
-                      <p className="text-xs text-blue-600">
+                    <div className={`px-4 py-2 rounded-lg ${isCashier ? 'bg-green-50 border border-green-200' : 'bg-blue-50'}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {isCashier && <CreditCard className="w-4 h-4 text-green-600" />}
+                        <p className={`text-sm font-medium ${isCashier ? 'text-green-900' : 'text-blue-900'}`}>
+                          {isCashier && 'Selamat bekerja, '}
+                          {userData.full_name ||
+                            userData.fullName ||
+                            userData.username}
+                        </p>
+                      </div>
+                      <p className={`text-xs ${isCashier ? 'text-green-600' : 'text-blue-600'}`}>
                         {userData.branch?.name} ({userData.role})
+                        {isCashier && ' - Kasir'}
                       </p>
+                      {isCashier && (
+                        <p className="mt-1 text-xs text-green-500">
+                          ✓ Sistem POS siap digunakan
+                        </p>
+                      )}
                     </div>
                   );
                 } catch {

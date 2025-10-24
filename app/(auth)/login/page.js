@@ -52,7 +52,20 @@ export default function LoginPage() {
         }
 
         toast.success("Login berhasil!");
-        router.push("/dashboard");
+
+        // Role-based redirect for better UX
+        const userRole = response.data.user?.role || response.data.user?.user_role;
+        
+        // Redirect kasir langsung ke POS untuk efisiensi
+        if (userRole === 'CASHIER' || userRole === 'KASIR' || userRole === 'cashier') {
+          // Set flag for POS optimization
+          localStorage.setItem('cashierLoginTime', Date.now().toString());
+          console.log('Cashier login detected, redirecting to POS...');
+          router.push("/pos");
+        } else {
+          // Admin dan manager ke dashboard
+          router.push("/dashboard");
+        }
       } else {
         toast.error("Login response format tidak valid");
       }
