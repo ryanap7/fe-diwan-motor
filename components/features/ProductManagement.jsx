@@ -331,9 +331,7 @@ const ProductManagement = () => {
     } else {
       setEditingProduct(null);
       // Auto-generate values for new product
-      const firstBrandId =
-        Array.isArray(brands) && brands.length > 0 ? brands[0].id : "";
-      console.log('Auto-selecting first brand:', firstBrandId, 'from brands:', brands);
+      console.log('Creating new product form, brands available:', brands.length);
       
       // Default to auto-generate barcode for new products
       setAutoGenerateBarcode(true);
@@ -344,7 +342,7 @@ const ProductManagement = () => {
         name: "",
         description: "",
         categoryId: "",
-        brandId: firstBrandId, // Auto-select first brand
+        brandId: "", // User must select brand manually
         unit: "Pcs", // Default to Pcs
         compatibleModels: "",
         purchasePrice: "",
@@ -1103,8 +1101,8 @@ const ProductManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
-              <Label className="text-base font-semibold sm:text-lg">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
                 Nama Produk <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -1112,20 +1110,20 @@ const ProductManagement = () => {
                 onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="contoh: Ban Motor Tubeless 120/70-17"
                 required
-                className="h-12 text-base sm:h-14 sm:text-lg"
+                className="h-10 text-sm"
               />
             </div>
 
             {/* Barcode Section */}
-            <div className="space-y-3 sm:space-y-4">
-              <Label className="flex items-center gap-2 text-base font-semibold sm:text-lg">
-                <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <QrCode className="w-4 h-4" />
                 Barcode {!autoGenerateBarcode && <span className="text-red-500">*</span>}
               </Label>
               
-              <div className="space-y-4 sm:space-y-5">
+              <div className="space-y-3">
                 {/* Toggle untuk mode barcode */}
-                <div className="flex flex-col p-4 space-y-4 rounded-lg sm:p-5 bg-gray-50 sm:flex-row sm:space-y-0 sm:space-x-6">
+                <div className="flex flex-col p-3 space-y-3 rounded-lg bg-gray-50 sm:flex-row sm:space-y-0 sm:space-x-4">
                   <div className="flex items-center space-x-2">
                     <input
                       type="radio"
@@ -1171,10 +1169,10 @@ const ProductManagement = () => {
                   }
                   disabled={autoGenerateBarcode}
                   required={!autoGenerateBarcode}
-                  className={`h-12 sm:h-14 text-base sm:text-lg ${autoGenerateBarcode ? "bg-gray-100 text-gray-500" : ""}`}
+                  className={`h-10 text-sm ${autoGenerateBarcode ? "bg-gray-100 text-gray-500" : ""}`}
                 />
 
-                <p className="text-xs sm:text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {autoGenerateBarcode 
                     ? "📊 Barcode akan otomatis dibuat berdasarkan data produk" 
                     : "📝 Masukkan barcode yang sudah ada atau sesuai sistem Anda"
@@ -1183,8 +1181,8 @@ const ProductManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
-              <Label className="text-base font-semibold sm:text-lg">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
                 Kategori <span className="text-red-500">*</span>
               </Label>
               <Select
@@ -1192,20 +1190,20 @@ const ProductManagement = () => {
                 onValueChange={(value) => handleChange("categoryId", value)}
                 required
               >
-                <SelectTrigger className="h-12 text-base sm:h-14 sm:text-lg">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder={loading ? "Memuat kategori..." : "Pilih kategori"} />
                 </SelectTrigger>
-                <SelectContent className="text-base sm:text-lg">
+                <SelectContent className="text-sm">
                   {Array.isArray(categories) && categories.length > 0 ? (
                     categories
                       .filter((cat) => cat && (cat.isActive === true || cat.isActive === undefined))
                       .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} className="py-3 text-base sm:text-lg">
+                        <SelectItem key={cat.id} value={cat.id} className="py-2 text-sm">
                           {cat.name}
                         </SelectItem>
                       ))
                   ) : (
-                    <SelectItem value="" disabled className="py-3 text-base sm:text-lg">
+                    <SelectItem value="" disabled className="py-2 text-sm">
                       {loading ? "Memuat kategori..." : "Tidak ada kategori tersedia"}
                     </SelectItem>
                   )}
@@ -1213,28 +1211,29 @@ const ProductManagement = () => {
               </Select>
             </div>
 
-            {/* Hidden Brand - Auto Selected First Brand */}
-            <div style={{ display: "none" }}>
-              <Label>
+            {/* Brand Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
                 Brand <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.brandId}
                 onValueChange={(value) => handleChange("brandId", value)}
+                required
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder={loading ? "Memuat brand..." : "Pilih brand"} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="text-sm">
                   {Array.isArray(brands) && brands.length > 0 ? (
                     brands.map((brand) => (
-                      <SelectItem key={brand.id} value={brand.id}>
+                      <SelectItem key={brand.id} value={brand.id} className="py-2 text-sm">
                         {brand.name}
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
-                      Tidak ada brand tersedia
+                    <SelectItem value="" disabled className="py-2 text-sm">
+                      {loading ? "Memuat brand..." : "Tidak ada brand tersedia"}
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -1278,9 +1277,9 @@ const ProductManagement = () => {
               </p>
             </div> */}
 
-            <div className="grid grid-cols-1 gap-6 p-5 rounded-lg sm:grid-cols-2 sm:gap-8 sm:p-8 bg-gray-50">
-              <div className="space-y-3 sm:space-y-4">
-                <Label className="text-base font-semibold sm:text-lg">
+            <div className="grid grid-cols-1 gap-4 p-4 rounded-lg bg-gray-50 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
                   Harga Beli <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1291,11 +1290,11 @@ const ProductManagement = () => {
                   }
                   placeholder="0"
                   required
-                  className="h-12 text-base sm:h-14 sm:text-lg"
+                  className="h-10 text-sm"
                 />
               </div>
-              <div className="space-y-3 sm:space-y-4">
-                <Label className="text-base font-semibold sm:text-lg">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
                   Harga Jual <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1304,10 +1303,10 @@ const ProductManagement = () => {
                   onChange={(e) => handleChange("sellingPrice", e.target.value)}
                   placeholder="0"
                   required
-                  className="h-12 text-base sm:h-14 sm:text-lg"
+                  className="h-10 text-sm"
                 />
                 {formData.purchasePrice && formData.sellingPrice && (
-                  <p className="text-sm font-medium text-green-600 sm:text-base">
+                  <p className="text-xs font-medium text-green-600">
                     Margin:{" "}
                     {calculateMargin(
                       formData.purchasePrice,
@@ -1317,8 +1316,8 @@ const ProductManagement = () => {
                   </p>
                 )}
               </div>
-              <div className="space-y-3 sm:space-y-4">
-                <Label className="text-base font-semibold sm:text-lg">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
                   Harga Grosir <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1333,14 +1332,14 @@ const ProductManagement = () => {
                   }}
                   placeholder="0"
                   required
-                  className="h-12 text-base sm:h-14 sm:text-lg"
+                  className="h-10 text-sm"
                 />
-                <p className="text-sm text-muted-foreground sm:text-base">
+                <p className="text-xs text-muted-foreground">
                   Harga khusus untuk pembelian grosir
                 </p>
               </div>
-              <div className="space-y-3 sm:space-y-4">
-                <Label className="text-base font-semibold sm:text-lg">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
                   Min Transaksi Grosir <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1355,17 +1354,17 @@ const ProductManagement = () => {
                   min="1"
                   step="1"
                   disabled={!formData.wholesalePrice}
-                  className={`h-10 sm:h-12 text-sm sm:text-base ${!formData.wholesalePrice ? "bg-gray-50 opacity-50" : ""}`}
+                  className={`h-10 text-sm ${!formData.wholesalePrice ? "bg-gray-50 opacity-50" : ""}`}
                 />
-                <p className="text-xs sm:text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Jumlah minimum untuk mendapat harga grosir
                 </p>
                 {formData.minOrderWholesale && formData.wholesalePrice && (
-                  <div className="p-2 mt-2 border border-green-200 rounded sm:p-3 bg-green-50">
-                    <p className="text-xs font-medium text-green-700 sm:text-sm">
+                  <div className="p-2 mt-2 border border-green-200 rounded bg-green-50">
+                    <p className="text-xs font-medium text-green-700">
                       ✅ Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
                     </p>
-                    <p className="text-xs text-green-600 sm:text-sm">
+                    <p className="text-xs text-green-600">
                       Hemat Rp {(parseInt(formData.sellingPrice || 0) - parseInt(formData.wholesalePrice || 0)).toLocaleString('id-ID')}/unit
                     </p>
                   </div>
@@ -1379,8 +1378,8 @@ const ProductManagement = () => {
             </div>
 
             {/* Stock Management Section */}
-            <div className="p-4 border border-blue-200 rounded-lg sm:p-6 bg-blue-50">
-              <h4 className="mb-3 text-sm font-semibold text-blue-800 sm:mb-4 sm:text-base">
+            <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+              <h4 className="mb-3 text-sm font-semibold text-blue-800">
                 📦 Manajemen Stok
               </h4>
               
@@ -1428,25 +1427,25 @@ const ProductManagement = () => {
                   const userHasBranch = userData.branch?.id;
                   
                   return (
-                    <div className={`grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 ${!userHasBranch ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="space-y-3 sm:space-y-4">
-                        <Label className="text-base font-semibold sm:text-lg">Aksi Stok</Label>
+                    <div className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${!userHasBranch ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Aksi Stok</Label>
                         <Select
                           value={stockData.action}
                           onValueChange={(value) => handleStockChange("action", value)}
                           disabled={!userHasBranch}
                         >
-                    <SelectTrigger className="h-12 text-base sm:h-14 sm:text-lg">
+                    <SelectTrigger className="h-10 text-sm">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="text-base sm:text-lg">
-                      <SelectItem value="insert" className="py-3 text-base sm:text-lg">➕ Tambah Stok</SelectItem>
-                      <SelectItem value="remove" className="py-3 text-base sm:text-lg">➖ Kurangi Stok</SelectItem>
+                    <SelectContent className="text-sm">
+                      <SelectItem value="insert" className="py-2 text-sm">➕ Tambah Stok</SelectItem>
+                      <SelectItem value="remove" className="py-2 text-sm">➖ Kurangi Stok</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                        <div className="space-y-3 sm:space-y-4">
-                          <Label className="text-base font-semibold sm:text-lg">Jumlah</Label>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Jumlah</Label>
                           <Input
                             type="number"
                             min="0"
@@ -1454,30 +1453,30 @@ const ProductManagement = () => {
                             onChange={(e) => handleStockChange("quantity", e.target.value)}
                             placeholder="0"
                             disabled={!userHasBranch}
-                            className="h-12 text-base sm:h-14 sm:text-lg"
+                            className="h-10 text-sm"
                           />
-                          <p className="text-sm font-medium text-blue-600 sm:text-base">
+                          <p className="text-xs font-medium text-blue-600">
                             Unit yang akan {stockData.action === 'insert' ? 'ditambahkan ke' : 'dikurangi dari'} stok
                           </p>
                         </div>
-                        <div className="space-y-3 sm:space-y-4">
-                          <Label className="text-base font-semibold sm:text-lg">Alasan</Label>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Alasan</Label>
                           <Input
                             value={stockData.reason}
                             onChange={(e) => handleStockChange("reason", e.target.value)}
                             placeholder={stockData.action === 'insert' ? 'Pembelian, produksi, dll' : 'Rusak, kehilangan, dll'}
                             disabled={!userHasBranch}
-                            className="h-12 text-base sm:h-14 sm:text-lg"
+                            className="h-10 text-sm"
                           />
                         </div>
-                        <div className="space-y-2 sm:space-y-3">
-                          <Label className="text-sm font-medium sm:text-base">Catatan</Label>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Catatan</Label>
                           <Input
                             value={stockData.notes}
                             onChange={(e) => handleStockChange("notes", e.target.value)}
                             placeholder="Catatan tambahan (opsional)"
                             disabled={!userHasBranch}
-                            className="h-10 text-sm sm:h-12 sm:text-base"
+                            className="h-10 text-sm"
                           />
                         </div>
                       </div>
@@ -1518,21 +1517,22 @@ const ProductManagement = () => {
               )}
             </div>
 
-            {/* Image Upload */}
-            <div className="space-y-3 sm:space-y-4">
-              <Label className="flex items-center gap-3 text-base font-semibold sm:text-lg">
-                <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-                Gambar Produk (Maksimal 3)
+            {/* Image Upload with Camera */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <ImageIcon className="w-4 h-4" />
+                Foto Produk (Maksimal 3)
               </Label>
               <Input
                 type="file"
                 accept="image/*"
+                capture="environment"
                 multiple
                 onChange={handleImageFileChange}
-                className="h-12 text-base cursor-pointer sm:h-14 sm:text-lg"
+                className="h-10 text-sm cursor-pointer"
               />
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Upload gambar dari perangkat Anda (JPG, PNG, max 3 gambar)
+              <p className="text-xs text-muted-foreground">
+                📷 Kamera akan terbuka langsung untuk foto produk (JPG, PNG, max 3 gambar)
               </p>
 
               {/* Image Preview */}
@@ -1559,10 +1559,10 @@ const ProductManagement = () => {
             </div>
 
             {/* Storage Location & Tags */}
-            <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2">
-              <div className="space-y-3 sm:space-y-4">
-                <Label className="text-base font-semibold sm:text-lg">
-                  <MapPin className="inline w-5 h-5 mr-2 sm:w-6 sm:h-6" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  <MapPin className="inline w-4 h-4 mr-2" />
                   Lokasi Penyimpanan
                 </Label>
                 <Input
@@ -1571,24 +1571,24 @@ const ProductManagement = () => {
                     handleChange("storageLocation", e.target.value)
                   }
                   placeholder="contoh: Rak A-3, Gudang Utama"
-                  className="h-12 text-base sm:h-14 sm:text-lg"
+                  className="h-10 text-sm"
                 />
-                <p className="text-sm text-muted-foreground sm:text-base">
+                <p className="text-xs text-muted-foreground">
                   📍 Lokasi fisik barang di gudang/toko (opsional)
                 </p>
               </div>
-              <div className="space-y-3 sm:space-y-4">
-                <Label className="text-base font-semibold sm:text-lg">
-                  <Tag className="inline w-5 h-5 mr-2 sm:w-6 sm:h-6" />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  <Tag className="inline w-4 h-4 mr-2" />
                   Tags
                 </Label>
                 <Input
                   value={formData.tags}
                   onChange={(e) => handleChange("tags", e.target.value)}
                   placeholder="contoh: Motor, Sparepart, Populer"
-                  className="h-12 text-base sm:h-14 sm:text-lg"
+                  className="h-10 text-sm"
                 />
-                <p className="text-sm text-muted-foreground sm:text-base">
+                <p className="text-xs text-muted-foreground">
                   🏷️ Tag untuk kategori atau pencarian (pisahkan dengan koma)
                 </p>
               </div>
@@ -1653,15 +1653,15 @@ const ProductManagement = () => {
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="isActive"
                 checked={formData.isActive}
                 onChange={(e) => handleChange("isActive", e.target.checked)}
-                className="w-4 h-4 rounded sm:w-5 sm:h-5"
+                className="w-4 h-4 rounded"
               />
-              <Label htmlFor="isActive" className="text-sm font-medium cursor-pointer sm:text-base">Produk Aktif</Label>
+              <Label htmlFor="isActive" className="text-sm font-medium cursor-pointer">Produk Aktif</Label>
             </div>
 
             {/* Hidden Product Featured - Disabled by Default */}
@@ -1716,17 +1716,17 @@ const ProductManagement = () => {
               </div>
             )} */}
 
-            <div className="flex flex-col gap-4 pt-6 border-t sm:flex-row sm:justify-end sm:gap-6 sm:pt-8">
+            <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCloseDialog}
                 disabled={saving}
-                className="w-full h-12 text-base font-semibold sm:w-auto sm:h-14 sm:text-lg"
+                className="w-full h-10 text-sm font-medium sm:w-auto"
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={saving} className="w-full h-12 text-base font-semibold sm:w-auto sm:h-14 sm:text-lg">
+              <Button type="submit" disabled={saving} className="w-full h-10 text-sm font-medium sm:w-auto">
                 {saving ? "Menyimpan..." : editingProduct ? "Update" : "Simpan"}
               </Button>
             </div>
