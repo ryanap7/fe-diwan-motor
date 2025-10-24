@@ -316,6 +316,7 @@ export default function POSKasir() {
   const [currentStep, setCurrentStep] = useState(1); // 1: Select Items, 2: Customer Info, 3: Payment
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStorageLocation, setSelectedStorageLocation] = useState("all");
   const [cartItems, setCartItems] = useState([]);
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
@@ -606,6 +607,8 @@ export default function POSKasir() {
         product.name || "",
         product.sku || "",
         product.compatibleModels || "",
+        product.brand?.name || product.brand || "",
+        product.storageLocation || "",
       ]
         .join(" ")
         .toLowerCase();
@@ -616,13 +619,17 @@ export default function POSKasir() {
         product.category?.id === selectedCategory ||
         product.category?.name === selectedCategory;
 
+      const matchesStorageLocation =
+        selectedStorageLocation === "all" ||
+        product.storageLocation === selectedStorageLocation;
+
       // Check if product has stock (assume stock comes from inventory)
       const productStock = getProductStock(product);
       const hasStock = productStock > 0; // Remove fallback untuk debugging stock issues
       
       console.log(`Product ${product.name}: stock=${productStock}, hasStock=${hasStock}`);
       
-      const result = matchesSearch && matchesCategory && product.isActive !== false
+      const result = matchesSearch && matchesCategory && matchesStorageLocation && product.isActive !== false
       
       console.log(`Product ${product.name}: search=${matchesSearch}, category=${matchesCategory}, hasStock=${hasStock}, result=${result}`);
       console.log(`  - Prices: selling=${product.sellingPrice}, purchase=${product.purchasePrice}, wholesale=${product.wholesalePrice}`);
@@ -641,7 +648,7 @@ export default function POSKasir() {
     });
 
     return filtered;
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedCategory, selectedStorageLocation]);
 
   // Available category options for filter
   const categoryOptions = useMemo(() => {
@@ -651,6 +658,17 @@ export default function POSKasir() {
       (a.name || "").localeCompare(b.name || "")
     );
   }, [categories]);
+
+  // Available storage location options for filter
+  const storageLocationOptions = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+    const uniqueLocations = [...new Set(
+      products
+        .filter(product => product.storageLocation && product.storageLocation.trim() !== "")
+        .map(product => product.storageLocation)
+    )];
+    return uniqueLocations.sort();
+  }, [products]);
 
   // Calculate totals with automatic wholesale pricing and manual discount
   const calculations = useMemo(() => {
@@ -1130,6 +1148,9 @@ export default function POSKasir() {
           const quantity = Number(item?.quantity || 0);
           return {
             name: String(item?.product?.name || 'Produk'),
+            sku: String(item?.product?.sku || ''),
+            brand: String(item?.product?.brand?.name || item?.product?.brand || ''),
+            storageLocation: String(item?.product?.storageLocation || ''),
             quantity: quantity,
             unitPrice: unitPrice,
             subtotal: Number(unitPrice * quantity)
@@ -1280,93 +1301,77 @@ export default function POSKasir() {
       />
       
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 truncate sm:text-2xl lg:text-3xl">
               Point of Sale (POS)
             </h1>
-            <p className="mt-1 text-gray-600">
+            <p className="hidden mt-1 text-sm text-gray-600 sm:text-base sm:block">
               Sistem kasir untuk transaksi penjualan
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             {/* Bluetooth Printer Status Indicator */}
-            <div className="flex items-center px-4 py-2 bg-white border rounded-lg">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center px-2 py-2 bg-white border rounded-lg sm:px-4">
+              <div className="flex items-center gap-1 sm:gap-2">
                 {printerConnectionStatus.isConnected ? (
                   <>
-                    <BluetoothConnected className="w-5 h-5 text-green-600" />
+                    <BluetoothConnected className="w-4 h-4 text-green-600 sm:w-5 sm:h-5" />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-green-800">
-                        Printer Terhubung
+                      <span className="text-xs font-medium text-green-800 sm:text-sm">
+                        {window.innerWidth < 640 ? 'Terhubung' : 'Printer Terhubung'}
                       </span>
-                      <span className="text-xs text-green-600">
+                      <span className="hidden text-xs text-green-600 sm:block">
                         {printerConnectionStatus.deviceName}
                       </span>
-                      {printerConnectionStatus.lastConnected && (
-                        <span className="text-xs text-gray-500">
-                          Sejak: {printerConnectionStatus.lastConnected.toLocaleTimeString('id-ID')}
-                        </span>
-                      )}
                     </div>
                   </>
                 ) : isConnecting ? (
                   <>
-                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                    <Loader2 className="w-4 h-4 text-blue-600 sm:w-5 sm:h-5 animate-spin" />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-blue-800">
-                        Menghubungkan...
-                      </span>
-                      <span className="text-xs text-blue-600">
-                        Bluetooth Printer
+                      <span className="text-xs font-medium text-blue-800 sm:text-sm">
+                        {window.innerWidth < 640 ? 'Connecting...' : 'Menghubungkan...'}
                       </span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Bluetooth className="w-5 h-5 text-gray-400" />
+                    <Bluetooth className="w-4 h-4 text-gray-400 sm:w-5 sm:h-5" />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-600">
-                        Printer Tidak Terhubung
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {printerConnectionStatus.error || 'Klik untuk menghubungkan'}
+                      <span className="text-xs font-medium text-gray-600 sm:text-sm">
+                        {window.innerWidth < 640 ? 'Offline' : 'Printer Tidak Terhubung'}
                       </span>
                     </div>
                   </>
                 )}
               </div>
-              <div className="flex gap-2 ml-3">
-                {!printerConnectionStatus.isConnected ? (
-                  <Button
-                    onClick={connectPrinter}
-                    disabled={isConnecting}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {isConnecting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Bluetooth className="w-4 h-4" />
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={disconnectPrinter}
-                    disabled={isPrinting}
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    <BluetoothConnected className="w-4 h-4" />
-                  </Button>
-                )}
+              <div className="flex gap-1 ml-2 sm:ml-3">
+                <Button
+                  onClick={printerConnectionStatus.isConnected ? disconnectPrinter : connectPrinter}
+                  disabled={isConnecting || isPrinting}
+                  size="sm"
+                  variant="outline"
+                  className={`p-1 w-8 h-8 ${
+                    printerConnectionStatus.isConnected 
+                      ? 'text-red-600 border-red-300 hover:bg-red-50'
+                      : ''
+                  }`}
+                >
+                  {isConnecting || isPrinting ? (
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                  ) : printerConnectionStatus.isConnected ? (
+                    <BluetoothConnected className="w-3 h-3 sm:w-4 sm:h-4" />
+                  ) : (
+                    <Bluetooth className="w-3 h-3 sm:w-4 sm:h-4" />
+                  )}
+                </Button>
               </div>
             </div>
             
             {/* User Info with Cashier Welcome */}
-            <div className="text-right">
+            <div className="flex-1 sm:flex-none">
               {(() => {
                 try {
                   const userData = JSON.parse(
@@ -1376,22 +1381,22 @@ export default function POSKasir() {
                   const isCashier = userRole === 'CASHIER' || userRole === 'KASIR' || userRole === 'cashier';
                   
                   return (
-                    <div className={`px-4 py-2 rounded-lg ${isCashier ? 'bg-green-50 border border-green-200' : 'bg-blue-50'}`}>
+                    <div className={`px-3 sm:px-4 py-2 rounded-lg ${isCashier ? 'bg-green-50 border border-green-200' : 'bg-blue-50'}`}>
                       <div className="flex items-center gap-2 mb-1">
-                        {isCashier && <CreditCard className="w-4 h-4 text-green-600" />}
-                        <p className={`text-sm font-medium ${isCashier ? 'text-green-900' : 'text-blue-900'}`}>
-                          {isCashier && 'Selamat bekerja, '}
+                        {isCashier && <CreditCard className="w-3 h-3 text-green-600 sm:w-4 sm:h-4" />}
+                        <p className={`text-xs sm:text-sm font-medium ${isCashier ? 'text-green-900' : 'text-blue-900'} truncate`}>
+                          {window.innerWidth < 640 && isCashier ? 'Halo, ' : isCashier ? 'Selamat bekerja, ' : ''}
                           {userData.full_name ||
                             userData.fullName ||
                             userData.username}
                         </p>
                       </div>
-                      <p className={`text-xs ${isCashier ? 'text-green-600' : 'text-blue-600'}`}>
+                      <p className={`text-xs ${isCashier ? 'text-green-600' : 'text-blue-600'} truncate`}>
                         {userData.branch?.name} ({userData.role})
-                        {isCashier && ' - Kasir'}
+                        {isCashier && window.innerWidth >= 640 && ' - Kasir'}
                       </p>
                       {isCashier && (
-                        <p className="mt-1 text-xs text-green-500">
+                        <p className="hidden mt-1 text-xs text-green-500 sm:block">
                           ✓ Sistem POS siap digunakan
                         </p>
                       )}
@@ -1399,8 +1404,8 @@ export default function POSKasir() {
                   );
                 } catch {
                   return (
-                    <div className="px-4 py-2 rounded-lg bg-red-50">
-                      <p className="text-sm text-red-600">User tidak login</p>
+                    <div className="px-3 py-2 rounded-lg sm:px-4 bg-red-50">
+                      <p className="text-xs text-red-600 sm:text-sm">User tidak login</p>
                     </div>
                   );
                 }
@@ -1411,92 +1416,111 @@ export default function POSKasir() {
       </div>
 
       {/* Progress Steps */}
-      <div className="mb-6">
-        <div className="flex items-center justify-center space-x-4">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex items-center justify-center pb-2 space-x-2 overflow-x-auto sm:space-x-4">
           {[
-            { step: 1, title: "Pilih Barang", icon: ShoppingCart },
-            { step: 2, title: "Info Customer", icon: User },
-            { step: 3, title: "Pembayaran", icon: CreditCard },
-          ].map(({ step, title, icon: Icon }) => (
-            <div key={step} className="flex items-center">
+            { step: 1, title: "Pilih Barang", shortTitle: "Barang", icon: ShoppingCart },
+            { step: 2, title: "Info Customer", shortTitle: "Customer", icon: User },
+            { step: 3, title: "Pembayaran", shortTitle: "Bayar", icon: CreditCard },
+          ].map(({ step, title, shortTitle, icon: Icon }) => (
+            <div key={step} className="flex items-center flex-shrink-0">
               <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 ${
                   currentStep >= step
                     ? "bg-blue-500 border-blue-500 text-white"
                     : "border-gray-300 text-gray-300"
                 }`}
               >
                 {currentStep > step ? (
-                  <Check className="w-5 h-5" />
+                  <Check className="w-3 h-3 sm:w-5 sm:h-5" />
                 ) : (
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-3 h-3 sm:w-5 sm:h-5" />
                 )}
               </div>
               <span
-                className={`ml-2 font-medium ${
+                className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium ${
                   currentStep >= step ? "text-blue-600" : "text-gray-400"
                 }`}
               >
-                {title}
+                <span className="hidden sm:inline">{title}</span>
+                <span className="sm:hidden">{shortTitle}</span>
               </span>
-              {step < 3 && <div className="w-12 h-px mx-4 bg-gray-300" />}
+              {step < 3 && <div className="w-6 h-px mx-2 bg-gray-300 sm:w-12 sm:mx-4" />}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="flex flex-col gap-4 lg:gap-6 lg:grid lg:grid-cols-3">
         {/* Products Section */}
-        <div className="lg:col-span-2">
+        <div className="order-1 lg:order-1 lg:col-span-2">
           <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-4 md:flex-row">
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-col sm:gap-4 md:flex-row">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                     <Input
-                      placeholder="Cari produk (nama, SKU, atau model)..."
+                      placeholder="Cari produk..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 text-sm"
                     />
                   </div>
                 </div>
-                <Select
-                  value={selectedCategory}
-                  onValueChange={setSelectedCategory}
-                >
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Pilih Kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Kategori</SelectItem>
-                    {categoryOptions.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex flex-col w-full md:w-40">
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
+                    <SelectTrigger className="flex-1 min-w-32 sm:w-36">
+                      <SelectValue placeholder="Kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kategori</SelectItem>
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={selectedStorageLocation}
+                    onValueChange={setSelectedStorageLocation}
+                  >
+                    <SelectTrigger className="flex-1 min-w-32 sm:w-36">
+                      <SelectValue placeholder="Lokasi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Lokasi</SelectItem>
+                      {storageLocationOptions.map((location) => (
+                        <SelectItem key={location} value={location}>
+                          📦 {location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
                   <Select value={priceType} onValueChange={setPriceType}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="flex-1 min-w-28 sm:w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="wholesale">Force Grosir</SelectItem>
+                      <SelectItem value="wholesale">Grosir</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Auto grosir jika qty ≥ min stok
-                  </p>
                 </div>
               </div>
+              <p className="hidden mt-2 text-xs text-gray-500 sm:block">
+                Auto grosir jika qty ≥ min stok
+              </p>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-96">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="flex flex-col gap-2 md:grid md:grid-cols-2 md:gap-4">
                   {filteredProducts.map(product => {
                     const availableStock = getProductStock(product);
                     const isOutOfStock = availableStock <= 0;
@@ -1511,25 +1535,30 @@ export default function POSKasir() {
                         }`}
                         onClick={() => !isOutOfStock && addToCart(product)}
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-3 md:p-4">
                           <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <h3 className="text-sm font-semibold line-clamp-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold line-clamp-1 md:line-clamp-2">
                                 {product.name}
                               </h3>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-500 truncate">
                                 {product.sku}
                               </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 shrink-0 bg-blue-50">
                                   {product.brand?.name ||
                                     product.brand ||
                                     "No Brand"}
                                 </Badge>
+                                {product.storageLocation && (
+                                  <Badge variant="secondary" className="text-xs text-green-700 border-green-300 shrink-0 bg-green-50">
+                                    📦 {product.storageLocation}
+                                  </Badge>
+                                )}
                                 {isOutOfStock && (
                                   <Badge
                                     variant="destructive"
-                                    className="text-xs"
+                                    className="text-xs shrink-0"
                                   >
                                     Habis
                                   </Badge>
@@ -1537,15 +1566,15 @@ export default function POSKasir() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-end justify-between">
-                            <div>
-                              <p className="font-bold text-blue-600">
+                          <div className="flex items-end justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-blue-600">
                                 {formatCurrency(getProductPrice(product, 1))}
                               </p>
                               {product.wholesalePrice &&
                                 product.minStock > 0 &&
                                 !isOutOfStock && (
-                                  <p className="text-xs font-medium text-orange-600">
+                                  <p className="hidden text-xs font-medium text-orange-600 md:block">
                                     Grosir:{" "}
                                     {formatCurrency(product.wholesalePrice)} (≥
                                     {product.minStock} {product.unit || "Pcs"})
@@ -1568,7 +1597,7 @@ export default function POSKasir() {
                             </div>
                             <Button
                               size="sm"
-                              className="w-8 h-8 p-0"
+                              className="w-8 h-8 p-0 shrink-0"
                               disabled={isOutOfStock}
                               variant={isOutOfStock ? "secondary" : "default"}
                             >
@@ -1595,11 +1624,11 @@ export default function POSKasir() {
         {/* Cart & Summary Section */}
         <div>
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span>Keranjang ({cartItems.length})</span>
-                  {/* Printer Status Badge */}
+            <CardHeader className="pb-3">
+              <CardTitle className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">Keranjang ({cartItems.length})</span>
+                  {/* Printer Status Badge - mobile compact version */}
                   <Badge 
                     variant={
                       printerConnectionStatus.isConnected ? "default" :
@@ -1615,22 +1644,25 @@ export default function POSKasir() {
                     {printerConnectionStatus.isConnected ? (
                       <>
                         <CheckCircle className="w-3 h-3 mr-1" />
-                        Printer Siap
+                        <span className="hidden sm:inline">Printer Siap</span>
+                        <span className="sm:hidden">Siap</span>
                       </>
                     ) : printerConnectionStatus.error ? (
                       <>
                         <AlertCircle className="w-3 h-3 mr-1" />
-                        Printer Error
+                        <span className="hidden sm:inline">Printer Error</span>
+                        <span className="sm:hidden">Error</span>
                       </>
                     ) : (
                       <>
                         <Bluetooth className="w-3 h-3 mr-1" />
-                        Printer Offline
+                        <span className="hidden sm:inline">Printer Offline</span>
+                        <span className="sm:hidden">Offline</span>
                       </>
                     )}
                   </Badge>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex justify-end gap-2 md:justify-start">
                   {/* Printer Connection Button with Detailed Status */}
                   <div className="relative">
                     <Button 
@@ -1638,7 +1670,7 @@ export default function POSKasir() {
                       size="sm" 
                       onClick={printerConnectionStatus.isConnected ? disconnectPrinter : connectPrinter}
                       disabled={isConnecting || isPrinting}
-                      className={`${
+                      className={`text-xs px-2 ${
                         printerConnectionStatus.isConnected 
                           ? "border-green-500 text-green-600 bg-green-50 hover:bg-green-100" 
                           : printerConnectionStatus.error
@@ -1656,11 +1688,20 @@ export default function POSKasir() {
                       {isConnecting || isPrinting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : printerConnectionStatus.isConnected ? (
-                        <BluetoothConnected className="w-4 h-4" />
+                        <>
+                          <BluetoothConnected className="w-4 h-4" />
+                          <span className="hidden ml-1 sm:inline">Connected</span>
+                        </>
                       ) : printerConnectionStatus.error ? (
-                        <AlertCircle className="w-4 h-4" />
+                        <>
+                          <AlertCircle className="w-4 h-4" />
+                          <span className="hidden ml-1 sm:inline">Retry</span>
+                        </>
                       ) : (
-                        <Bluetooth className="w-4 h-4" />
+                        <>
+                          <Bluetooth className="w-4 h-4" />
+                          <span className="hidden ml-1 sm:inline">Connect</span>
+                        </>
                       )}
                     </Button>
                     
@@ -1673,8 +1714,9 @@ export default function POSKasir() {
                   </div>
                   
                   {cartItems.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={clearCart}>
+                    <Button variant="outline" size="sm" onClick={clearCart} className="px-2">
                       <Trash2 className="w-4 h-4" />
+                      <span className="hidden ml-1 sm:inline">Clear</span>
                     </Button>
                   )}
                 </div>
@@ -1692,16 +1734,26 @@ export default function POSKasir() {
                     {cartItems.map((item) => (
                       <div
                         key={item.product.id}
-                        className="flex items-center justify-between p-3 mb-2 border rounded-lg"
+                        className="flex flex-col gap-2 p-3 mb-2 border rounded-lg md:flex-row md:items-center md:gap-4"
                       >
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium line-clamp-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium line-clamp-1 md:line-clamp-2">
                             {item.product.name}
                           </h4>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 truncate">
                             {item.product.sku}
                           </p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            <Badge variant="outline" className="text-xs text-blue-700 border-blue-300 bg-blue-50">
+                              {item.product.brand?.name || item.product.brand || "No Brand"}
+                            </Badge>
+                            {item.product.storageLocation && (
+                              <Badge variant="secondary" className="text-xs text-green-700 border-green-300 bg-green-50">
+                                📦 {item.product.storageLocation}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
                             <p className="text-sm font-semibold text-blue-600">
                               {formatCurrency(
                                 getProductPrice(item.product, item.quantity)
@@ -1711,35 +1763,45 @@ export default function POSKasir() {
                               item.product,
                               item.quantity
                             ) && (
-                              <Badge variant="secondary" className="text-xs">
+                              <Badge variant="secondary" className="text-xs text-orange-700 bg-orange-50">
                                 Grosir
                               </Badge>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center justify-between gap-2 md:justify-end">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="p-0 w-7 h-7"
+                              onClick={() =>
+                                updateQuantity(item.product.id, item.quantity - 1)
+                              }
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="w-8 text-sm font-medium text-center">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="p-0 w-7 h-7"
+                              onClick={() =>
+                                updateQuantity(item.product.id, item.quantity + 1)
+                              }
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="w-6 h-6 p-0"
-                            onClick={() =>
-                              updateQuantity(item.product.id, item.quantity - 1)
-                            }
+                            variant="ghost"
+                            className="p-0 text-red-500 w-7 h-7 hover:text-red-600 hover:bg-red-50 md:ml-2"
+                            onClick={() => removeFromCart(item.product.id)}
                           >
-                            <Minus className="w-3 h-3" />
-                          </Button>
-                          <span className="w-8 text-sm text-center">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-6 h-6 p-0"
-                            onClick={() =>
-                              updateQuantity(item.product.id, item.quantity + 1)
-                            }
-                          >
-                            <Plus className="w-3 h-3" />
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
@@ -1772,25 +1834,25 @@ export default function POSKasir() {
                   <Separator />
 
                   {/* Summary */}
-                  <div className="space-y-2">
+                  <div className="space-y-1 md:space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal:</span>
-                      <span>{formatCurrency(calculations.subtotal)}</span>
+                      <span className="font-medium">{formatCurrency(calculations.subtotal)}</span>
                     </div>
                     {calculations.discount > 0 && (
                       <div className="flex justify-between text-sm text-red-600">
                         <span>Diskon:</span>
-                        <span>-{formatCurrency(calculations.discount)}</span>
+                        <span className="font-medium">-{formatCurrency(calculations.discount)}</span>
                       </div>
                     )}
                     {calculations.tax > 0 && (
                       <div className="flex justify-between text-sm">
                         <span>Pajak:</span>
-                        <span>{formatCurrency(calculations.tax)}</span>
+                        <span className="font-medium">{formatCurrency(calculations.tax)}</span>
                       </div>
                     )}
                     <Separator />
-                    <div className="flex justify-between text-lg font-bold">
+                    <div className="flex justify-between p-2 text-base font-bold rounded-lg md:text-lg bg-blue-50 md:p-3">
                       <span>Total:</span>
                       <span className="text-blue-600">
                         {formatCurrency(calculations.total)}
@@ -1813,10 +1875,10 @@ export default function POSKasir() {
                     {currentStep === 2 && (
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label htmlFor="customer-name">Nama Customer</Label>
+                          <Label htmlFor="customer-name" className="text-sm">Nama Customer</Label>
                           <Input
                             id="customer-name"
-                            placeholder="Masukkan nama customer (opsional)"
+                            placeholder="Nama customer (opsional)"
                             value={customerInfo.name}
                             onChange={(e) =>
                               setCustomerInfo({
@@ -1824,13 +1886,14 @@ export default function POSKasir() {
                                 name: e.target.value,
                               })
                             }
+                            className="text-sm"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="customer-phone">No. Telepon</Label>
+                          <Label htmlFor="customer-phone" className="text-sm">No. Telepon</Label>
                           <Input
                             id="customer-phone"
-                            placeholder="Masukkan no. telepon (opsional)"
+                            placeholder="No. telepon (opsional)"
                             value={customerInfo.phone}
                             onChange={(e) =>
                               setCustomerInfo({
@@ -1838,6 +1901,7 @@ export default function POSKasir() {
                                 phone: e.target.value,
                               })
                             }
+                            className="text-sm"
                           />
                         </div>
                         <div className="flex space-x-2">
