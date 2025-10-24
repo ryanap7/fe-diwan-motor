@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer } from 'lucide-react'
+import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer, Bluetooth, BluetoothConnected, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, categoriesAPI, stockAPI, customersAPI, productsAPI } from '@/lib/api'
@@ -331,6 +331,12 @@ export default function POSKasir() {
   const [printer, setPrinter] = useState(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
+  const [printerConnectionStatus, setPrinterConnectionStatus] = useState({
+    isConnected: false,
+    deviceName: '',
+    lastConnected: null,
+    error: null
+  })
   
   // API Data States
   const [products, setProducts] = useState([]);
@@ -405,6 +411,55 @@ export default function POSKasir() {
 
     loadInitialData();
   }, []);
+
+  // Monitor printer connection status
+  useEffect(() => {
+    const checkPrinterStatus = () => {
+      if (printer?.device) {
+        if (printer.device.gatt && printer.device.gatt.connected) {
+          setPrinterConnectionStatus(prev => ({
+            ...prev,
+            isConnected: true,
+            deviceName: printer.device.name || 'Bluetooth Printer',
+            error: null
+          }));
+        } else {
+          // Connection lost
+          const wasConnected = printerConnectionStatus.isConnected;
+          setPrinterConnectionStatus(prev => ({
+            ...prev,
+            isConnected: false,
+            error: 'Koneksi terputus'
+          }));
+          
+          // Show notification if connection was previously established
+          if (wasConnected) {
+            toast({
+              title: "Printer Terputus",
+              description: "Koneksi Bluetooth printer terputus secara tidak terduga",
+              variant: "destructive"
+            });
+            setPrinter(null);
+          }
+        }
+      } else {
+        setPrinterConnectionStatus(prev => ({
+          ...prev,
+          isConnected: false,
+          deviceName: '',
+          error: prev.error // Keep existing error if any
+        }));
+      }
+    };
+
+    // Initial check
+    checkPrinterStatus();
+
+    // Check every 5 seconds
+    const interval = setInterval(checkPrinterStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [printer, printerConnectionStatus.isConnected]);
 
   const loadInitialData = async () => {
     try {
@@ -876,19 +931,35 @@ export default function POSKasir() {
       const thermalPrinter = new ThermalPrinter()
       
       console.log('Connecting to thermal printer...');
-      await thermalPrinter.connect()
+      const deviceInfo = await thermalPrinter.connect()
       
-      console.log('Thermal printer connected successfully');
+      console.log('Thermal printer connected successfully', deviceInfo);
       setPrinter(thermalPrinter)
+      
+      // Update connection status
+      setPrinterConnectionStatus({
+        isConnected: true,
+        deviceName: deviceInfo.name || 'Bluetooth Printer',
+        lastConnected: new Date(),
+        error: null
+      });
       
       toast({
         title: "Printer Terhubung",
-        description: "Thermal printer berhasil terhubung",
+        description: `${deviceInfo.name || 'Bluetooth Printer'} berhasil terhubung`,
       })
       
       return thermalPrinter
     } catch (error) {
       console.error('Error connecting printer:', error)
+      
+      // Update connection status with error
+      setPrinterConnectionStatus(prev => ({
+        ...prev,
+        isConnected: false,
+        error: error.message
+      }));
+      
       toast({
         title: "Gagal Menghubungkan Printer",
         description: error.message || "Gagal menghubungkan ke thermal printer",
@@ -897,6 +968,29 @@ export default function POSKasir() {
       return null
     } finally {
       setIsConnecting(false)
+    }
+  }
+
+  // Disconnect from thermal printer
+  const disconnectPrinter = () => {
+    try {
+      if (printer && printer.device) {
+        printer.disconnect();
+        setPrinter(null);
+        setPrinterConnectionStatus({
+          isConnected: false,
+          deviceName: '',
+          lastConnected: null,
+          error: null
+        });
+        
+        toast({
+          title: "Printer Terputus",
+          description: "Koneksi printer telah diputuskan",
+        });
+      }
+    } catch (error) {
+      console.error('Error disconnecting printer:', error);
     }
   }
 
@@ -1097,33 +1191,109 @@ export default function POSKasir() {
               Sistem kasir untuk transaksi penjualan
             </p>
           </div>
-          {/* User Info */}
-          <div className="text-right">
-            {(() => {
-              try {
-                const userData = JSON.parse(
-                  localStorage.getItem("user") || "{}"
-                );
-                return (
-                  <div className="px-4 py-2 rounded-lg bg-blue-50">
-                    <p className="text-sm font-medium text-blue-900">
-                      {userData.full_name ||
-                        userData.fullName ||
-                        userData.username}
-                    </p>
-                    <p className="text-xs text-blue-600">
-                      {userData.branch?.name} ({userData.role})
-                    </p>
-                  </div>
-                );
-              } catch {
-                return (
-                  <div className="px-4 py-2 rounded-lg bg-red-50">
-                    <p className="text-sm text-red-600">User tidak login</p>
-                  </div>
-                );
-              }
-            })()}
+          <div className="flex items-center gap-4">
+            {/* Bluetooth Printer Status Indicator */}
+            <div className="flex items-center px-4 py-2 bg-white border rounded-lg">
+              <div className="flex items-center gap-2">
+                {printerConnectionStatus.isConnected ? (
+                  <>
+                    <BluetoothConnected className="w-5 h-5 text-green-600" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-green-800">
+                        Printer Terhubung
+                      </span>
+                      <span className="text-xs text-green-600">
+                        {printerConnectionStatus.deviceName}
+                      </span>
+                      {printerConnectionStatus.lastConnected && (
+                        <span className="text-xs text-gray-500">
+                          Sejak: {printerConnectionStatus.lastConnected.toLocaleTimeString('id-ID')}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                ) : isConnecting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-blue-800">
+                        Menghubungkan...
+                      </span>
+                      <span className="text-xs text-blue-600">
+                        Bluetooth Printer
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Bluetooth className="w-5 h-5 text-gray-400" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-600">
+                        Printer Tidak Terhubung
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {printerConnectionStatus.error || 'Klik untuk menghubungkan'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="flex gap-2 ml-3">
+                {!printerConnectionStatus.isConnected ? (
+                  <Button
+                    onClick={connectPrinter}
+                    disabled={isConnecting}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bluetooth className="w-4 h-4" />
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={disconnectPrinter}
+                    disabled={isPrinting}
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    <BluetoothConnected className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            {/* User Info */}
+            <div className="text-right">
+              {(() => {
+                try {
+                  const userData = JSON.parse(
+                    localStorage.getItem("user") || "{}"
+                  );
+                  return (
+                    <div className="px-4 py-2 rounded-lg bg-blue-50">
+                      <p className="text-sm font-medium text-blue-900">
+                        {userData.full_name ||
+                          userData.fullName ||
+                          userData.username}
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        {userData.branch?.name} ({userData.role})
+                      </p>
+                    </div>
+                  );
+                } catch {
+                  return (
+                    <div className="px-4 py-2 rounded-lg bg-red-50">
+                      <p className="text-sm text-red-600">User tidak login</p>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
           </div>
         </div>
       </div>
@@ -1315,21 +1485,81 @@ export default function POSKasir() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Keranjang ({cartItems.length})</span>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={connectPrinter}
-                    disabled={isConnecting || isPrinting}
-                    className={printer ? "border-green-500 text-green-600" : ""}
+                <div className="flex items-center gap-3">
+                  <span>Keranjang ({cartItems.length})</span>
+                  {/* Printer Status Badge */}
+                  <Badge 
+                    variant={
+                      printerConnectionStatus.isConnected ? "default" :
+                      printerConnectionStatus.error ? "destructive" :
+                      "secondary"
+                    }
+                    className={`text-xs ${
+                      printerConnectionStatus.isConnected ? "bg-green-100 text-green-800 border-green-300" :
+                      printerConnectionStatus.error ? "bg-red-100 text-red-800 border-red-300" :
+                      "bg-gray-100 text-gray-600 border-gray-300"
+                    }`}
                   >
-                    {isConnecting || isPrinting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    {printerConnectionStatus.isConnected ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Printer Siap
+                      </>
+                    ) : printerConnectionStatus.error ? (
+                      <>
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Printer Error
+                      </>
                     ) : (
-                      <Printer className="w-4 h-4" />
+                      <>
+                        <Bluetooth className="w-3 h-3 mr-1" />
+                        Printer Offline
+                      </>
                     )}
-                  </Button>
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  {/* Printer Connection Button with Detailed Status */}
+                  <div className="relative">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={printerConnectionStatus.isConnected ? disconnectPrinter : connectPrinter}
+                      disabled={isConnecting || isPrinting}
+                      className={`${
+                        printerConnectionStatus.isConnected 
+                          ? "border-green-500 text-green-600 bg-green-50 hover:bg-green-100" 
+                          : printerConnectionStatus.error
+                          ? "border-red-500 text-red-600 bg-red-50 hover:bg-red-100"
+                          : "border-gray-300 hover:bg-gray-50"
+                      }`}
+                      title={
+                        printerConnectionStatus.isConnected 
+                          ? `Terhubung: ${printerConnectionStatus.deviceName}\nKlik untuk memutuskan koneksi`
+                          : printerConnectionStatus.error
+                          ? `Error: ${printerConnectionStatus.error}\nKlik untuk coba lagi`
+                          : "Hubungkan Bluetooth Printer"
+                      }
+                    >
+                      {isConnecting || isPrinting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : printerConnectionStatus.isConnected ? (
+                        <BluetoothConnected className="w-4 h-4" />
+                      ) : printerConnectionStatus.error ? (
+                        <AlertCircle className="w-4 h-4" />
+                      ) : (
+                        <Bluetooth className="w-4 h-4" />
+                      )}
+                    </Button>
+                    
+                    {/* Status Indicator Dot */}
+                    <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                      printerConnectionStatus.isConnected ? 'bg-green-500' :
+                      printerConnectionStatus.error ? 'bg-red-500' :
+                      'bg-gray-400'
+                    }`} />
+                  </div>
+                  
                   {cartItems.length > 0 && (
                     <Button variant="outline" size="sm" onClick={clearCart}>
                       <Trash2 className="w-4 h-4" />
@@ -1653,6 +1883,22 @@ export default function POSKasir() {
                                     </span>
                                   </div>
                                 </div>
+                                
+                                {/* Printer Status Warning */}
+                                {!printerConnectionStatus.isConnected && (
+                                  <div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+                                    <div className="flex items-center gap-2 text-orange-800">
+                                      <AlertCircle className="w-4 h-4" />
+                                      <span className="text-sm font-medium">
+                                        Printer Tidak Terhubung
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-orange-700">
+                                      Struk tidak akan dicetak otomatis. Pastikan untuk mencatat transaksi secara manual.
+                                    </p>
+                                  </div>
+                                )}
+                                
                                 <div className="flex space-x-2">
                                   <Button
                                     variant="outline"
