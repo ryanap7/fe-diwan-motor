@@ -977,7 +977,7 @@ export default function POSKasir() {
         ),
         notes:
           notes ||
-          `${customerInfo.name || "Walk-in Customer"} - Pembayaran Tunai`,
+          `${customerInfo.name || "Customer"} - Pembayaran Tunai`,
       };
 
       console.log("Processing transaction:", transactionData);
@@ -1163,8 +1163,9 @@ export default function POSKasir() {
         invoiceNo: String(transactionData?.invoiceNo || transactionData?.id || 'INV-' + Date.now()),
         date: String(new Date().toLocaleDateString('id-ID')),
         time: String(new Date().toLocaleTimeString('id-ID')),
-        customerName: String(customerInfo?.name || 'Walk-in Customer'),
+        customerName: String(customerInfo?.name || 'Customer'),
         customerPhone: String(customerInfo?.phone || '-'),
+        cashierName: String(localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Admin'),
         items: Array.isArray(cartItems) ? cartItems.map(item => {
           const unitPrice = Number(getProductPrice(item?.product, item?.quantity) || 0);
           const quantity = Number(item?.quantity || 0);
@@ -2044,7 +2045,7 @@ export default function POSKasir() {
                                   <div className="flex justify-between">
                                     <span>Customer:</span>
                                     <span>
-                                      {customerInfo.name || "Walk-in Customer"}
+                                      {customerInfo.name || "Customer"}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
