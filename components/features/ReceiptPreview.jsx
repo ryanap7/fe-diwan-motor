@@ -11,6 +11,7 @@ import {
   Receipt,
   Smartphone
 } from "lucide-react"
+import { printStrukToRawBT } from '@/hooks/useRawBTPrint'
 
 const ReceiptPreview = ({ receiptData, onClose, onPrint }) => {
   const formatCurrency = (amount) => {
@@ -19,6 +20,25 @@ const ReceiptPreview = ({ receiptData, onClose, onPrint }) => {
       return 'Rp ' + Math.round(num).toLocaleString('id-ID');
     } catch (error) {
       return 'Rp 0';
+    }
+  }
+
+  // Fungsi untuk print langsung ke RawBT
+  const handlePrintToRawBT = () => {
+    const success = printStrukToRawBT('strukPreview', {
+      showAlert: true,
+      autoInstallPrompt: true,
+      fallbackDelay: 2000
+    });
+
+    if (success) {
+      // Tutup modal setelah print
+      onClose();
+      
+      // Panggil onPrint callback jika ada (untuk update status, dll)
+      if (onPrint) {
+        onPrint();
+      }
     }
   }
 
@@ -43,8 +63,8 @@ const ReceiptPreview = ({ receiptData, onClose, onPrint }) => {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Receipt Preview */}
-          <div className="bg-white border-2 border-dashed border-gray-300 p-4 font-mono text-sm">
+          {/* Receipt Preview - Tambahkan ID untuk RawBT */}
+          <div id="strukPreview" className="bg-white border-2 border-dashed border-gray-300 p-4 font-mono text-sm">
             {/* Header */}
             <div className="text-center font-bold text-lg mb-2">
               HD MOTOPART
@@ -163,8 +183,9 @@ const ReceiptPreview = ({ receiptData, onClose, onPrint }) => {
               Batal
             </Button>
             <Button 
+              id="btnPrint"
               className="flex-1 bg-blue-600 hover:bg-blue-700" 
-              onClick={onPrint}
+              onClick={handlePrintToRawBT}
             >
               <Printer className="w-4 h-4 mr-2" />
               Print via RawBT
