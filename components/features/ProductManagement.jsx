@@ -190,9 +190,6 @@ const ProductManagement = () => {
       const branchesData = branchesRes.status === 'fulfilled' ? branchesRes.value : null;
 
       // Handle API response - correct structure based on API testing
-      console.log("Products API Response:", productsData);
-      console.log("Categories API Response:", categoriesData);
-      console.log("Brands API Response:", brandsData);
 
       const extractedProducts = Array.isArray(productsData?.data?.products)
         ? productsData.data.products
@@ -232,54 +229,13 @@ const ProductManagement = () => {
         ? branchesData
         : [];
 
-      console.log(
-        "Extracted Products:",
-        extractedProducts.length,
-        extractedProducts
-      );
-      console.log(
-        "Extracted Categories:",
-        extractedCategories.length,
-        extractedCategories
-      );
-      console.log("Extracted Brands:", extractedBrands.length, extractedBrands);
-      
-      // Debug minOrderWholesale field
-      if (extractedProducts.length > 0) {
-        console.log('First product minOrderWholesale fields check:', {
-          minOrderWholesale: extractedProducts[0].minOrderWholesale,
-          min_order_wholesale: extractedProducts[0].min_order_wholesale,
-          minWholesaleQuantity: extractedProducts[0].minWholesaleQuantity,
-          allKeys: Object.keys(extractedProducts[0])
-        });
-      }
+
 
       setProducts(extractedProducts);
       setCategories(extractedCategories);
       setBrands(extractedBrands);
       setBranches(extractedBranches);
-
-      // Verify data is set correctly
-      console.log("Final state check:");
-      console.log("Categories set to state:", extractedCategories.length, "items");
-      console.log("Brands set to state:", extractedBrands.length, "items");
-      
-      // Log individual category items for debugging
-      if (extractedCategories.length > 0) {
-        console.log("Sample category:", extractedCategories[0]);
-        console.log("Categories with isActive=true:", 
-          extractedCategories.filter(cat => cat && cat.isActive === true).length
-        );
-      }
     } catch (error) {
-      console.error("Error fetching data:", error);
-      console.error("Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
-
       toast.error(
         "Gagal memuat data: " + (error.response?.data?.message || error.message)
       );
@@ -332,7 +288,6 @@ const ProductManagement = () => {
     } else {
       setEditingProduct(null);
       // Auto-generate values for new product
-      console.log('Creating new product form, brands available:', brands.length);
       
       // Default to auto-generate barcode for new products
       setAutoGenerateBarcode(true);
@@ -402,8 +357,6 @@ const ProductManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submit attempt with data:', formData);
-    console.log('Current brands state:', brands);
     
     // Validasi barcode berdasarkan mode
     if (!autoGenerateBarcode && (!formData.barcode || formData.barcode.trim() === "")) {
@@ -418,7 +371,6 @@ const ProductManagement = () => {
       let finalBarcode = formData.barcode;
       if (autoGenerateBarcode) {
         finalBarcode = generateBarcode();
-        console.log("Auto-generated barcode:", finalBarcode);
       }
       
       // Struktur data sesuai API3_productcustomer.md
@@ -446,10 +398,6 @@ const ProductManagement = () => {
         isActive: formData.isActive,
         isFeatured: formData.isFeatured,
       };
-
-      console.log('Data to send - minOrderWholesale:', dataToSend.minOrderWholesale);
-      console.log('Form data - minOrderWholesale:', formData.minOrderWholesale);
-      console.log('Complete data being sent to API:', JSON.stringify(dataToSend, null, 2));
 
       // Only include mainImage if it has a valid value (not empty string)
       if (formData.mainImage && formData.mainImage.trim() !== "") {
@@ -501,7 +449,6 @@ const ProductManagement = () => {
         }
       }
 
-      console.log('API Response after save:', apiResponse);
       fetchData();
       handleCloseDialog();
     } catch (error) {
@@ -536,9 +483,6 @@ const ProductManagement = () => {
         notes: stockData.notes || `Stock ${stockData.action} via product form`
       };
 
-      console.log('Stock adjustment data:', stockAdjustmentData);
-      console.log('Posting to endpoint:', `/api/stocks/adjust/${productId}`);
-      
       // Post to stock adjustment API dengan productId sebagai parameter URL
       const token = localStorage.getItem('token');
       const response = await fetch(`/api/stocks/adjust/${productId}`, {
@@ -556,13 +500,11 @@ const ProductManagement = () => {
       }
 
       const result = await response.json();
-      console.log('Stock adjustment success:', result);
       
       const actionText = stockData.action === 'insert' ? 'ditambahkan' : 'dikurangi';
       toast.success(`Stock berhasil ${actionText}: ${stockData.quantity} unit`);
       
     } catch (error) {
-      console.error('Stock adjustment error:', error);
       toast.error(
         `Gagal melakukan adjustment stock: ${error.message || 'Unknown error'}`
       );
@@ -702,11 +644,8 @@ const ProductManagement = () => {
             const compressedSize = ((base64Length * 3) / 4 / 1024 / 1024).toFixed(2); // MB
             const compressionRatio = ((1 - (compressedSize / originalSize)) * 100).toFixed(0);
             
-            console.log(`📦 ${file.name}: ${originalSize}MB → ${compressedSize}MB (hemat ${compressionRatio}%)`);
-            
             return compressedBase64;
           } catch (error) {
-            console.error(`❌ Gagal kompresi ${file.name}:`, error);
             toast.warning(`Kompresi gagal untuk ${file.name}, menggunakan ukuran original`);
             
             // Fallback ke base64 tanpa kompresi jika gagal
@@ -730,7 +669,6 @@ const ProductManagement = () => {
       
     } catch (error) {
       toast.error("❌ Gagal memproses gambar: " + error.message);
-      console.error(error);
     } finally {
       setCompressingImages(false);
     }
@@ -1447,7 +1385,6 @@ const ProductManagement = () => {
                   type="number"
                   value={formData.minOrderWholesale}
                   onChange={(e) => {
-                    console.log('Min Transaksi Grosir changed:', e.target.value);
                     handleChange("minOrderWholesale", e.target.value);
                   }}
                   placeholder="0"
@@ -1689,26 +1626,13 @@ const ProductManagement = () => {
                             className="absolute flex items-center justify-center w-5 h-5 text-sm text-white transition-opacity bg-red-500 rounded-full opacity-0 sm:w-6 sm:h-6 top-1 right-1 group-hover:opacity-100 sm:text-base hover:bg-red-600"
                             title="Hapus gambar"
                           >
-                            ×
+                            x
                           </button>
                         </div>
                       );
                     })}
                   </div>
-                  
-                  {/* Info total estimasi ukuran */}
-                  <div className="p-2 border border-green-200 rounded bg-green-50">
-                    <p className="text-xs font-medium text-green-700">
-                      💾 Total estimasi ukuran: {
-                        formData.images.reduce((total, img) => {
-                          return total + ((img.length * 3) / 4 / 1024 / 1024);
-                        }, 0).toFixed(2)
-                      }MB (setelah kompresi)
-                    </p>
-                    <p className="text-xs text-green-600">
-                      ⚡ Kompresi menghemat ~50-70% ukuran file original
-                    </p>
-                  </div>
+
                 </div>
               )}
             </div>
@@ -1831,45 +1755,7 @@ const ProductManagement = () => {
               <Label htmlFor="isFeatured">Produk Unggulan</Label>
             </div>
 
-            {/* Debug Info - Show Auto Generated Values */}
-            {/* {!editingProduct && (
-              <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-                <h4 className="mb-2 text-sm font-semibold text-blue-800">
-                  Auto Generated & Default Values:
-                </h4>
-                <div className="space-y-1 text-xs text-blue-600">
-                  <p>
-                    <strong>SKU:</strong> {formData.sku}
-                  </p>
-                  <p>
-                    <strong>Barcode:</strong> {formData.barcode || "Auto-generate"}
-                  </p>
-                  <p>
-                    <strong>Brand:</strong>{" "}
-                    {(Array.isArray(brands) &&
-                      brands.find((b) => b.id === formData.brandId)?.name) ||
-                      "Loading..."}
-                  </p>
-                  <p>
-                    <strong>Unit:</strong> {formData.unit}
-                  </p>
-                  <p>
-                    <strong>📍 Storage Location:</strong>{" "}
-                    {formData.storageLocation || "Gudang (Default)"}
-                  </p>
-                  <p>
-                    <strong>🏷️ Tags:</strong> {formData.tags || "Product (Default)"}
-                  </p>
-                  <p>
-                    <strong>Product Featured:</strong>{" "}
-                    {formData.isFeatured ? "Yes" : "No (Disabled)"}
-                  </p>
-                  <p>
-                    <strong>Images:</strong> Empty (Default)
-                  </p>
-                </div>
-              </div>
-            )} */}
+
 
             <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:justify-end">
               <Button
