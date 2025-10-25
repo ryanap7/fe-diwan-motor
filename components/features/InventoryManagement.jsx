@@ -844,7 +844,7 @@ const InventoryManagement = () => {
       }} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-          <TabsTrigger value="lowstock" className="text-xs sm:text-sm">Stok Minim</TabsTrigger>
+          {/* <TabsTrigger value="lowstock" className="text-xs sm:text-sm">Stok Minim</TabsTrigger> */}
           <TabsTrigger value="movements" className="text-xs sm:text-sm">Riwayat</TabsTrigger>
         </TabsList>
 

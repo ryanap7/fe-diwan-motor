@@ -745,7 +745,7 @@ const ProductManagement = () => {
     <div className="space-y-4 md:space-y-6">
       {/* Header - Mobile Responsive */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-center sm:text-left">
+        <div className="text-left sm:text-left">
           <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
           <p className="text-xs text-muted-foreground sm:text-sm">
             Total: {filteredProducts.length} produk

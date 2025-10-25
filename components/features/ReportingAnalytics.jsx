@@ -1042,10 +1042,10 @@ const ReportingAnalytics = () => {
 
       {/* Tabs for different reports */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sales" className="text-xs sm:text-sm">Penjualan</TabsTrigger>
           <TabsTrigger value="inventory" className="text-xs sm:text-sm">Inventory</TabsTrigger>
-          <TabsTrigger value="financial" className="text-xs sm:text-sm">Keuangan</TabsTrigger>
+          {/* <TabsTrigger value="financial" className="text-xs sm:text-sm">Keuangan</TabsTrigger> */}
         </TabsList>
 
         {/* Sales Reports Tab */}

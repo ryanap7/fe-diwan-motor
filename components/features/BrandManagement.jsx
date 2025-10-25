@@ -240,8 +240,8 @@ const BrandManagement = () => {
     <div className="px-4 space-y-6 sm:px-6 lg:px-8">
       {/* Mobile-responsive header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Kelola Brand/Merk</h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Kelola Merk</h3>
           <p className="text-sm text-muted-foreground">Total: {brands.length} brand</p>
         </div>
         <Button
@@ -332,7 +332,7 @@ const BrandManagement = () => {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="mx-4 max-w-md sm:mx-auto">
+        <DialogContent className="max-w-md mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle className="text-xl sm:text-2xl">
               {editingBrand ? 'Ubah Brand' : 'Tambah Brand Baru'}
