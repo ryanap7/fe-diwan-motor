@@ -842,10 +842,15 @@ const InventoryManagement = () => {
           fetchStockMovements(selectedBranch);
         }
       }} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-          {/* <TabsTrigger value="lowstock" className="text-xs sm:text-sm">Stok Minim</TabsTrigger> */}
-          <TabsTrigger value="movements" className="text-xs sm:text-sm">Riwayat</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview" className="text-sm">
+            <Package className="w-4 h-4 mr-2" />
+            Overview Stok
+          </TabsTrigger>
+          <TabsTrigger value="movements" className="text-sm">
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Riwayat Pergerakan
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -911,15 +916,14 @@ const InventoryManagement = () => {
                             />
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="flex flex-col gap-1 mb-2 sm:flex-row sm:items-center sm:gap-2 sm:mb-1">
-                              <Badge variant="outline" className="text-xs w-fit">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="text-xs">
                                 {product.sku}
                               </Badge>
                               {isLowStock && (
-                                <Badge variant="destructive" className="text-xs w-fit">
+                                <Badge variant="destructive" className="text-xs">
                                   <AlertTriangle className="w-3 h-3 mr-1" />
-                                  <span className="hidden sm:inline">Stok Menipis</span>
-                                  <span className="sm:hidden">Minim</span>
+                                  Stok Menipis
                                 </Badge>
                               )}
                             </div>
@@ -932,14 +936,13 @@ const InventoryManagement = () => {
                             <Button
                               size="sm"
                               variant="link"
-                              className="h-auto p-0 text-xs text-blue-600 hover:text-blue-800"
+                              className="h-auto p-0 text-sm text-blue-600 hover:text-blue-800"
                               onClick={() => {
                                 setSelectedProduct(product);
                                 setStockDetailDialogOpen(true);
                               }}
                             >
-                              <span className="hidden sm:inline">Lihat detail stok →</span>
-                              <span className="sm:hidden">Detail →</span>
+                              Lihat detail stok →
                             </Button>
                           </div>
                         </div>
@@ -951,9 +954,9 @@ const InventoryManagement = () => {
                           {Array.isArray(branches) && branches.map((branch) => {
                             const branchStock = getBranchStock(product, branch.id);
                             return (
-                              <div key={branch.id} className="p-2 bg-white border rounded sm:p-3">
-                                <p className="text-xs font-medium text-gray-600 truncate">{branch.name}</p>
-                                <p className="text-sm font-semibold sm:text-base">
+                              <div key={branch.id} className="p-3 bg-white border rounded">
+                                <p className="text-sm font-medium text-gray-600">{branch.name}</p>
+                                <p className="text-base font-semibold">
                                   {branchStock} unit
                                 </p>
                               </div>
@@ -968,42 +971,27 @@ const InventoryManagement = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs text-green-700 border-green-200 bg-green-50 hover:bg-green-100 sm:flex-1 lg:flex-none"
+                            className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 sm:flex-1 lg:flex-none"
                             onClick={() => {
                               setSelectedProduct(product);
                               setQuickAddDialogOpen(true);
                             }}
                           >
-                            <Plus className="w-3 h-3 sm:mr-1" />
-                            <span className="hidden sm:inline">Tambah Stok</span>
-                            <span className="sm:hidden">+</span>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Tambah Stok
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs text-red-700 border-red-200 bg-red-50 hover:bg-red-100 sm:flex-1 lg:flex-none"
+                            className="text-red-700 border-red-200 bg-red-50 hover:bg-red-100 sm:flex-1 lg:flex-none"
                             onClick={() => {
                               setSelectedProduct(product);
                               setQuickReduceDialogOpen(true);
                             }}
                           >
-                            <Minus className="w-3 h-3 sm:mr-1" />
-                            <span className="hidden sm:inline">Kurangi Stok</span>
-                            <span className="sm:hidden">-</span>
+                            <Minus className="w-4 h-4 mr-2" />
+                            Kurangi Stok
                           </Button>
-                          {/* <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setTransferData(prev => ({ ...prev, product_id: product.id }));
-                              setTransferDialogOpen(true);
-                            }}
-                            className="text-xs"
-                          >
-                            <ArrowLeftRight className="w-3 h-3 mr-1" />
-                            Transfer
-                          </Button> */}
                         </div>
                       </div>
                     </div>
@@ -1225,35 +1213,54 @@ const InventoryManagement = () => {
                     <p className="mt-2 text-muted-foreground">Memuat data...</p>
                   </div>
                 ) : stockMovements.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {stockMovements.map((movement, index) => (
-                      <div key={movement.id || index} className="p-4 border rounded-lg">
+                      <div key={movement.id || index} className="p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
                         <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold">{movement.product?.name || 'Unknown Product'}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {movement.type === 'IN' ? '+ ' : movement.type === 'OUT' ? '- ' : '↔ '}
-                              {Math.abs(movement.quantity)} unit
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {movement.branch?.name || 'Cabang'} • {movement.reason || 'Penyesuaian stok'}
-                            </p>
-                            {movement.notes && (
-                              <p className="mt-1 text-xs text-gray-500">{movement.notes}</p>
-                            )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className={`w-3 h-3 rounded-full ${
+                                movement.type === 'IN' ? 'bg-green-500' : 
+                                movement.type === 'OUT' ? 'bg-red-500' : 'bg-blue-500'
+                              }`}></div>
+                              <h4 className="font-semibold text-gray-900">
+                                {movement.product?.name || 'Unknown Product'}
+                              </h4>
+                            </div>
+                            
+                            <div className="pl-6 space-y-2">
+                              <p className="text-sm font-medium">
+                                <span className={`${
+                                  movement.type === 'IN' ? 'text-green-600' : 
+                                  movement.type === 'OUT' ? 'text-red-600' : 'text-blue-600'
+                                }`}>
+                                  {movement.type === 'IN' ? '+' : movement.type === 'OUT' ? '-' : '↔'}
+                                  {Math.abs(movement.quantity)} unit
+                                </span>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {movement.branch?.name || 'Cabang'} • {movement.reason || 'Penyesuaian stok'}
+                              </p>
+                              {movement.notes && (
+                                <p className="text-xs text-gray-500 italic bg-gray-50 p-2 rounded">
+                                  <span className="font-medium">Catatan:</span> {movement.notes}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-right">
+                          
+                          <div className="text-right ml-4">
                             <Badge variant={
                               movement.type === 'IN' ? 'default' : 
                               movement.type === 'OUT' ? 'destructive' : 
                               'secondary'
-                            }>
+                            } className="mb-2">
                               {movement.type === 'IN' ? 'Barang Masuk' : 
                                movement.type === 'OUT' ? 'Barang Keluar' : 
                                movement.type}
                             </Badge>
                             {movement.created_at && (
-                              <p className="mt-1 text-xs text-muted-foreground">
+                              <p className="text-xs text-gray-500">
                                 {new Date(movement.created_at).toLocaleDateString('id-ID')}
                               </p>
                             )}
