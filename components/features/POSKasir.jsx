@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, customersAPI } from '@/lib/api'
 import ThermalPrinter from '@/lib/thermal-printer'
+import PrinterSettings from './PrinterSettings'
 import CashierLoadingScreen from '@/components/ui/CashierLoadingScreen'
 import CashierStatusNotification from '@/components/ui/CashierStatusNotification'
 
@@ -280,6 +281,7 @@ export default function POSKasir() {
   const [printer, setPrinter] = useState(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
+  const [showPrinterSettings, setShowPrinterSettings] = useState(false)
   const [printerConnectionStatus, setPrinterConnectionStatus] = useState({
     isConnected: false,
     deviceName: '',
@@ -1201,13 +1203,17 @@ export default function POSKasir() {
           try {
             console.log('About to call printReceipt with data:', receiptData);
             
-            // Validate the printer instance exists and has printReceipt method
-            if (!printerInstance || typeof printerInstance.printReceipt !== 'function') {
-              throw new Error('Printer instance tidak valid atau method printReceipt tidak tersedia');
+            // Validate the printer instance exists and has smartPrint method
+            if (!printerInstance || typeof printerInstance.smartPrint !== 'function') {
+              throw new Error('Printer instance tidak valid atau method smartPrint tidak tersedia');
             }
             
-            // Simple call to printReceipt - let the thermal printer handle the validation
-            await printerInstance.printReceipt(receiptData);
+            // Use smartPrint for Thermer integration with fallback to Web Bluetooth
+            const printResult = await printerInstance.smartPrint(receiptData, {
+              fallbackToWebBluetooth: true
+            });
+            
+            console.log('Print result:', printResult);
             console.log('Print receipt completed successfully');
             resolve();
           } catch (err) {
@@ -1371,6 +1377,15 @@ export default function POSKasir() {
                 )}
               </div>
               <div className="flex gap-1 ml-2 sm:ml-3">
+                <Button
+                  onClick={() => setShowPrinterSettings(true)}
+                  size="sm"
+                  variant="outline"
+                  className="w-8 h-8 p-1 text-gray-600 hover:bg-gray-50"
+                  title="Pengaturan Printer"
+                >
+                  <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
+                </Button>
                 <Button
                   onClick={printerConnectionStatus.isConnected ? disconnectPrinter : connectPrinter}
                   disabled={isConnecting || isPrinting}
@@ -2185,6 +2200,13 @@ export default function POSKasir() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Printer Settings Modal */}
+      {showPrinterSettings && (
+        <PrinterSettings 
+          onClose={() => setShowPrinterSettings(false)}
+        />
+      )}
     </div>
   )
 }
