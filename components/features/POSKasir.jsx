@@ -17,7 +17,8 @@ import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, customersAPI } from '@/lib/api'
 import ThermalPrinter from '@/lib/thermal-printer'
-import ThermerSettings from './ThermerSettings'
+import RawBTSettings from './RawBTSettings'
+import ReceiptPreview from './ReceiptPreview'
 import CashierLoadingScreen from '@/components/ui/CashierLoadingScreen'
 import CashierStatusNotification from '@/components/ui/CashierStatusNotification'
 
@@ -281,7 +282,9 @@ export default function POSKasir() {
   const [printer, setPrinter] = useState(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
-  const [showThermerSettings, setShowThermerSettings] = useState(false)
+  const [showRawBTSettings, setShowRawBTSettings] = useState(false)
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false)
+  const [previewReceiptData, setPreviewReceiptData] = useState(null)
   const [printerConnectionStatus, setPrinterConnectionStatus] = useState({
     isConnected: false,
     deviceName: '',
@@ -987,21 +990,12 @@ export default function POSKasir() {
       // Create transaction via API
       const result = await createTransaction(transactionData)
       
-      // Print receipt after successful transaction
-      try {
-        await printReceipt(result)
-      } catch (printError) {
-        console.error('Error printing receipt:', printError)
-        // Don't fail the transaction if printing fails
-      }
-      
-      // Reset form
-      clearCart();
+      // Show receipt preview instead of direct print
+      setPreviewReceiptData(result);
+      setShowReceiptPreview(true);
       setShowPaymentDialog(false);
-      setCurrentStep(1);
-      setCustomerInfo({ name: "", phone: "", type: "walk-in" });
-      setPaymentAmount("");
-      setNotes("");
+      
+      // Don't reset form yet - wait for print confirmation
 
       toast({
         title: "Transaksi Berhasil",
@@ -1252,6 +1246,56 @@ export default function POSKasir() {
     }
   }
 
+  // Handle print from preview
+  const handlePrintFromPreview = async () => {
+    if (!previewReceiptData) return;
+    
+    try {
+      setShowReceiptPreview(false);
+      
+      // Print receipt
+      await printReceipt(previewReceiptData);
+      
+      // Reset form after successful print
+      clearCart();
+      setCurrentStep(1);
+      setCustomerInfo({ name: "", phone: "", type: "walk-in" });
+      setPaymentAmount("");
+      setNotes("");
+      setPreviewReceiptData(null);
+
+      toast({
+        title: "Transaksi Berhasil",
+        description: `Invoice: ${previewReceiptData.invoiceNo || previewReceiptData.id}`,
+      });
+    } catch (error) {
+      console.error('Error printing from preview:', error);
+      toast({
+        title: "Gagal Mencetak",
+        description: error.message || "Gagal mencetak receipt",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle cancel from preview
+  const handleCancelFromPreview = () => {
+    setShowReceiptPreview(false);
+    setPreviewReceiptData(null);
+    
+    // Reset form
+    clearCart();
+    setCurrentStep(1);
+    setCustomerInfo({ name: "", phone: "", type: "walk-in" });
+    setPaymentAmount("");
+    setNotes("");
+    
+    toast({
+      title: "Transaksi Dibatalkan",
+      description: "Receipt preview ditutup, transaksi telah dibatalkan",
+    });
+  };
+
   // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("id-ID", {
@@ -1376,13 +1420,19 @@ export default function POSKasir() {
                   </>
                 )}
               </div>
+              {/* Mobile RawBT Badge */}
+              {/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+                <div className="ml-2 px-2 py-1 bg-blue-100 rounded-full">
+                  <span className="text-xs text-blue-700 font-medium">RawBT Ready</span>
+                </div>
+              )}
               <div className="flex gap-1 ml-2 sm:ml-3">
                 <Button
-                  onClick={() => setShowThermerSettings(true)}
+                  onClick={() => setShowRawBTSettings(true)}
                   size="sm"
                   variant="outline"
                   className="p-1 w-8 h-8 text-gray-600 hover:bg-gray-50"
-                  title="Thermer Settings"
+                  title="RawBT Settings"
                 >
                   <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
@@ -2201,10 +2251,19 @@ export default function POSKasir() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Thermer Settings Modal */}
-      {showThermerSettings && (
-        <ThermerSettings 
-          onClose={() => setShowThermerSettings(false)}
+      {/* RawBT Settings Modal */}
+      {showRawBTSettings && (
+        <RawBTSettings 
+          onClose={() => setShowRawBTSettings(false)}
+        />
+      )}
+
+      {/* Receipt Preview Modal */}
+      {showReceiptPreview && previewReceiptData && (
+        <ReceiptPreview 
+          receiptData={previewReceiptData}
+          onClose={handleCancelFromPreview}
+          onPrint={handlePrintFromPreview}
         />
       )}
     </div>
