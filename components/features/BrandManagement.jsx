@@ -237,18 +237,21 @@ const BrandManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Kelola Brand/Merk</h3>
+    <div className="px-4 space-y-6 sm:px-6 lg:px-8">
+      {/* Mobile-responsive header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Kelola Brand/Merk</h3>
           <p className="text-sm text-muted-foreground">Total: {brands.length} brand</p>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
-          className="text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105"
+          className="w-full text-white transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:shadow-xl hover:scale-105 sm:w-auto"
+          size="sm"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Brand
+          <Plus className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Tambah Brand</span>
+          <span className="sm:hidden">Tambah</span>
         </Button>
       </div>
 
@@ -270,43 +273,45 @@ const BrandManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {brands.map((brand) => (
             <Card
               key={brand.id}
               className="transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1"
             >
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg shadow-md bg-gradient-to-r from-blue-500 to-purple-500">
-                    <Package className="w-6 h-6 text-white" />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg shadow-md bg-gradient-to-r from-blue-500 to-purple-500 sm:w-12 sm:h-12">
+                    <Package className="w-5 h-5 text-white sm:w-6 sm:h-6" />
                   </div>
-                  <Badge variant={(brand.isActive ?? brand.is_active) ? 'default' : 'secondary'} className={(brand.isActive ?? brand.is_active) ? 'bg-green-500' : ''}>
+                  <Badge variant={(brand.isActive ?? brand.is_active) ? 'default' : 'secondary'} className={(brand.isActive ?? brand.is_active) ? 'bg-green-500 text-xs' : 'text-xs'}>
                     {(brand.isActive ?? brand.is_active) ? 'Aktif' : 'Nonaktif'}
                   </Badge>
                 </div>
-                <h3 className="mb-2 text-lg font-bold text-gray-900">{brand.name}</h3>
+                <h3 className="mb-2 text-base font-bold text-gray-900 sm:text-lg line-clamp-2">{brand.name}</h3>
                 {brand.description && (
                   <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{brand.description}</p>
                 )}
-                <div className="flex gap-2 mt-4">
+                <div className="grid grid-cols-2 gap-2 mt-4 sm:flex">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleOpenDialog(brand)}
-                    className="flex-1 hover:bg-blue-50"
+                    className="hover:bg-blue-50 sm:flex-1"
                   >
-                    <Edit className="w-3 h-3 mr-1" />
-                    Ubah
+                    <Edit className="w-3 h-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Ubah</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleToggleActive(brand)}
-                    className={(brand.isActive ?? brand.is_active) ? 'flex-1 hover:bg-orange-50' : 'flex-1 hover:bg-green-50'}
+                    className={(brand.isActive ?? brand.is_active) ? 'hover:bg-orange-50 sm:flex-1' : 'hover:bg-green-50 sm:flex-1'}
                   >
-                    <Power className="w-3 h-3 mr-1" />
-                    {(brand.isActive ?? brand.is_active) ? 'Nonaktifkan' : 'Aktifkan'}
+                    <Power className="w-3 h-3 sm:mr-1" />
+                    <span className="hidden sm:inline">
+                      {(brand.isActive ?? brand.is_active) ? 'Nonaktifkan' : 'Aktifkan'}
+                    </span>
                   </Button>
                   <Button
                     variant="outline"
@@ -315,7 +320,7 @@ const BrandManagement = () => {
                       setBrandToDelete(brand);
                       setDeleteDialogOpen(true);
                     }}
-                    className="hover:bg-red-50 hover:text-red-600"
+                    className="col-span-2 hover:bg-red-50 hover:text-red-600 sm:col-span-1 sm:flex-none"
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
@@ -327,12 +332,12 @@ const BrandManagement = () => {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="mx-4 max-w-md sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">
+            <DialogTitle className="text-xl sm:text-2xl">
               {editingBrand ? 'Ubah Brand' : 'Tambah Brand Baru'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               {editingBrand ? 'Perbarui informasi brand' : 'Buat brand produk baru'}
             </DialogDescription>
           </DialogHeader>

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, ArrowLeftRight, Edit3, ClipboardList, Barcode, Calendar, Plus, Minus, Search, AlertTriangle } from 'lucide-react';
+import { Package, ArrowLeftRight, Edit3, ClipboardList, Barcode, Calendar, Plus, Minus, Search, AlertTriangle, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { productsAPI, branchesAPI, stockAPI } from '@/lib/api';
 
@@ -22,6 +22,16 @@ const InventoryManagement = () => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Pagination states
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    perPage: 20,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
 
   // Dialog states
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -82,13 +92,26 @@ const InventoryManagement = () => {
     // Test API connectivity first
     testAPIConnectivity().then((isConnected) => {
       if (isConnected) {
-        fetchInventoryData();
+        fetchInventoryData(1, 50, false);
       } else {
         console.warn('API not accessible, using fallback data');
         loadFallbackData();
       }
     });
   }, []);
+
+  // Reset pagination when search query changes
+  useEffect(() => {
+    if (searchQuery.trim() !== '') {
+      // If there's a search query, we might want to debounce and reload
+      const delayDebounceFn = setTimeout(() => {
+        // Reset to page 1 when searching
+        fetchInventoryData(1, 50, false);
+      }, 500);
+
+      return () => clearTimeout(delayDebounceFn);
+    }
+  }, [searchQuery]);
 
   // Test API connectivity
   const testAPIConnectivity = async () => {
@@ -171,15 +194,22 @@ const InventoryManagement = () => {
     }
   }, [selectedBranch, activeTab]);
 
-  const fetchInventoryData = async () => {
+  const fetchInventoryData = async (page = 1, limit = 50, append = false) => {
     try {
-      console.log('Fetching inventory data...');
+      console.log(`Fetching inventory data... Page: ${page}, Limit: ${limit}`);
       console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
       console.log('Current token:', localStorage.getItem('token')?.substring(0, 20) + '...');
 
+      // Include pagination parameters
+      const params = {
+        page,
+        limit,
+        include_stock: true
+      };
+
       // Try to get stock overview first (new endpoint that includes stock per branch)
       const [stockRes, branchesRes] = await Promise.all([
-        stockAPI.getStockOverview(),
+        stockAPI.getStockOverview(params),
         branchesAPI.getAll()
       ]);
 
@@ -188,31 +218,89 @@ const InventoryManagement = () => {
 
       // Handle stock overview response (products with stock information)
       if (stockRes?.success && stockRes.data?.products) {
-        setProducts(stockRes.data.products);
-        console.log('Loaded products with stock data:', stockRes.data.products.length);
+        const newProducts = stockRes.data.products;
+        
+        // Handle pagination data
+        if (stockRes.data.pagination) {
+          setPagination({
+            currentPage: stockRes.data.pagination.page || page,
+            totalPages: stockRes.data.pagination.totalPages || 1,
+            totalItems: stockRes.data.pagination.total || newProducts.length,
+            perPage: stockRes.data.pagination.limit || limit,
+            hasNextPage: stockRes.data.pagination.hasNext || false,
+            hasPrevPage: stockRes.data.pagination.hasPrev || false
+          });
+        }
+        
+        // Append or replace products based on mode
+        if (append) {
+          setProducts(prevProducts => [...prevProducts, ...newProducts]);
+        } else {
+          setProducts(newProducts);
+        }
+        
+        console.log('Loaded products with stock data:', newProducts.length);
+        console.log('Pagination info:', stockRes.data.pagination);
       } else if (stockRes?.data?.products) {
         // Handle case where success field might not exist
-        setProducts(stockRes.data.products);
-        console.log('Loaded products with stock data (no success flag):', stockRes.data.products.length);
+        const newProducts = stockRes.data.products;
+        
+        if (append) {
+          setProducts(prevProducts => [...prevProducts, ...newProducts]);
+        } else {
+          setProducts(newProducts);
+        }
+        
+        console.log('Loaded products with stock data (no success flag):', newProducts.length);
       } else {
-        // Fallback to regular products API
+        // Fallback to regular products API with pagination
         console.log('Stock overview not available, falling back to products API');
         try {
-          const productsRes = await productsAPI.getAll();
+          const productsRes = await productsAPI.getAll(params);
           if (productsRes?.success && productsRes.data?.products) {
-            setProducts(productsRes.data.products);
+            const newProducts = productsRes.data.products;
+            
+            // Handle pagination for fallback API
+            if (productsRes.data.pagination) {
+              setPagination({
+                currentPage: productsRes.data.pagination.page || page,
+                totalPages: productsRes.data.pagination.totalPages || 1,
+                totalItems: productsRes.data.pagination.total || newProducts.length,
+                perPage: productsRes.data.pagination.limit || limit,
+                hasNextPage: productsRes.data.pagination.hasNext || false,
+                hasPrevPage: productsRes.data.pagination.hasPrev || false
+              });
+            }
+            
+            if (append) {
+              setProducts(prevProducts => [...prevProducts, ...newProducts]);
+            } else {
+              setProducts(newProducts);
+            }
+            
             // Fetch stock information for each product
-            fetchProductStocks(productsRes.data.products);
+            fetchProductStocks(newProducts);
           } else if (productsRes?.data?.products) {
-            setProducts(productsRes.data.products);
-            fetchProductStocks(productsRes.data.products);
+            const newProducts = productsRes.data.products;
+            
+            if (append) {
+              setProducts(prevProducts => [...prevProducts, ...newProducts]);
+            } else {
+              setProducts(newProducts);
+            }
+            
+            fetchProductStocks(newProducts);
           } else {
             console.warn('No products data found in fallback response');
-            setProducts([]);
+            if (!append) {
+              setProducts([]);
+            }
           }
         } catch (fallbackError) {
           console.error('Fallback products API also failed:', fallbackError);
-          setProducts([]);
+          if (!append) {
+            setProducts([]);
+          }
         }
       }
 
@@ -251,6 +339,31 @@ const InventoryManagement = () => {
       setProducts([]);
       setBranches([]);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  // Pagination functions
+  const loadNextPage = async () => {
+    if (pagination.hasNextPage && !loading) {
+      setLoading(true);
+      await fetchInventoryData(pagination.currentPage + 1, pagination.perPage, true);
+      setLoading(false);
+    }
+  };
+
+  const loadPage = async (page) => {
+    if (page >= 1 && page <= pagination.totalPages && page !== pagination.currentPage && !loading) {
+      setLoading(true);
+      await fetchInventoryData(page, pagination.perPage, false);
+      setLoading(false);
+    }
+  };
+
+  const loadPreviousPage = async () => {
+    if (pagination.hasPrevPage && !loading) {
+      setLoading(true);
+      await fetchInventoryData(pagination.currentPage - 1, pagination.perPage, false);
       setLoading(false);
     }
   };
@@ -446,7 +559,7 @@ const InventoryManagement = () => {
       
       if (response?.success) {
         toast.success('Transfer stok berhasil!');
-        fetchInventoryData();
+        fetchInventoryData(1, 50, false);
         fetchStockMovements(selectedBranch);
         setTransferDialogOpen(false);
         setTransferData({
@@ -507,7 +620,7 @@ const InventoryManagement = () => {
       
       if (response?.success) {
         toast.success('Penyesuaian stok berhasil!');
-        fetchInventoryData();
+        fetchInventoryData(1, 50, false);
         fetchStockMovements(selectedBranch);
         setAdjustmentDialogOpen(false);
         setAdjustmentData({
@@ -574,7 +687,7 @@ const InventoryManagement = () => {
       if (response?.success) {
         toast.success(`✅ Berhasil menambah ${quickAddData.quantity} unit stok!`, { id: 'add-stock' });
         
-        fetchInventoryData();
+        fetchInventoryData(1, 50, false);
         fetchStockMovements(selectedBranch);
         setQuickAddDialogOpen(false);
         setQuickAddData({
@@ -660,7 +773,7 @@ const InventoryManagement = () => {
       if (response?.success) {
         toast.success(`✅ Berhasil mengurangi ${quickReduceData.quantity} unit stok!`, { id: 'reduce-stock' });
         
-        fetchInventoryData();
+        fetchInventoryData(1, 50, false);
         fetchStockMovements(selectedBranch);
         setQuickReduceDialogOpen(false);
         setQuickReduceData({
@@ -711,28 +824,15 @@ const InventoryManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Kelola Inventory</h3>
+    <div className="px-4 space-y-6 sm:px-6 lg:px-8">
+      {/* Mobile-responsive header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Kelola Inventory</h3>
           <p className="text-sm text-muted-foreground">Manajemen stok produk per cabang</p>
         </div>
-        <div className="flex gap-2">
-          {/* <Button
-            onClick={() => setTransferDialogOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <ArrowLeftRight className="w-4 h-4 mr-2" />
-            Transfer Stok
-          </Button> */}
-          {/* <Button
-            onClick={() => setAdjustmentDialogOpen(true)}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Edit3 className="w-4 h-4 mr-2" />
-            Penyesuaian Stok
-          </Button> */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {/* Action buttons can be added here if needed */}
         </div>
       </div>
 
@@ -742,21 +842,21 @@ const InventoryManagement = () => {
           fetchStockMovements(selectedBranch);
         }
       }} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview Stok</TabsTrigger>
-          <TabsTrigger value="lowstock">Stok Menipis</TabsTrigger>
-          <TabsTrigger value="movements">Riwayat Pergerakan</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="lowstock" className="text-xs sm:text-sm">Stok Minim</TabsTrigger>
+          <TabsTrigger value="movements" className="text-xs sm:text-sm">Riwayat</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           {/* Filters */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="relative">
                   <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
                   <Input
-                    placeholder="Cari produk (nama/SKU)..."
+                    placeholder="Cari produk..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -795,7 +895,7 @@ const InventoryManagement = () => {
 
               return (
                 <Card key={product.id} className={`${isLowStock ? 'border-orange-200 bg-orange-50' : ''}`}>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-4 sm:pt-6">
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
                       {/* Product Info */}
                       <div className="lg:col-span-4">
@@ -804,28 +904,29 @@ const InventoryManagement = () => {
                             <img
                               src={product.images[0]}
                               alt={product.name}
-                              className="object-cover w-16 h-16 border rounded"
+                              className="object-cover w-12 h-12 border rounded sm:w-16 sm:h-16"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                               }}
                             />
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-xs">
+                            <div className="flex flex-col gap-1 mb-2 sm:flex-row sm:items-center sm:gap-2 sm:mb-1">
+                              <Badge variant="outline" className="text-xs w-fit">
                                 {product.sku}
                               </Badge>
                               {isLowStock && (
-                                <Badge variant="destructive" className="text-xs">
+                                <Badge variant="destructive" className="text-xs w-fit">
                                   <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Stok Menipis
+                                  <span className="hidden sm:inline">Stok Menipis</span>
+                                  <span className="sm:hidden">Minim</span>
                                 </Badge>
                               )}
                             </div>
-                            <h4 className="mb-1 text-sm font-semibold line-clamp-2">
+                            <h4 className="mb-1 text-sm font-semibold line-clamp-2 sm:text-base">
                               {product.name}
                             </h4>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="mb-2 text-xs text-muted-foreground sm:text-sm">
                               Total Stok: <span className="font-semibold">{totalStock} unit</span>
                             </p>
                             <Button
@@ -837,7 +938,8 @@ const InventoryManagement = () => {
                                 setStockDetailDialogOpen(true);
                               }}
                             >
-                              Lihat detail stok →
+                              <span className="hidden sm:inline">Lihat detail stok →</span>
+                              <span className="sm:hidden">Detail →</span>
                             </Button>
                           </div>
                         </div>
@@ -845,13 +947,13 @@ const InventoryManagement = () => {
 
                       {/* Stock per Branch */}
                       <div className="lg:col-span-6">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {Array.isArray(branches) && branches.map((branch) => {
                             const branchStock = getBranchStock(product, branch.id);
                             return (
-                              <div key={branch.id} className="p-2 bg-white border rounded">
-                                <p className="text-xs font-medium text-gray-600">{branch.name}</p>
-                                <p className="text-sm font-semibold">
+                              <div key={branch.id} className="p-2 bg-white border rounded sm:p-3">
+                                <p className="text-xs font-medium text-gray-600 truncate">{branch.name}</p>
+                                <p className="text-sm font-semibold sm:text-base">
                                   {branchStock} unit
                                 </p>
                               </div>
@@ -862,30 +964,32 @@ const InventoryManagement = () => {
 
                       {/* Actions */}
                       <div className="lg:col-span-2">
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs text-green-700 border-green-200 bg-green-50 hover:bg-green-100"
+                            className="text-xs text-green-700 border-green-200 bg-green-50 hover:bg-green-100 sm:flex-1 lg:flex-none"
                             onClick={() => {
                               setSelectedProduct(product);
                               setQuickAddDialogOpen(true);
                             }}
                           >
-                            <Plus className="w-3 h-3 mr-1" />
-                            Tambah Stok
+                            <Plus className="w-3 h-3 sm:mr-1" />
+                            <span className="hidden sm:inline">Tambah Stok</span>
+                            <span className="sm:hidden">+</span>
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs text-red-700 border-red-200 bg-red-50 hover:bg-red-100"
+                            className="text-xs text-red-700 border-red-200 bg-red-50 hover:bg-red-100 sm:flex-1 lg:flex-none"
                             onClick={() => {
                               setSelectedProduct(product);
                               setQuickReduceDialogOpen(true);
                             }}
                           >
-                            <Minus className="w-3 h-3 mr-1" />
-                            Kurangi Stok
+                            <Minus className="w-3 h-3 sm:mr-1" />
+                            <span className="hidden sm:inline">Kurangi Stok</span>
+                            <span className="sm:hidden">-</span>
                           </Button>
                           {/* <Button
                             size="sm"
@@ -922,6 +1026,128 @@ const InventoryManagement = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Menampilkan {((pagination.currentPage - 1) * pagination.perPage) + 1} - {Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)} dari {pagination.totalItems} produk
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {/* Previous Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadPreviousPage}
+                      disabled={!pagination.hasPrevPage || loading}
+                      className="h-8"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden ml-1 sm:inline">Previous</span>
+                    </Button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1">
+                      {/* First Page */}
+                      {pagination.currentPage > 3 && (
+                        <>
+                          <Button
+                            variant={1 === pagination.currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => loadPage(1)}
+                            disabled={loading}
+                            className="w-8 h-8"
+                          >
+                            1
+                          </Button>
+                          {pagination.currentPage > 4 && (
+                            <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                          )}
+                        </>
+                      )}
+                      
+                      {/* Current Page and Neighbors */}
+                      {Array.from({ length: 5 }, (_, i) => {
+                        const pageNum = pagination.currentPage - 2 + i;
+                        if (pageNum >= 1 && pageNum <= pagination.totalPages) {
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={pageNum === pagination.currentPage ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => loadPage(pageNum)}
+                              disabled={loading}
+                              className="w-8 h-8"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        }
+                        return null;
+                      }).filter(Boolean)}
+                      
+                      {/* Last Page */}
+                      {pagination.currentPage < pagination.totalPages - 2 && (
+                        <>
+                          {pagination.currentPage < pagination.totalPages - 3 && (
+                            <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                          )}
+                          <Button
+                            variant={pagination.totalPages === pagination.currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => loadPage(pagination.totalPages)}
+                            disabled={loading}
+                            className="w-8 h-8"
+                          >
+                            {pagination.totalPages}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Next Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadPage(pagination.currentPage + 1)}
+                      disabled={!pagination.hasNextPage || loading}
+                      className="h-8"
+                    >
+                      <span className="hidden mr-1 sm:inline">Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Load More Button */}
+          {pagination.hasNextPage && (
+            <div className="text-center">
+              <Button
+                variant="outline"
+                onClick={loadNextPage}
+                disabled={loading}
+                className="w-full sm:w-auto"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-gray-300 rounded-full border-t-gray-600 animate-spin"></div>
+                    Memuat...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Muat Lebih Banyak ({pagination.totalItems - (pagination.currentPage * pagination.perPage)} produk lagi)
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="lowstock">
@@ -940,10 +1166,10 @@ const InventoryManagement = () => {
                 {filteredProducts
                   .filter(product => getTotalStock(product) < 10)
                   .map((product) => (
-                    <div key={product.id} className="p-4 border rounded-lg bg-orange-50">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold">{product.name}</h4>
+                    <div key={product.id} className="p-3 border rounded-lg bg-orange-50 sm:p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold line-clamp-2">{product.name}</h4>
                           <p className="text-sm text-muted-foreground">{product.sku}</p>
                           <p className="text-sm font-medium text-orange-600">
                             Sisa: {getTotalStock(product)} unit
@@ -951,7 +1177,7 @@ const InventoryManagement = () => {
                         </div>
                         <Button
                           size="sm"
-                          className="bg-orange-500 hover:bg-orange-600"
+                          className="w-full bg-orange-500 hover:bg-orange-600 sm:w-auto"
                           onClick={() => {
                             // Store product info for PO creation
                             localStorage.setItem('preSelectedProduct', product.id);
