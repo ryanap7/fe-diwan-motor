@@ -424,7 +424,7 @@ const POSTransactions = () => {
                   placeholder="Invoice, customer..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className="pl-10 h-9 text-sm"
+                  className="pl-10 text-sm h-9"
                 />
               </div>
             </div>
@@ -435,7 +435,7 @@ const POSTransactions = () => {
                 value={filters.branch_id || 'all'}
                 onValueChange={(value) => handleFilterChange('branch_id', value === 'all' ? '' : value)}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger className="text-sm h-9">
                   <SelectValue placeholder="Semua cabang" />
                 </SelectTrigger>
                 <SelectContent>
@@ -461,7 +461,7 @@ const POSTransactions = () => {
                 type="date"
                 value={filters.date_from}
                 onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                className="h-9 text-sm"
+                className="text-sm h-9"
               />
             </div>
 
@@ -471,7 +471,7 @@ const POSTransactions = () => {
                 type="date"
                 value={filters.date_to}
                 onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                className="h-9 text-sm"
+                className="text-sm h-9"
               />
             </div>
           </div>
@@ -644,7 +644,7 @@ const POSTransactions = () => {
                             </div>
                           </div>
 
-                          <div className="flex gap-2 mt-3 pt-3 border-t">
+                          <div className="flex gap-2 pt-3 mt-3 border-t">
                             <Button
                               size="sm"
                               variant="outline"
@@ -671,7 +671,7 @@ const POSTransactions = () => {
                     <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                       <div className="mb-3 text-3xl">📋</div>
                       <div className="mb-2 text-base font-medium">Belum ada transaksi</div>
-                      <div className="mb-4 text-sm text-muted-foreground text-center">
+                      <div className="mb-4 text-sm text-center text-muted-foreground">
                         {loading ? 'Memuat transaksi...' : 
                          transactions.length === 0 ? 'Belum ada transaksi yang tersedia' :
                          'Coba sesuaikan filter pencarian Anda'}
@@ -755,7 +755,7 @@ const POSTransactions = () => {
                             variant={currentPage === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => goToPage(pageNum)}
-                            className="w-7 h-7 p-0 text-xs sm:w-8 sm:h-8 sm:text-sm"
+                            className="p-0 text-xs w-7 h-7 sm:w-8 sm:h-8 sm:text-sm"
                           >
                             {pageNum}
                           </Button>

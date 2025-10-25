@@ -13,7 +13,8 @@ import {
   XCircle, 
   Settings,
   Download,
-  X
+  X,
+  Monitor
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import ThermalPrinter from '@/lib/thermal-printer'
@@ -23,6 +24,10 @@ const ThermerSettings = ({ onClose }) => {
   const [thermerStatus, setThermerStatus] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+
+  // Platform detection
+  const isAndroid = /Android/i.test(navigator.userAgent)
+  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   useEffect(() => {
     initializePrinter()
@@ -61,7 +66,11 @@ const ThermerSettings = ({ onClose }) => {
         time: new Date().toLocaleTimeString('id-ID')
       }
 
-      const result = await thermalPrinter.smartPrint(testReceipt, { forceThermer: true })
+      // Use appropriate method based on platform
+      const result = await thermalPrinter.smartPrint(testReceipt, { 
+        forceThermer: isAndroid,
+        forceWebBluetooth: !isAndroid
+      })
       
       toast({
         title: "Test Print Berhasil",
@@ -91,11 +100,23 @@ const ThermerSettings = ({ onClose }) => {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Thermer Integration
+                {isAndroid ? (
+                  <>
+                    <Smartphone className="w-5 h-5" />
+                    Thermer App (Android)
+                  </>
+                ) : (
+                  <>
+                    <Monitor className="w-5 h-5" />
+                    Web Bluetooth (Desktop)
+                  </>
+                )}
               </CardTitle>
               <CardDescription>
-                Pengaturan integrasi dengan aplikasi Thermer
+                {isAndroid 
+                  ? "Printing via Thermer app untuk stabilitas maksimal"
+                  : "Printing via Web Bluetooth untuk desktop browser"
+                }
               </CardDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -109,8 +130,17 @@ const ThermerSettings = ({ onClose }) => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Smartphone className="w-4 h-4" />
-                Status Thermer App
+                {isAndroid ? (
+                  <>
+                    <Smartphone className="w-4 h-4" />
+                    Status Thermer App
+                  </>
+                ) : (
+                  <>
+                    <Bluetooth className="w-4 h-4" />
+                    Status Web Bluetooth
+                  </>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -121,16 +151,26 @@ const ThermerSettings = ({ onClose }) => {
                     {thermerStatus?.platform || 'Unknown'}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Support Thermer:</span>
-                  <Badge variant={thermerStatus?.thermerSupported ? "default" : "secondary"}>
-                    {thermerStatus?.thermerSupported ? (
-                      <><CheckCircle className="w-3 h-3 mr-1" />Didukung</>
-                    ) : (
-                      <><XCircle className="w-3 h-3 mr-1" />Tidak Didukung</>
-                    )}
-                  </Badge>
-                </div>
+                {isAndroid ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Thermer Ready:</span>
+                    <Badge variant="default">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Siap Digunakan
+                    </Badge>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Web Bluetooth:</span>
+                    <Badge variant={navigator.bluetooth ? "default" : "secondary"}>
+                      {navigator.bluetooth ? (
+                        <><CheckCircle className="w-3 h-3 mr-1" />Didukung</>
+                      ) : (
+                        <><XCircle className="w-3 h-3 mr-1" />Tidak Didukung</>
+                      )}
+                    </Badge>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -138,17 +178,15 @@ const ThermerSettings = ({ onClose }) => {
           {/* Information */}
           <Alert>
             <AlertDescription>
-              {thermerStatus?.thermerSupported ? (
+              {isAndroid ? (
                 <div>
-                  <strong>Thermer App Didukung!</strong><br />
-                  Sistem akan otomatis menggunakan Thermer untuk printing jika tersedia, 
-                  dengan fallback ke Web Bluetooth jika diperlukan.
+                  <strong>Mode Android - Thermer Intent</strong><br />
+                  Sistem akan menggunakan Thermer app untuk printing. Pastikan Thermer sudah terinstall untuk hasil terbaik.
                 </div>
               ) : (
                 <div>
-                  <strong>Thermer Tidak Didukung</strong><br />
-                  Platform ini tidak mendukung Thermer app. 
-                  Sistem akan menggunakan Web Bluetooth untuk printing.
+                  <strong>Mode Desktop - Web Bluetooth</strong><br />
+                  Sistem menggunakan Web Bluetooth langsung. Pastikan browser mendukung dan printer dalam mode pairing.
                 </div>
               )}
             </AlertDescription>
@@ -156,7 +194,7 @@ const ThermerSettings = ({ onClose }) => {
 
           {/* Actions */}
           <div className="flex gap-2">
-            {thermerStatus?.thermerSupported ? (
+            {isAndroid ? (
               <>
                 <Button 
                   onClick={testThermerPrint} 
@@ -164,7 +202,7 @@ const ThermerSettings = ({ onClose }) => {
                   className="flex-1"
                 >
                   <Printer className="w-4 h-4 mr-2" />
-                  Test Print Thermer
+                  Test Thermer Intent
                 </Button>
                 <Button 
                   onClick={openThermerApp} 
@@ -172,16 +210,17 @@ const ThermerSettings = ({ onClose }) => {
                   className="flex-1"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Buka Thermer
+                  Install/Buka Thermer
                 </Button>
               </>
             ) : (
               <Button 
-                onClick={openThermerApp} 
+                onClick={testThermerPrint} 
+                disabled={isLoading}
                 className="w-full"
               >
-                <Download className="w-4 h-4 mr-2" />
-                Install Thermer App
+                <Bluetooth className="w-4 h-4 mr-2" />
+                Test Web Bluetooth
               </Button>
             )}
           </div>
@@ -189,9 +228,21 @@ const ThermerSettings = ({ onClose }) => {
           {/* Instructions */}
           <div className="text-xs text-muted-foreground space-y-1">
             <p><strong>Cara Kerja:</strong></p>
-            <p>• Android: Print via Thermer app → Fallback Web Bluetooth</p>
-            <p>• Desktop/iOS: Print via Web Bluetooth langsung</p>
-            <p>• Thermer memberikan stabilitas dan fitur lebih</p>
+            {isAndroid ? (
+              <>
+                <p>• Sistem prioritas Thermer Intent untuk Android</p>
+                <p>• Install Thermer app dari Play Store</p>
+                <p>• Print otomatis via Thermer tanpa setup printer</p>
+                <p>• Lebih stabil dan fitur lengkap</p>
+              </>
+            ) : (
+              <>
+                <p>• Sistem Web Bluetooth untuk desktop</p>
+                <p>• Pair printer manual via Bluetooth settings</p>
+                <p>• Klik tombol print → pilih printer</p>
+                <p>• Cocok untuk Chrome/Edge desktop</p>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
