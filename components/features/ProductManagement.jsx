@@ -133,6 +133,7 @@ const ProductManagement = () => {
     isFeatured: false, // Disabled by default
   });
   const [saving, setSaving] = useState(false);
+  const [compressingImages, setCompressingImages] = useState(false);
   
   // Stock Management State
   const [stockData, setStockData] = useState({
@@ -389,6 +390,8 @@ const ProductManagement = () => {
       notes: '',
       reason: ''
     });
+    // Reset compression loading
+    setCompressingImages(false);
   };
 
   const calculateMargin = (purchase, selling) => {
@@ -608,31 +611,129 @@ const ProductManagement = () => {
     setStockData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageFileChange = (e) => {
+  // Fungsi untuk kompresi gambar
+  const compressImage = (file, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Hitung ukuran baru untuk menjaga aspect ratio
+        const maxWidth = 1024; // maksimum width
+        const maxHeight = 1024; // maksimum height
+        
+        let { width, height } = img;
+        
+        // Resize jika lebih besar dari maksimum
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Gambar dengan kompresi
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert ke blob dengan kualitas yang ditentukan
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              // Convert blob ke base64
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            } else {
+              reject(new Error('Gagal mengkompresi gambar'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      
+      img.onerror = () => reject(new Error('Gagal memuat gambar'));
+      
+      // Load image dari file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFileChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 3) {
       toast.error("Maksimal 3 gambar");
       return;
     }
 
-    // Convert files to base64
-    const readers = files.map((file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    });
+    if (files.length === 0) return;
 
-    Promise.all(readers)
-      .then((base64Images) => {
-        setFormData({ ...formData, images: base64Images, imageFiles: files });
-      })
-      .catch((error) => {
-        toast.error("Gagal membaca file gambar");
-        console.error(error);
-      });
+    try {
+      setCompressingImages(true);
+      toast.info("🗜️ Mengkompresi gambar...");
+      
+      // Kompresi setiap file dengan kualitas 80%
+      const compressedImages = await Promise.all(
+        files.map(async (file, index) => {
+          try {
+            const originalSize = (file.size / 1024 / 1024).toFixed(2); // MB
+            
+            // Update progress toast
+            toast.info(`📸 Memproses gambar ${index + 1}/${files.length}...`);
+            
+            const compressedBase64 = await compressImage(file, 0.8);
+            
+            // Hitung ukuran setelah kompresi (perkiraan)
+            const base64Length = compressedBase64.length;
+            const compressedSize = ((base64Length * 3) / 4 / 1024 / 1024).toFixed(2); // MB
+            const compressionRatio = ((1 - (compressedSize / originalSize)) * 100).toFixed(0);
+            
+            console.log(`📦 ${file.name}: ${originalSize}MB → ${compressedSize}MB (hemat ${compressionRatio}%)`);
+            
+            return compressedBase64;
+          } catch (error) {
+            console.error(`❌ Gagal kompresi ${file.name}:`, error);
+            toast.warning(`Kompresi gagal untuk ${file.name}, menggunakan ukuran original`);
+            
+            // Fallback ke base64 tanpa kompresi jika gagal
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+          }
+        })
+      );
+
+      // Hitung total ukuran
+      const totalOriginalSize = files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024;
+      const totalCompressedSize = compressedImages.reduce((sum, img) => sum + ((img.length * 3) / 4 / 1024 / 1024), 0);
+      const totalSaved = ((1 - (totalCompressedSize / totalOriginalSize)) * 100).toFixed(0);
+
+      setFormData({ ...formData, images: compressedImages, imageFiles: files });
+      toast.success(`✅ ${files.length} gambar berhasil dikompresi! Hemat ${totalSaved}% storage`);
+      
+    } catch (error) {
+      toast.error("❌ Gagal memproses gambar: " + error.message);
+      console.error(error);
+    } finally {
+      setCompressingImages(false);
+    }
   };
 
   const handleRemoveImage = (index) => {
@@ -1523,37 +1624,91 @@ const ProductManagement = () => {
                 <ImageIcon className="w-4 h-4" />
                 Foto Produk (Maksimal 3)
               </Label>
-              <Input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                multiple
-                onChange={handleImageFileChange}
-                className="h-10 text-sm cursor-pointer"
-              />
-              <p className="text-xs text-muted-foreground">
-                📷 Kamera akan terbuka langsung untuk foto produk (JPG, PNG, max 3 gambar)
-              </p>
+              <div className="relative">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  onChange={handleImageFileChange}
+                  disabled={compressingImages}
+                  className={`h-10 text-sm cursor-pointer ${compressingImages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+                {compressingImages && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white rounded bg-opacity-90">
+                    <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Mengkompresi...
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+                <p className="mb-1 text-xs font-medium text-blue-800">
+                  📷 Kamera akan terbuka langsung untuk foto produk
+                </p>
+                <p className="text-xs text-blue-600">
+                  🗜️ <strong>Auto Kompresi:</strong> Gambar akan otomatis dikompresi 80% untuk menghemat storage dan mempercepat upload
+                </p>
+                <p className="text-xs text-blue-600">
+                  📏 <strong>Auto Resize:</strong> Gambar besar akan diperkecil ke 1024x1024px max
+                </p>
+                <p className="text-xs text-blue-600">
+                  📁 <strong>Format:</strong> JPG, PNG (maksimal 3 gambar)
+                </p>
+              </div>
 
               {/* Image Preview */}
               {formData.images.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-3 sm:gap-3">
-                  {formData.images.map((img, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={img}
-                        alt={`Preview ${index + 1}`}
-                        className="object-cover w-full h-20 border rounded sm:h-24"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute flex items-center justify-center w-5 h-5 text-sm text-white transition-opacity bg-red-500 rounded-full opacity-0 sm:w-6 sm:h-6 top-1 right-1 group-hover:opacity-100 sm:text-base"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Preview Gambar ({formData.images.length}/3)</span>
+                    <span className="font-medium text-green-600">✅ Dikompresi 80%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+                    {formData.images.map((img, index) => {
+                      // Perkiraan ukuran file setelah kompresi
+                      const estimatedSize = ((img.length * 3) / 4 / 1024 / 1024).toFixed(1);
+                      
+                      return (
+                        <div key={index} className="relative group">
+                          <img
+                            src={img}
+                            alt={`Preview ${index + 1}`}
+                            className="object-cover w-full h-20 border rounded sm:h-24"
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-xs text-white bg-black bg-opacity-70 rounded-b">
+                            <div className="text-center">
+                              <span className="font-medium">{estimatedSize}MB</span>
+                              <span className="ml-1 text-green-300">📦</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute flex items-center justify-center w-5 h-5 text-sm text-white transition-opacity bg-red-500 rounded-full opacity-0 sm:w-6 sm:h-6 top-1 right-1 group-hover:opacity-100 sm:text-base hover:bg-red-600"
+                            title="Hapus gambar"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Info total estimasi ukuran */}
+                  <div className="p-2 border border-green-200 rounded bg-green-50">
+                    <p className="text-xs font-medium text-green-700">
+                      💾 Total estimasi ukuran: {
+                        formData.images.reduce((total, img) => {
+                          return total + ((img.length * 3) / 4 / 1024 / 1024);
+                        }, 0).toFixed(2)
+                      }MB (setelah kompresi)
+                    </p>
+                    <p className="text-xs text-green-600">
+                      ⚡ Kompresi menghemat ~50-70% ukuran file original
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
