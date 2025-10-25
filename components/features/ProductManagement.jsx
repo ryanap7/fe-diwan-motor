@@ -44,6 +44,7 @@ import {
   Percent,
   MapPin,
   QrCode,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -95,6 +96,7 @@ const ProductManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterBrand, setFilterBrand] = useState("all");
+  const [filterStock, setFilterStock] = useState("all");
   const [promoDialogOpen, setPromoDialogOpen] = useState(false);
   const [selectedProductForPromo, setSelectedProductForPromo] = useState(null);
   const [promoFormData, setPromoFormData] = useState({
@@ -232,8 +234,8 @@ const ProductManagement = () => {
 
 
       setProducts(extractedProducts);
-      setCategories(extractedCategories);
-      setBrands(extractedBrands);
+      setCategories(extractedCategories.sort((a, b) => a.name?.localeCompare(b.name) || 0));
+      setBrands(extractedBrands.sort((a, b) => a.name?.localeCompare(b.name) || 0));
       setBranches(extractedBranches);
     } catch (error) {
       toast.error(
@@ -692,6 +694,13 @@ const ProductManagement = () => {
     return brand ? brand.name : "-";
   };
 
+  // Function to check if product has low stock based on minStock
+  const isLowStock = (product) => {
+    const currentStock = parseInt(product.stock) || 0;
+    const minStockThreshold = parseInt(product.minStock) || 10; // Default 10 if no minStock set
+    return currentStock <= minStockThreshold;
+  };
+
   const filteredProducts = Array.isArray(products)
     ? products.filter((product) => {
         const matchSearch =
@@ -712,7 +721,11 @@ const ProductManagement = () => {
           product.brandId === filterBrand ||
           product.brand?.id === filterBrand;
 
-        return matchSearch && matchCategory && matchBrand;
+        const matchStock =
+          filterStock === "all" ||
+          (filterStock === "normal" && !isLowStock(product));
+
+        return matchSearch && matchCategory && matchBrand && matchStock;
       })
     : [];
 
@@ -764,7 +777,7 @@ const ProductManagement = () => {
       {/* Search & Filter - Mobile Responsive */}
       <Card className="border-0 shadow-md rounded-xl">
         <CardContent className="p-3 sm:p-4 md:pt-6">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3.5" />
               <Input
@@ -783,6 +796,7 @@ const ProductManagement = () => {
                 {Array.isArray(categories) &&
                   categories
                     .filter((cat) => cat.isActive === true)
+                    .sort((a, b) => a.name?.localeCompare(b.name) || 0)
                     .map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}
@@ -802,6 +816,20 @@ const ProductManagement = () => {
                       {brand.name}
                     </SelectItem>
                   ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStock} onValueChange={setFilterStock}>
+              <SelectTrigger className="py-3 text-sm border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <SelectValue placeholder="Status Stok" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Stok</SelectItem>
+                <SelectItem value="normal">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-green-500" />
+                    Stok Normal
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -886,12 +914,14 @@ const ProductManagement = () => {
                         </div>
                       )}
                     </div>
-                    <Badge
-                      variant={product.isActive ? "default" : "secondary"}
-                      className={`ml-2 text-xs rounded-full ${product.isActive ? "bg-green-500 hover:bg-green-600" : "bg-gray-400"}`}
-                    >
-                      {product.isActive ? "Aktif" : "Nonaktif"}
-                    </Badge>
+                    <div className="flex flex-col gap-1 ml-2">
+                      <Badge
+                        variant={product.isActive ? "default" : "secondary"}
+                        className={`text-xs rounded-full ${product.isActive ? "bg-green-500 hover:bg-green-600" : "bg-gray-400"}`}
+                      >
+                        {product.isActive ? "Aktif" : "Nonaktif"}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="pt-3 mb-3 space-y-2 border-t border-gray-100">
@@ -910,16 +940,6 @@ const ProductManagement = () => {
                         {product.wholesalePrice?.toLocaleString("id-ID") || "0"}
                       </span>
                     </div>
-                    {product.wholesalePrice && parseInt(product.wholesalePrice) > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Min Grosir:
-                        </span>
-                        <span className="font-medium text-right text-blue-600">
-                          {product.minOrderWholesale || product.min_order_wholesale || product.minWholesaleQuantity || "1"} unit+
-                        </span>
-                      </div>
-                    )}
                     {product.promo &&
                       product.promo.is_active &&
                       product.promo.discount_percentage > 0 && (
@@ -1236,6 +1256,7 @@ const ProductManagement = () => {
                   {Array.isArray(categories) && categories.length > 0 ? (
                     categories
                       .filter((cat) => cat && (cat.isActive === true || cat.isActive === undefined))
+                      .sort((a, b) => a.name?.localeCompare(b.name) || 0)
                       .map((cat) => (
                         <SelectItem key={cat.id} value={cat.id} className="py-2 text-sm">
                           {cat.name}
@@ -1411,6 +1432,36 @@ const ProductManagement = () => {
                   <p className="text-xs text-orange-500">
                     ⚠️ Isi harga grosir terlebih dahulu
                   </p>
+                )}
+              </div>
+            </div>
+
+            {/* Minimal Stock Section */}
+            <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  Minimal Stock <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  value={formData.minStock}
+                  onChange={(e) => handleChange("minStock", e.target.value)}
+                  placeholder="0"
+                  required
+                  min="0"
+                  step="1"
+                  className="h-10 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  📊 Batas minimum stok sebelum sistem menandai sebagai "Stok Menipis"
+                </p>
+                {formData.minStock && parseInt(formData.minStock) > 0 && (
+                  <div className="p-2 mt-2 bg-orange-100 border border-orange-300 rounded">
+                    <p className="text-xs font-medium text-orange-700">
+                      ⚠️ Akan ditandai "Stok Menipis" jika stok ≤ {formData.minStock} unit
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -1687,34 +1738,7 @@ const ProductManagement = () => {
               />
             </div> */}
 
-            {/* <div className="grid grid-cols-2 gap-4" style={{ display: "none" }}>
-              <div className="space-y-2">
-                <Label>
-                  Lokasi Penyimpanan <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  value={formData.storageLocation}
-                  onChange={(e) =>
-                    handleChange("storageLocation", e.target.value)
-                  }
-                  placeholder="contoh: Rak A-3, Gudang Utama"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">Default: Gudang</p>
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  Min Stock <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  value={formData.minStock}
-                  onChange={(e) => handleChange("minStock", e.target.value)}
-                  placeholder="0"
-                  required
-                />
-              </div>
-            </div> */}
+
 
             {/* Hidden Tags - Default "Product" */}
             <div style={{ display: "none" }}>

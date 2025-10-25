@@ -896,7 +896,8 @@ const InventoryManagement = () => {
           <div className="grid grid-cols-1 gap-4">
             {filteredProducts.map((product) => {
               const totalStock = getTotalStock(product);
-              const isLowStock = totalStock < 10; // Configurable threshold
+              const minStock = parseInt(product.minStock) || 10; // Use product's minStock or default 10
+              const isLowStock = totalStock <= minStock;
 
               return (
                 <Card key={product.id} className={`${isLowStock ? 'border-orange-200 bg-orange-50' : ''}`}>
@@ -1152,7 +1153,11 @@ const InventoryManagement = () => {
             <CardContent>
               <div className="space-y-4">
                 {filteredProducts
-                  .filter(product => getTotalStock(product) < 10)
+                  .filter(product => {
+                    const totalStock = getTotalStock(product);
+                    const minStock = parseInt(product.minStock) || 10;
+                    return totalStock <= minStock;
+                  })
                   .map((product) => (
                     <div key={product.id} className="p-3 border rounded-lg bg-orange-50 sm:p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
