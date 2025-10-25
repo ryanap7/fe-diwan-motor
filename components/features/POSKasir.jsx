@@ -1208,12 +1208,9 @@ export default function POSKasir() {
               throw new Error('Printer instance tidak valid atau method smartPrint tidak tersedia');
             }
             
-            // Use smartPrint with platform-specific approach
-            const isAndroid = /Android/i.test(navigator.userAgent);
+            // Use smartPrint for Thermer integration with fallback to Web Bluetooth
             const printResult = await printerInstance.smartPrint(receiptData, {
-              // Android: Force Thermer, no fallback
-              // Desktop: Direct Web Bluetooth
-              fallbackToWebBluetooth: false
+              fallbackToWebBluetooth: true
             });
             
             console.log('Print result:', printResult);
