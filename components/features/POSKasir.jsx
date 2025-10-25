@@ -15,87 +15,55 @@ import { Textarea } from "@/components/ui/textarea"
 import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer, Bluetooth, BluetoothConnected, AlertCircle, CheckCircle, X } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
-import { transactionsAPI, categoriesAPI, stockAPI, customersAPI, productsAPI } from '@/lib/api'
+import { transactionsAPI, customersAPI } from '@/lib/api'
 import ThermalPrinter from '@/lib/thermal-printer'
 import CashierLoadingScreen from '@/components/ui/CashierLoadingScreen'
 import CashierStatusNotification from '@/components/ui/CashierStatusNotification'
 
-// API functions untuk POS - mengambil produk dari productsAPI dan stock dari stockAPI
-const fetchProducts = async (params = {}) => {
+// Helper function untuk mendapatkan stock value dari response POS endpoint
+const getProductStock = (product) => {
+  // Handle different stock structure from POS endpoint
+  if (product.stock && typeof product.stock === 'object') {
+    // Structure: { stock: { quantity: 10, isLowStock: false } }
+    return product.stock.quantity || 0;
+  }
+  
+  // Handle direct stock property or totalStock
+  return product.totalStock || product.stock || 0;
+};
+
+// API functions untuk POS - mengambil produk dari endpoint transactions/products/pos
+const fetchProducts = async (params = { limit: 1000 }) => {
   try {
-    console.log('POS - Fetching products and stock data...');
+    console.log('POS - Fetching products from POS endpoint...');
     
-    // Ambil data produk dengan harga dari products API
-    console.log('Fetching products from products API...');
-    const productsResponse = await productsAPI.getAll(params);
-    console.log('Products API Response:', productsResponse);
+    // Ambil data produk dari endpoint POS yang sudah termasuk stock dan harga
+    const posResponse = await transactionsAPI.getProductsForPOS(params);
+    console.log('POS Products API Response:', posResponse);
     
-    // Handle products response structure
+    // Handle API response structure
     let products = [];
-    if (productsResponse?.success && productsResponse.data?.products) {
-      products = productsResponse.data.products;
-    } else if (Array.isArray(productsResponse?.data)) {
-      products = productsResponse.data;
-    } else if (Array.isArray(productsResponse)) {
-      products = productsResponse;
+    if (posResponse?.success && posResponse.data?.products) {
+      products = posResponse.data.products;
+    } else if (Array.isArray(posResponse?.data)) {
+      products = posResponse.data;
+    } else if (Array.isArray(posResponse)) {
+      products = posResponse;
     }
     
-    console.log('Products loaded:', products.length);
+    console.log('Products loaded from POS endpoint:', products.length);
     
-    // Ambil data stock dari stock API
-    try {
-      console.log('Fetching stock data from stock API...');
-      const stockResponse = await stockAPI.getStockOverview(params);
-      console.log('Stock API Response:', stockResponse);
-      
-      // Handle stock response structure
-      let stockData = [];
-      if (stockResponse?.success && stockResponse.data?.products) {
-        stockData = stockResponse.data.products;
-      } else if (stockResponse?.success && Array.isArray(stockResponse.data)) {
-        stockData = stockResponse.data;
-      } else if (Array.isArray(stockResponse?.data)) {
-        stockData = stockResponse.data;
-      } else if (Array.isArray(stockResponse)) {
-        stockData = stockResponse;
-      }
-      
-      console.log('Stock data loaded:', stockData.length);
-      
-      // Gabungkan data produk dengan stock data
-      if (stockData.length > 0) {
-        const stockMap = new Map();
-        stockData.forEach(stock => {
-          const productId = stock.productId || stock.id;
-          if (productId) {
-            stockMap.set(productId, {
-              stock: stock.stock || stock.quantity || stock.available || stock.currentStock || stock.totalStock || 0,
-              stockData: stock
-            });
-          }
-        });
-        
-        // Update products dengan stock information
-        products = products.map(product => {
-          const stockInfo = stockMap.get(product.id);
-          return {
-            ...product,
-            stock: stockInfo ? stockInfo.stock : 0,
-            stockData: stockInfo ? stockInfo.stockData : null
-          };
-        });
-        
-        console.log('Products merged with stock data');
-      }
-      
-    } catch (stockError) {
-      console.warn('Stock API error, products will have 0 stock:', stockError);
-      // Jika stock API gagal, set semua stock ke 0
-      products = products.map(product => ({
-        ...product,
-        stock: 0
-      }));
-    }
+    // Normalize products data structure for consistent usage
+    products = products.map(product => ({
+      ...product,
+      // Ensure consistent price types (convert string to number)
+      sellingPrice: parseFloat(product.sellingPrice) || 0,
+      purchasePrice: parseFloat(product.purchasePrice) || 0,
+      wholesalePrice: parseFloat(product.wholesalePrice) || 0,
+      // Ensure minOrderWholesale is properly handled
+      minOrderWholesale: product.minOrderWholesale ? parseInt(product.minOrderWholesale) : null,
+      minStock: parseInt(product.minStock) || 0
+    }));
     
     if (products.length > 0) {
       console.log('Final product sample:', products[0]);
@@ -103,71 +71,49 @@ const fetchProducts = async (params = {}) => {
       console.log('Price fields:', {
         sellingPrice: products[0].sellingPrice,
         purchasePrice: products[0].purchasePrice,
-        wholesalePrice: products[0].wholesalePrice
+        wholesalePrice: products[0].wholesalePrice,
+        minOrderWholesale: products[0].minOrderWholesale
       });
-      console.log('Stock field value:', products[0].stock);
+      console.log('Stock structure:', {
+        stock: products[0].stock,
+        totalStock: products[0].totalStock,
+        actualStock: getProductStock ? getProductStock(products[0]) : 'getProductStock not available yet'
+      });
+      console.log('Brand and Category:', {
+        brand: products[0].brand,
+        category: products[0].category,
+        storageLocation: products[0].storageLocation
+      });
     }
     
     return products;
     
   } catch (error) {
-    console.error('Error fetching products with stock for POS:', error);
-    // Fallback ke products API biasa jika stock API tidak tersedia
-    try {
-      console.log('Falling back to products API...');
-      const token = localStorage.getItem('token') || '';
-      
-      const fallbackResponse = await fetch('/api/products', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!fallbackResponse.ok) {
-        const errorText = await fallbackResponse.text();
-        console.error('Products API Error:', fallbackResponse.status, errorText);
-        throw new Error(`HTTP error! status: ${fallbackResponse.status} - ${errorText}`);
-      }
-
-      const data = await fallbackResponse.json();
-      console.log('Fallback Products API Response:', data);
-      
-      // Handle API response structure
-      if (data?.success && data.data?.products) {
-        return data.data.products;
-      } else if (Array.isArray(data?.data)) {
-        return data.data;
-      } else if (Array.isArray(data)) {
-        return data;
-      }
-      return [];
-      
-    } catch (fallbackError) {
-      console.error('Fallback products fetch also failed:', fallbackError);
-      return [];
-    }
+    console.error('Error fetching products from POS endpoint:', error);
+    throw error; // Propagate error instead of using fallback
   }
 };
 
-const fetchCategories = async () => {
-  try {
-    const response = await categoriesAPI.getAll();
-    console.log("Categories API Response:", response);
-
-    // Handle API response structure
-    if (response?.success && response.data?.categories) {
-      return response.data.categories;
-    } else if (Array.isArray(response?.data)) {
-      return response.data;
-    } else if (Array.isArray(response)) {
-      return response;
+// Extract unique categories from products data
+const extractCategoriesFromProducts = (products) => {
+  if (!Array.isArray(products)) return [];
+  
+  const uniqueCategories = [];
+  const categoryNames = new Set();
+  
+  products.forEach(product => {
+    if (product.category && product.category.name && !categoryNames.has(product.category.name)) {
+      categoryNames.add(product.category.name);
+      uniqueCategories.push({
+        id: product.category.id || product.category.name,
+        name: product.category.name,
+        isActive: true
+      });
     }
-    return [];
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    return [];
-  }
+  });
+  
+  console.log('Categories extracted from products:', uniqueCategories);
+  return uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
 };
 
 // Fetch customers untuk mendapatkan default customer
@@ -348,16 +294,12 @@ export default function POSKasir() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Helper function untuk mendapatkan stock value (sekarang sudah di-merge)
-  const getProductStock = (product) => {
-    // Setelah merge, stock sudah ada di field stock
-    return product.stock || 0;
-  };
   const getProductPrice = (product, quantity = 1) => {
-    // Auto wholesale: if quantity >= minStock, use wholesalePrice
+    // Auto wholesale: if quantity >= minOrderWholesale, use wholesalePrice
+    const minOrderQty = product.minOrderWholesale || product.minStock || 1;
     const shouldUseWholesale =
       priceType === "wholesale" ||
-      (quantity >= (product.minStock || 0) && product.minStock > 0);
+      (quantity >= minOrderQty && minOrderQty > 0 && product.wholesalePrice);
 
     return shouldUseWholesale
       ? product.wholesalePrice || product.sellingPrice || 0
@@ -366,10 +308,12 @@ export default function POSKasir() {
 
   // Helper function to check if product should show wholesale indicator
   const shouldShowWholesaleIndicator = (product, quantity = 1) => {
+    const minOrderQty = product.minOrderWholesale || product.minStock || 1;
     return (
-      quantity >= (product.minStock || 0) &&
-      product.minStock > 0 &&
-      product.wholesalePrice
+      quantity >= minOrderQty &&
+      minOrderQty > 0 &&
+      product.wholesalePrice &&
+      product.wholesalePrice > 0
     );
   };
 
@@ -485,16 +429,18 @@ export default function POSKasir() {
       console.log("=== LOADING POS DATA ===");
       console.log("Using token:", token.substring(0, 50) + "...");
 
-      const [productsData, categoriesData, customersData] = await Promise.all([
+      const [productsData, customersData] = await Promise.all([
         fetchProducts(),
-        fetchCategories(),
         fetchCustomers()
       ])
+      
+      // Extract categories from products data
+      const categoriesData = extractCategoriesFromProducts(productsData);
       
       console.log('=== POS DATA LOADED ===')
       console.log('Products loaded:', productsData.length)
       console.log('Sample product data:', productsData[0])
-      console.log('Categories loaded:', categoriesData.length)
+      console.log('Categories extracted from products:', categoriesData.length)
       console.log('Customers loaded:', customersData.length)
       
       // Check if products have stock information
@@ -516,12 +462,26 @@ export default function POSKasir() {
       setCustomers(customersData)
     } catch (err) {
       console.error("Error loading POS data:", err);
-      setError(err.message);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data. " + err.message,
-        variant: "destructive",
+      console.error("Error details:", {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
       });
+      
+      // Only set error if it's a critical error that prevents POS from working
+      // Don't show error if products were loaded successfully
+      if (products.length === 0) {
+        setError(err.message);
+        toast({
+          title: "Error",
+          description: "Gagal memuat data. " + err.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log("Products loaded successfully, continuing with POS...");
+        // Clear any previous error since products are available
+        setError(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -549,47 +509,109 @@ export default function POSKasir() {
       console.log("User role:", userRole, "- Is Cashier:", isCashier);
 
       if (isCashier) {
-        // For cashier: Load products first (most important), then categories, then customers
+        // For cashier: Load products first (most important), then customers
         console.log("Cashier detected - Priority loading: Products first");
         
         // Load products immediately
-        const productsData = await fetchProducts();
-        console.log('Products loaded first:', productsData.length);
-        setProducts(productsData);
+        let productsData = [];
+        try {
+          productsData = await fetchProducts();
+          console.log('Products loaded first:', productsData.length);
+          setProducts(productsData);
+        } catch (productError) {
+          console.error('Error loading products:', productError);
+          throw productError; // This is critical, so throw
+        }
         
-        // Load categories and customers in parallel after products
-        const [categoriesData, customersData] = await Promise.all([
-          fetchCategories(),
-          fetchCustomers()
-        ]);
+        // Extract categories from products and load customers
+        let categoriesData = [];
+        try {
+          categoriesData = extractCategoriesFromProducts(productsData);
+          console.log('Categories extracted:', categoriesData.length);
+          setCategories(categoriesData);
+        } catch (categoryError) {
+          console.error('Error extracting categories:', categoryError);
+          // Non-critical, continue without categories
+          setCategories([]);
+        }
         
-        console.log('Categories & Customers loaded:', categoriesData.length, customersData.length);
-        setCategories(categoriesData);
-        setCustomers(customersData);
+        try {
+          const customersData = await fetchCustomers();
+          console.log('Customers loaded:', customersData.length);
+          setCustomers(customersData);
+        } catch (customerError) {
+          console.error('Error loading customers:', customerError);
+          // Non-critical, continue without customers
+          setCustomers([]);
+        }
         
       } else {
-        // For other roles: Load all in parallel (original behavior)
-        const [productsData, categoriesData, customersData] = await Promise.all([
-          fetchProducts(),
-          fetchCategories(),
-          fetchCustomers()
-        ]);
+        // For other roles: Load products and customers in parallel
+        let productsData = [];
+        let customersData = [];
         
-        setProducts(productsData);
-        setCategories(categoriesData);
-        setCustomers(customersData);
+        try {
+          const results = await Promise.allSettled([
+            fetchProducts(),
+            fetchCustomers()
+          ]);
+          
+          if (results[0].status === 'fulfilled') {
+            productsData = results[0].value;
+            setProducts(productsData);
+          } else {
+            console.error('Error loading products:', results[0].reason);
+            throw results[0].reason; // Critical error
+          }
+          
+          if (results[1].status === 'fulfilled') {
+            customersData = results[1].value;
+            setCustomers(customersData);
+          } else {
+            console.error('Error loading customers:', results[1].reason);
+            // Non-critical, continue
+            setCustomers([]);
+          }
+        } catch (error) {
+          console.error('Error in parallel loading:', error);
+          throw error;
+        }
+        
+        // Extract categories from products data
+        try {
+          const categoriesData = extractCategoriesFromProducts(productsData);
+          console.log('Categories extracted:', categoriesData.length);
+          setCategories(categoriesData);
+        } catch (categoryError) {
+          console.error('Error extracting categories:', categoryError);
+          setCategories([]);
+        }
       }
       
       console.log('=== POS DATA LOADED (OPTIMIZED) ===');
       
     } catch (err) {
       console.error("Error loading POS data:", err);
-      setError(err.message);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data. " + err.message,
-        variant: "destructive",
+      console.error("Error details:", {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
       });
+      
+      // Only set error if it's a critical error that prevents POS from working
+      // Don't show error if products were loaded successfully
+      if (products.length === 0) {
+        setError(err.message);
+        toast({
+          title: "Error",
+          description: "Gagal memuat data. " + err.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log("Products loaded successfully, continuing with POS...");
+        // Clear any previous error since products are available
+        setError(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -1572,12 +1594,12 @@ export default function POSKasir() {
                                 {formatCurrency(getProductPrice(product, 1))}
                               </p>
                               {product.wholesalePrice &&
-                                product.minStock > 0 &&
+                                (product.minOrderWholesale > 0 || product.minStock > 0) &&
                                 !isOutOfStock && (
                                   <p className="hidden text-xs font-medium text-orange-600 md:block">
                                     Grosir:{" "}
                                     {formatCurrency(product.wholesalePrice)} (≥
-                                    {product.minStock} {product.unit || "Pcs"})
+                                    {product.minOrderWholesale || product.minStock || 1} {product.unit || "Pcs"})
                                   </p>
                                 )}
                               <p
