@@ -1215,7 +1215,7 @@ const InventoryManagement = () => {
                 ) : stockMovements.length > 0 ? (
                   <div className="space-y-3">
                     {stockMovements.map((movement, index) => (
-                      <div key={movement.id || index} className="p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white">
+                      <div key={movement.id || index} className="p-4 transition-shadow duration-200 bg-white border rounded-lg shadow-sm hover:shadow-md">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
@@ -1242,14 +1242,14 @@ const InventoryManagement = () => {
                                 {movement.branch?.name || 'Cabang'} • {movement.reason || 'Penyesuaian stok'}
                               </p>
                               {movement.notes && (
-                                <p className="text-xs text-gray-500 italic bg-gray-50 p-2 rounded">
+                                <p className="p-2 text-xs italic text-gray-500 rounded bg-gray-50">
                                   <span className="font-medium">Catatan:</span> {movement.notes}
                                 </p>
                               )}
                             </div>
                           </div>
                           
-                          <div className="text-right ml-4">
+                          <div className="ml-4 text-right">
                             <Badge variant={
                               movement.type === 'IN' ? 'default' : 
                               movement.type === 'OUT' ? 'destructive' : 
