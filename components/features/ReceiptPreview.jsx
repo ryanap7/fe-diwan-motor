@@ -11,7 +11,7 @@ import {
   Receipt,
   Smartphone
 } from "lucide-react"
-import { printStrukToRawBT } from '@/hooks/useRawBTPrint'
+import { printReceiptToRawBT } from '@/lib/receipt-rawbt-formatter'
 
 const ReceiptPreview = ({ receiptData, onClose, onPrint }) => {
   const formatCurrency = (amount) => {
@@ -23,13 +23,9 @@ const ReceiptPreview = ({ receiptData, onClose, onPrint }) => {
     }
   }
 
-  // Fungsi untuk print langsung ke RawBT
+  // Fungsi untuk print langsung ke RawBT dengan format yang benar
   const handlePrintToRawBT = () => {
-    const success = printStrukToRawBT('strukPreview', {
-      showAlert: true,
-      autoInstallPrompt: true,
-      fallbackDelay: 2000
-    });
+    const success = printReceiptToRawBT(receiptData);
 
     if (success) {
       // Tutup modal setelah print
