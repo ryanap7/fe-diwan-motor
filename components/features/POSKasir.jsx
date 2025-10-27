@@ -1257,9 +1257,9 @@ export default function POSKasir() {
         discount: Number(calculations?.discount || 0),
         tax: Number(calculations?.tax || 0),
         total: Number(calculations?.total || 0),
-        amountPaid: Number(parseFloat(paymentAmount || 0)),
-        change: Number(Math.max(0, parseFloat(paymentAmount || 0) - (calculations?.total || 0))),
-        paymentMethod: String('TUNAI')
+        amountPaid: Number(paymentMethod === 'TRANSFER' ? calculations?.total || 0 : parseFloat(paymentAmount || 0)),
+        change: Number(paymentMethod === 'TRANSFER' ? 0 : Math.max(0, parseFloat(paymentAmount || 0) - (calculations?.total || 0))),
+        paymentMethod: String(paymentMethod === 'CASH' ? 'TUNAI' : 'TRANSFER')
       }
 
       console.log('Validated receipt data:', receiptData);
