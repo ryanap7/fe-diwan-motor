@@ -14,8 +14,10 @@ const formatForThermalPrint = (text) => {
     line = line.trim()
     if (!line) return
     
-    // Format header toko
+    // Format header toko - pastikan tidak ada // prefix
     if (line.includes('HD MOTOPART')) {
+      // Remove any // prefix dari HD MOTOPART
+      const cleanLine = line.replace(/^\/+/, '').replace(/\/\/HD MOTOPART/g, 'HD MOTOPART')
       formattedLines.push('        HD MOTOPART        ')
       return
     }
@@ -154,6 +156,11 @@ export const useRawBTPrint = (strukElementId = 'struk', printButtonId = 'btnPrin
         .replace(/\n\s*\n/g, '\n')      // Remove empty lines
         .trim()                         // Trim whitespace
         .replace(/\s*\n\s*/g, '\n')     // Clean line breaks
+        .replace(/^\/\/[^\n]*\n?/gm, '') // Remove lines starting with //
+        .replace(/\/\/print\?text=/g, '') // Remove //print?text= completely
+        .replace(/^\/+/gm, '') // Remove leading slashes from lines
+        .replace(/\/\/HD MOTOPART/g, 'HD MOTOPART') // Specifically fix //HD MOTOPART
+        .replace(/\/\/.*(?=HD MOTOPART)/g, '') // Remove // before HD MOTOPART
         
       // Format ulang untuk thermal printer
       strukText = formatForThermalPrint(strukText)
@@ -277,7 +284,12 @@ export const printStrukToRawBT = (strukElementId = 'struk', options = {}) => {
       .replace(/\s+/g, ' ')           
       .replace(/\n\s*\n/g, '\n')      
       .trim()                         
-      .replace(/\s*\n\s*/g, '\n')     
+      .replace(/\s*\n\s*/g, '\n')
+      .replace(/^\/\/[^\n]*\n?/gm, '') // Remove lines starting with //
+      .replace(/\/\/print\?text=/g, '') // Remove //print?text= completely
+      .replace(/^\/+/gm, '') // Remove leading slashes from lines
+      .replace(/\/\/HD MOTOPART/g, 'HD MOTOPART') // Specifically fix //HD MOTOPART
+      .replace(/\/\/.*(?=HD MOTOPART)/g, '') // Remove // before HD MOTOPART
       
     // Format ulang untuk thermal printer
     strukText = formatForThermalPrint(strukText)
