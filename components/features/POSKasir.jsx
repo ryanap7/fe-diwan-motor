@@ -1812,14 +1812,14 @@ export default function POSKasir() {
               <CardTitle className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">Keranjang ({cartItems.length})</span>
-                  {/* Printer Status Badge - hidden on mobile to save space */}
+                  {/* Printer Status Badge - completely hidden on mobile */}
                   <Badge 
                     variant={
                       printerConnectionStatus.isConnected ? "default" :
                       printerConnectionStatus.error ? "destructive" :
                       "secondary"
                     }
-                    className={`text-xs hidden sm:inline-flex ${
+                    className={`text-xs hidden md:inline-flex ${
                       printerConnectionStatus.isConnected ? "bg-green-100 text-green-800 border-green-300" :
                       printerConnectionStatus.error ? "bg-red-100 text-red-800 border-red-300" :
                       "bg-gray-100 text-gray-600 border-gray-300"
@@ -1843,8 +1843,8 @@ export default function POSKasir() {
                     )}
                   </Badge>
                 </div>
-                <div className="flex justify-end gap-2 md:justify-start">
-                  {/* Printer Connection Button with Detailed Status */}
+                <div className="hidden md:flex md:justify-end gap-2 lg:justify-start">
+                  {/* Printer Connection Button with Detailed Status - Hidden on mobile */}
                   <div className="relative">
                     <Button 
                       variant="outline" 
@@ -1871,17 +1871,17 @@ export default function POSKasir() {
                       ) : printerConnectionStatus.isConnected ? (
                         <>
                           <BluetoothConnected className="w-4 h-4" />
-                          <span className="hidden ml-1 sm:inline">Connected</span>
+                          <span className="ml-1">Connected</span>
                         </>
                       ) : printerConnectionStatus.error ? (
                         <>
                           <AlertCircle className="w-4 h-4" />
-                          <span className="hidden ml-1 sm:inline">Retry</span>
+                          <span className="ml-1">Retry</span>
                         </>
                       ) : (
                         <>
                           <Bluetooth className="w-4 h-4" />
-                          <span className="hidden ml-1 sm:inline">Connect</span>
+                          <span className="ml-1">Connect</span>
                         </>
                       )}
                     </Button>
@@ -1897,7 +1897,7 @@ export default function POSKasir() {
                   {cartItems.length > 0 && (
                     <Button variant="outline" size="sm" onClick={clearCart} className="px-2">
                       <Trash2 className="w-4 h-4" />
-                      <span className="hidden ml-1 sm:inline">Clear</span>
+                      <span className="ml-1">Clear</span>
                     </Button>
                   )}
                 </div>
