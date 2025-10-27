@@ -35,7 +35,7 @@ const RawBTPrint = () => {
         console.log('Encoded text length:', encodedText.length)
         
         // Buka RawBT app dengan URL scheme
-        const rawbtUrl = `rawbt://print?text=${encodedText}`
+        const rawbtUrl = `rawbt:${encodedText}`
         
         console.log('Opening RawBT with URL:', rawbtUrl.substring(0, 100) + '...')
         
