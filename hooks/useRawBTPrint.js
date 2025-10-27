@@ -165,11 +165,11 @@ export const useRawBTPrint = (strukElementId = 'struk', printButtonId = 'btnPrin
       console.log('RawBT Print - Original text length:', strukText.length)
       console.log('RawBT Print - Encoded text length:', encodedText.length)
       
-      // Buat URL untuk RawBT
-      const rawbtUrl = `rawbt://print?text=${encodedText}`
+      // Buat Intent URL untuk RawBT (bukan URL scheme)
+      const intentUrl = `intent://#Intent;action=android.intent.action.SEND;type=text/plain;package=ru.a402d.rawbtprinter;S.android.intent.extra.TEXT=${encodedText};end`
       
       // Buka RawBT
-      window.location.href = rawbtUrl
+      window.location.href = intentUrl
       
       // Callback sukses
       onSuccess(strukText)
@@ -280,11 +280,11 @@ export const printStrukToRawBT = (strukElementId = 'struk', options = {}) => {
     // Format ulang untuk thermal printer
     strukText = formatForThermalPrint(strukText)
 
-    // Encode dan buka RawBT
+    // Encode dan buka RawBT menggunakan Intent
     const encodedText = encodeURIComponent(strukText)
-    const rawbtUrl = `rawbt://print?text=${encodedText}`
+    const intentUrl = `intent://#Intent;action=android.intent.action.SEND;type=text/plain;package=ru.a402d.rawbtprinter;S.android.intent.extra.TEXT=${encodedText};end`
     
-    window.location.href = rawbtUrl
+    window.location.href = intentUrl
     
     // Fallback install prompt
     if (autoInstallPrompt && fallbackDelay > 0) {
