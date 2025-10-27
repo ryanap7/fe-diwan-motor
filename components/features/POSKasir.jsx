@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer, Bluetooth, BluetoothConnected, AlertCircle, CheckCircle, X } from 'lucide-react'
+import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer, Bluetooth, BluetoothConnected, AlertCircle, CheckCircle, X, Settings, Edit } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, customersAPI } from '@/lib/api'
@@ -285,6 +285,8 @@ export default function POSKasir() {
   const [showRawBTSettings, setShowRawBTSettings] = useState(false)
   const [showReceiptPreview, setShowReceiptPreview] = useState(false)
   const [previewReceiptData, setPreviewReceiptData] = useState(null)
+  const [showCashierDialog, setShowCashierDialog] = useState(false)
+  const [cashierName, setCashierName] = useState('')
   const [printerConnectionStatus, setPrinterConnectionStatus] = useState({
     isConnected: false,
     deviceName: '',
@@ -321,6 +323,28 @@ export default function POSKasir() {
       product.wholesalePrice > 0
     );
   };
+
+  // Initialize cashier name from user data
+  useEffect(() => {
+    try {
+      const user = localStorage.getItem("user");
+      if (user) {
+        const userData = JSON.parse(user);
+        console.log("POS - Current user data:", userData);
+        
+        // Priority: displayName (custom) > name > username > email > Admin
+        const userName = userData.displayName || userData.name || userData.username || userData.email || 'Admin';
+        setCashierName(userName);
+        console.log("POS - Cashier name set to:", userName);
+      } else {
+        // Fallback
+        setCashierName('Admin');
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      setCashierName('Admin');
+    }
+  }, []);
 
   // Load initial data with optimization for cashier role
   useEffect(() => {
@@ -990,8 +1014,52 @@ export default function POSKasir() {
       // Create transaction via API
       const result = await createTransaction(transactionData)
       
+      // Enhance receipt data with cashier info and other missing data for preview
+      const enhancedReceiptData = {
+        ...result,
+        // Add cashier info
+        cashierName: cashierName || 'Admin',
+        userName: cashierName || 'Admin',
+        
+        // Add customer info
+        customerName: customerInfo.name || 'Customer',
+        customerPhone: customerInfo.phone || '-',
+        
+        // Add cart items for preview
+        items: cartItems.map(item => {
+          const unitPrice = getProductPrice(item.product, item.quantity);
+          return {
+            name: item.product.name,
+            sku: item.product.sku || '',
+            brand: item.product.brand?.name || item.product.brand || '',
+            storageLocation: item.product.storageLocation || '',
+            quantity: item.quantity,
+            unitPrice: unitPrice,
+            subtotal: unitPrice * item.quantity
+          };
+        }),
+        
+        // Add calculation results
+        subtotal: calculations.subtotal,
+        discount: calculations.discount,
+        tax: calculations.tax,
+        total: calculations.total,
+        amountPaid: parseFloat(paymentAmount || 0),
+        change: Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
+        paymentMethod: 'TUNAI',
+        
+        // Add date/time info
+        date: new Date().toLocaleDateString('id-ID'),
+        time: new Date().toLocaleTimeString('id-ID'),
+        
+        // Store info
+        storeName: 'HD MOTOPART',
+        storeAddress: 'Jl Maulana hasanudin RT 02 RW 02',
+        phoneNumber: '0812-3456-7890'
+      };
+      
       // Show receipt preview instead of direct print
-      setPreviewReceiptData(result);
+      setPreviewReceiptData(enhancedReceiptData);
       setShowReceiptPreview(true);
       setShowPaymentDialog(false);
       
@@ -1161,7 +1229,7 @@ export default function POSKasir() {
         time: String(new Date().toLocaleTimeString('id-ID')),
         customerName: String(customerInfo?.name || 'Customer'),
         customerPhone: String(customerInfo?.phone || '-'),
-        cashierName: String(localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'Admin'),
+        cashierName: String(cashierName || 'Admin'),
         items: Array.isArray(cartItems) ? cartItems.map(item => {
           const unitPrice = Number(getProductPrice(item?.product, item?.quantity) || 0);
           const quantity = Number(item?.quantity || 0);
@@ -1377,12 +1445,30 @@ export default function POSKasir() {
       <div className="mb-4 sm:mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-gray-900 truncate sm:text-2xl lg:text-3xl">
-              Point of Sale (POS)
-            </h1>
-            <p className="hidden mt-1 text-sm text-gray-600 sm:text-base sm:block">
-              Sistem kasir untuk transaksi penjualan
-            </p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-900 truncate sm:text-2xl lg:text-3xl">
+                Point of Sale (POS)
+              </h1>
+              <Button
+                onClick={() => setShowCashierDialog(true)}
+                size="sm"
+                variant="ghost"
+                className="p-1 h-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                title="Edit Nama Kasir"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-1">
+                <User className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-600 font-medium">
+                  Halo, {cashierName}
+                </span>
+              </div>
+              <span className="hidden sm:block text-sm text-gray-400">•</span>
+              <span className="hidden sm:block text-sm text-gray-600">HD Motopart (CASHIER)</span>
+            </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             {/* Bluetooth Printer Status Indicator */}
@@ -2266,6 +2352,72 @@ export default function POSKasir() {
           onPrint={handlePrintFromPreview}
         />
       )}
+
+      {/* Edit Cashier Name Dialog */}
+      <Dialog open={showCashierDialog} onOpenChange={setShowCashierDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-600" />
+              Edit Nama Kasir
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="cashierName">Nama Kasir</Label>
+              <Input
+                id="cashierName"
+                value={cashierName}
+                onChange={(e) => setCashierName(e.target.value)}
+                placeholder="Masukkan nama kasir"
+                className="w-full"
+              />
+            </div>
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-700 mb-1">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">Info</span>
+              </div>
+              <p className="text-xs text-blue-600">
+                Nama kasir akan ditampilkan di struk pembelian dan header POS. 
+                Pastikan nama sudah benar sebelum menyimpan.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCashierDialog(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={() => {
+                // Save cashier name ke localStorage jika diperlukan
+                const user = localStorage.getItem("user");
+                if (user) {
+                  try {
+                    const userData = JSON.parse(user);
+                    userData.displayName = cashierName; // Save custom display name
+                    localStorage.setItem("user", JSON.stringify(userData));
+                  } catch (error) {
+                    console.error("Error saving cashier name:", error);
+                  }
+                }
+                setShowCashierDialog(false);
+                toast({
+                  title: "Berhasil",
+                  description: `Nama kasir berhasil diubah menjadi "${cashierName}"`,
+                });
+              }}
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+            >
+              Simpan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
