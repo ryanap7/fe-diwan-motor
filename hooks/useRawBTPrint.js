@@ -165,11 +165,11 @@ export const useRawBTPrint = (strukElementId = 'struk', printButtonId = 'btnPrin
       console.log('RawBT Print - Original text length:', strukText.length)
       console.log('RawBT Print - Encoded text length:', encodedText.length)
       
-      // Buat URL RawBT dengan format yang benar
-      const rawbtUrl = `rawbt://print?text=${encodedText}`
+      // Buat URL RawBT dengan format bersih tanpa parameter name
+      const rawbtUrl = `rawbt://${encodedText}`
       
       // Buka RawBT
-      console.log('Opening RawBT with URL:', rawbtUrl)
+      console.log('Opening RawBT with clean URL format')
       console.log('Text preview:', strukText.substring(0, 100) + '...')
       window.location.href = rawbtUrl
       
@@ -282,11 +282,11 @@ export const printStrukToRawBT = (strukElementId = 'struk', options = {}) => {
     // Format ulang untuk thermal printer
     strukText = formatForThermalPrint(strukText)
 
-    // Encode dan buka RawBT dengan URL scheme yang benar
+    // Encode dan buka RawBT dengan format bersih
     const encodedText = encodeURIComponent(strukText)
-    const rawbtUrl = `rawbt://print?text=${encodedText}`
+    const rawbtUrl = `rawbt://${encodedText}`
     
-    console.log('Opening RawBT with URL:', rawbtUrl)
+    console.log('Opening RawBT with clean URL format')
     console.log('Text preview:', strukText.substring(0, 100) + '...')
     window.location.href = rawbtUrl
     
