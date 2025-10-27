@@ -920,17 +920,22 @@ export default function POSKasir() {
 
     setProcessing(true);
     try {
-      // Validation untuk pembayaran tunai (CASH only)
-      const amount = parseFloat(paymentAmount || 0);
-      if (!paymentAmount || amount < calculations.total) {
-        toast({
-          title: "Jumlah Pembayaran Kurang",
-          description: `Minimum pembayaran: ${formatCurrency(
-            calculations.total
-          )}`,
-          variant: "destructive",
-        });
-        return;
+      // Validation untuk pembayaran
+      if (paymentMethod === 'CASH') {
+        const amount = parseFloat(paymentAmount || 0);
+        if (!paymentAmount || amount < calculations.total) {
+          toast({
+            title: "Jumlah Pembayaran Kurang",
+            description: `Minimum pembayaran: ${formatCurrency(
+              calculations.total
+            )}`,
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (paymentMethod === 'TRANSFER') {
+        // For transfer, we assume the exact amount is paid
+        // No validation needed as it's exact amount
       }
 
       // Additional validation untuk stock sebelum proses pembayaran
@@ -998,15 +1003,16 @@ export default function POSKasir() {
         taxAmount: calculations.tax || 0,
         discountAmount: calculations.discount || 0,
         totalAmount: calculations.total,
-        paymentMethod: "CASH", // Only cash payment allowed
-        amountPaid: parseFloat(paymentAmount || 0),
-        changeAmount: Math.max(
-          0,
-          parseFloat(paymentAmount || 0) - calculations.total
-        ),
+        paymentMethod: paymentMethod, // CASH or TRANSFER
+        amountPaid: paymentMethod === 'TRANSFER' 
+          ? calculations.total 
+          : parseFloat(paymentAmount || 0),
+        changeAmount: paymentMethod === 'TRANSFER' 
+          ? 0 
+          : Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
         notes:
           notes ||
-          `${customerInfo.name || "Customer"} - Pembayaran Tunai`,
+          `${customerInfo.name || "Customer"} - Pembayaran ${paymentMethod === 'CASH' ? 'Tunai' : 'Transfer'}`,
       };
 
       console.log("Processing transaction:", transactionData);
@@ -1044,9 +1050,13 @@ export default function POSKasir() {
         discount: calculations.discount,
         tax: calculations.tax,
         total: calculations.total,
-        amountPaid: parseFloat(paymentAmount || 0),
-        change: Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
-        paymentMethod: 'TUNAI',
+        amountPaid: paymentMethod === 'TRANSFER' 
+          ? calculations.total 
+          : parseFloat(paymentAmount || 0),
+        change: paymentMethod === 'TRANSFER' 
+          ? 0 
+          : Math.max(0, parseFloat(paymentAmount || 0) - calculations.total),
+        paymentMethod: paymentMethod === 'CASH' ? 'TUNAI' : 'TRANSFER',
         
         // Add date/time info
         date: new Date().toLocaleDateString('id-ID'),
@@ -1802,14 +1812,14 @@ export default function POSKasir() {
               <CardTitle className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">Keranjang ({cartItems.length})</span>
-                  {/* Printer Status Badge - mobile compact version */}
+                  {/* Printer Status Badge - hidden on mobile to save space */}
                   <Badge 
                     variant={
                       printerConnectionStatus.isConnected ? "default" :
                       printerConnectionStatus.error ? "destructive" :
                       "secondary"
                     }
-                    className={`text-xs ${
+                    className={`text-xs hidden sm:inline-flex ${
                       printerConnectionStatus.isConnected ? "bg-green-100 text-green-800 border-green-300" :
                       printerConnectionStatus.error ? "bg-red-100 text-red-800 border-red-300" :
                       "bg-gray-100 text-gray-600 border-gray-300"
@@ -1818,20 +1828,17 @@ export default function POSKasir() {
                     {printerConnectionStatus.isConnected ? (
                       <>
                         <CheckCircle className="w-3 h-3 mr-1" />
-                        <span className="hidden sm:inline">Printer Siap</span>
-                        <span className="sm:hidden">Siap</span>
+                        <span>Printer Siap</span>
                       </>
                     ) : printerConnectionStatus.error ? (
                       <>
                         <AlertCircle className="w-3 h-3 mr-1" />
-                        <span className="hidden sm:inline">Printer Error</span>
-                        <span className="sm:hidden">Error</span>
+                        <span>Printer Error</span>
                       </>
                     ) : (
                       <>
                         <Bluetooth className="w-3 h-3 mr-1" />
-                        <span className="hidden sm:inline">Printer Offline</span>
-                        <span className="sm:hidden">Offline</span>
+                        <span>Printer Offline</span>
                       </>
                     )}
                   </Badge>
