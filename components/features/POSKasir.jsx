@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer, Bluetooth, BluetoothConnected, AlertCircle, CheckCircle, X, Settings, Edit } from 'lucide-react'
+import { Search, Plus, Minus, ShoppingCart, User, CreditCard, Banknote, Trash2, Check, Receipt, Loader2, Percent, Printer, Bluetooth, BluetoothConnected, AlertCircle, CheckCircle, X, Settings, Edit, Smartphone } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 import axios from 'axios'
 import { transactionsAPI, customersAPI } from '@/lib/api'
@@ -271,7 +271,7 @@ export default function POSKasir() {
     phone: '',
     type: 'walk-in' // walk-in or registered
   })
-  const [paymentMethod, setPaymentMethod] = useState('CASH') // Only CASH payment allowed
+  const [paymentMethod, setPaymentMethod] = useState('CASH') // CASH or TRANSFER
   const [paymentAmount, setPaymentAmount] = useState('')
   const [processing, setProcessing] = useState(false)
   const [notes, setNotes] = useState('')
@@ -2098,53 +2098,112 @@ export default function POSKasir() {
 
                     {currentStep === 3 && (
                       <div className="space-y-3">
-                        <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
-                          <div className="flex items-center space-x-2 text-blue-800">
-                            <Banknote className="w-5 h-5" />
-                            <span className="font-medium">
-                              Pembayaran Tunai
-                            </span>
+                        {/* Payment Method Selection */}
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-method">Metode Pembayaran *</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant={paymentMethod === 'CASH' ? 'default' : 'outline'}
+                              className={`justify-start p-3 h-auto ${
+                                paymentMethod === 'CASH' 
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                                  : 'hover:bg-gray-50'
+                              }`}
+                              onClick={() => setPaymentMethod('CASH')}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Banknote className="w-4 h-4" />
+                                <div className="text-left">
+                                  <div className="text-sm font-medium">Tunai</div>
+                                  <div className="text-xs opacity-70">Cash Payment</div>
+                                </div>
+                              </div>
+                            </Button>
+                            
+                            <Button
+                              type="button"
+                              variant={paymentMethod === 'TRANSFER' ? 'default' : 'outline'}
+                              className={`justify-start p-3 h-auto ${
+                                paymentMethod === 'TRANSFER' 
+                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                  : 'hover:bg-gray-50'
+                              }`}
+                              onClick={() => setPaymentMethod('TRANSFER')}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Smartphone className="w-4 h-4" />
+                                <div className="text-left">
+                                  <div className="text-sm font-medium">Transfer</div>
+                                  <div className="text-xs opacity-70">Bank Transfer</div>
+                                </div>
+                              </div>
+                            </Button>
                           </div>
-                          <p className="mt-1 text-sm text-blue-600">
-                            Hanya pembayaran tunai yang diterima
-                          </p>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="payment-amount">Jumlah Bayar *</Label>
+                          <Label htmlFor="payment-amount">
+                            {paymentMethod === 'CASH' ? 'Jumlah Bayar *' : 'Jumlah Transfer *'}
+                          </Label>
                           <Input
                             id="payment-amount"
                             type="number"
-                            placeholder={`Minimum: ${formatCurrency(
-                              calculations.total
-                            )}`}
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            placeholder={
+                              paymentMethod === 'CASH' 
+                                ? `Minimum: ${formatCurrency(calculations.total)}` 
+                                : `Exact: ${formatCurrency(calculations.total)}`
+                            }
+                            value={paymentMethod === 'TRANSFER' ? calculations.total : paymentAmount}
+                            onChange={(e) => {
+                              if (paymentMethod === 'CASH') {
+                                setPaymentAmount(e.target.value);
+                              }
+                            }}
+                            readOnly={paymentMethod === 'TRANSFER'}
                             className={
-                              parseFloat(paymentAmount) < calculations.total
+                              paymentMethod === 'CASH' && parseFloat(paymentAmount) < calculations.total
                                 ? "border-red-300"
+                                : paymentMethod === 'TRANSFER'
+                                ? "bg-green-50 border-green-300"
                                 : ""
                             }
                           />
-                          {paymentAmount &&
+                          
+                          {/* Cash payment validation */}
+                          {paymentMethod === 'CASH' && paymentAmount &&
                             parseFloat(paymentAmount) < calculations.total && (
                               <p className="text-sm text-red-600">
                                 Jumlah bayar harus minimal{" "}
                                 {formatCurrency(calculations.total)}
                               </p>
                             )}
-                          {paymentAmount &&
+                          
+                          {/* Cash change calculation */}
+                          {paymentMethod === 'CASH' && paymentAmount &&
                             parseFloat(paymentAmount) >= calculations.total && (
                               <div className="text-sm">
                                 <span className="font-semibold text-green-600">
                                   Kembalian:{" "}
                                   {formatCurrency(
-                                    parseFloat(paymentAmount) -
-                                      calculations.total
+                                    parseFloat(paymentAmount) - calculations.total
                                   )}
                                 </span>
                               </div>
                             )}
+                          
+                          {/* Transfer info */}
+                          {paymentMethod === 'TRANSFER' && (
+                            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                <span className="font-medium">Transfer Bank</span>
+                              </div>
+                              <p className="text-xs mt-1">
+                                Pastikan customer sudah transfer sebelum konfirmasi
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -2174,17 +2233,18 @@ export default function POSKasir() {
                               <Button
                                 className="flex-1"
                                 disabled={
-                                  !paymentAmount ||
-                                  parseFloat(paymentAmount) <
-                                    calculations.total ||
-                                  processing
+                                  paymentMethod === 'CASH' 
+                                    ? (!paymentAmount || parseFloat(paymentAmount) < calculations.total || processing)
+                                    : processing
                                 }
                               >
                                 <Receipt className="w-4 h-4 mr-2" />
-                                {!paymentAmount ||
-                                parseFloat(paymentAmount) < calculations.total
-                                  ? "Jumlah Bayar Kurang"
-                                  : "Bayar"}
+                                {paymentMethod === 'CASH' 
+                                  ? (!paymentAmount || parseFloat(paymentAmount) < calculations.total
+                                      ? "Jumlah Bayar Kurang"
+                                      : "Bayar")
+                                  : "Konfirmasi Transfer"
+                                }
                               </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -2208,30 +2268,43 @@ export default function POSKasir() {
                                   <div className="flex justify-between">
                                     <span>Metode:</span>
                                     <span className="flex items-center space-x-1">
-                                      <Banknote className="w-4 h-4" />
-                                      <span>Tunai</span>
+                                      {paymentMethod === 'CASH' ? (
+                                        <>
+                                          <Banknote className="w-4 h-4" />
+                                          <span>Tunai</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Smartphone className="w-4 h-4" />
+                                          <span>Transfer</span>
+                                        </>
+                                      )}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
                                     <span>Bayar:</span>
                                     <span className="font-medium text-green-600">
                                       {formatCurrency(
-                                        parseFloat(paymentAmount) || 0
+                                        paymentMethod === 'TRANSFER' 
+                                          ? calculations.total 
+                                          : parseFloat(paymentAmount) || 0
                                       )}
                                     </span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span>Kembalian:</span>
-                                    <span className="font-medium text-blue-600">
-                                      {formatCurrency(
-                                        Math.max(
-                                          0,
-                                          (parseFloat(paymentAmount) || 0) -
-                                            calculations.total
-                                        )
-                                      )}
-                                    </span>
-                                  </div>
+                                  {paymentMethod === 'CASH' && (
+                                    <div className="flex justify-between">
+                                      <span>Kembalian:</span>
+                                      <span className="font-medium text-blue-600">
+                                        {formatCurrency(
+                                          Math.max(
+                                            0,
+                                            (parseFloat(paymentAmount) || 0) -
+                                              calculations.total
+                                          )
+                                        )}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                                 
                                 {/* Printer Status Warning */}
