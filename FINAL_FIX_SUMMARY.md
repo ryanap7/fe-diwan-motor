@@ -25,7 +25,7 @@
 - **Issue**: RawBT was opening Play Store instead of the app
 - **Solution**: 
   - Changed URL scheme from `rawbt://print?text=` to `rawbt://`
-  - Updated all print functions to use clean URL format: `rawbt://${encodedText}`
+  - Updated all print functions to use clean URL format: `rawbt:${encodedText}`
   - Now successfully opens RawBT app directly
 
 ### 4. Receipt "//" Prefix Removal
@@ -97,7 +97,7 @@ Kembali      : Rp 5.000      // Only for TUNAI
 ```
 
 ### RawBT Integration:
-- **URL Format**: `rawbt://${encodedText}` (clean, no parameters)
+- **URL Format**: `rawbt:${encodedText}` (clean, no parameters)
 - **Text Encoding**: URI encoded for proper transmission
 - **Error Handling**: Fallback text and comprehensive logging
 - **Mobile Responsive**: Error sections hidden on mobile

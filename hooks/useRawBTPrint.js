@@ -173,7 +173,7 @@ export const useRawBTPrint = (strukElementId = 'struk', printButtonId = 'btnPrin
       console.log('RawBT Print - Encoded text length:', encodedText.length)
       
       // Buat URL RawBT dengan format bersih tanpa parameter name
-      const rawbtUrl = `rawbt://${encodedText}`
+      const rawbtUrl = `rawbt:${encodedText}`
       
       // Buka RawBT
       console.log('Opening RawBT with clean URL format')
@@ -296,7 +296,7 @@ export const printStrukToRawBT = (strukElementId = 'struk', options = {}) => {
 
     // Encode dan buka RawBT dengan format bersih
     const encodedText = encodeURIComponent(strukText)
-    const rawbtUrl = `rawbt://${encodedText}`
+    const rawbtUrl = `rawbt:${encodedText}`
     
     console.log('Opening RawBT with clean URL format')
     console.log('Text preview:', strukText.substring(0, 100) + '...')
