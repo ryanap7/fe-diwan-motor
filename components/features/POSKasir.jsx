@@ -2334,10 +2334,9 @@ export default function POSKasir() {
                                     onClick={handlePaymentClick} 
                                     className="flex-1"
                                     disabled={
-                                      !paymentAmount ||
-                                      parseFloat(paymentAmount) <
-                                        calculations.total ||
-                                      processing
+                                      paymentMethod === 'CASH' 
+                                        ? (!paymentAmount || parseFloat(paymentAmount) < calculations.total || processing)
+                                        : processing
                                     }
                                   >
                                     {processing ? (
@@ -2346,7 +2345,7 @@ export default function POSKasir() {
                                         Memproses...
                                       </>
                                     ) : (
-                                      "Konfirmasi Pembayaran"
+                                      paymentMethod === 'CASH' ? "Konfirmasi Pembayaran" : "Konfirmasi Transfer"
                                     )}
                                   </Button>
                                 </div>
