@@ -814,10 +814,10 @@ const InventoryManagement = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
         <div className="text-center animate-pulse">
-          <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p>Memuat data inventory...</p>
+          <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-gray-400" />
+          <p className="text-sm sm:text-base">Memuat data inventory...</p>
         </div>
       </div>
     );
@@ -826,9 +826,9 @@ const InventoryManagement = () => {
   return (
     <div className="px-4 space-y-6 sm:px-6 lg:px-8">
       {/* Mobile-responsive header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Kelola Inventory</h3>
+          <h3 className="text-base font-semibold text-gray-900 sm:text-lg">Kelola Inventory</h3>
           <p className="text-sm text-muted-foreground">Manajemen stok produk per cabang</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -843,32 +843,32 @@ const InventoryManagement = () => {
         }
       }} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="overview" className="text-sm">
-            <Package className="w-4 h-4 mr-2" />
-            Overview Stok
+          <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4">
+            <Package className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Overview </span>Stok
           </TabsTrigger>
-          <TabsTrigger value="movements" className="text-sm">
-            <ArrowLeftRight className="w-4 h-4 mr-2" />
-            Riwayat Pergerakan
+          <TabsTrigger value="movements" className="text-xs sm:text-sm px-2 sm:px-4">
+            <ArrowLeftRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Riwayat </span>Pergerakan
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           {/* Filters */}
           <Card>
-            <CardContent className="pt-4 sm:pt-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <CardContent className="pt-3 sm:pt-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="relative">
-                  <Search className="absolute w-4 h-4 text-gray-400 left-3 top-3" />
+                  <Search className="absolute w-4 h-4 text-gray-400 left-3 top-2.5" />
                   <Input
                     placeholder="Cari produk..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-9 text-sm"
                   />
                 </div>
                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue placeholder="Semua Cabang" />
                   </SelectTrigger>
                   <SelectContent>
@@ -901,98 +901,191 @@ const InventoryManagement = () => {
 
               return (
                 <Card key={product.id} className={`${isLowStock ? 'border-orange-200 bg-orange-50' : ''}`}>
-                  <CardContent className="p-4 sm:pt-6">
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                      {/* Product Info */}
-                      <div className="lg:col-span-4">
-                        <div className="flex items-start gap-3">
-                          {product.images && product.images[0] && (
-                            <img
-                              src={product.images[0]}
-                              alt={product.name}
-                              className="object-cover w-12 h-12 border rounded sm:w-16 sm:h-16"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="text-xs">
-                                {product.sku}
+                  <CardContent className="p-3 sm:p-4">
+                    {/* Mobile Layout */}
+                    <div className="block lg:hidden">
+                      {/* Product Header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        {product.images && product.images[0] && (
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
+                            className="object-cover w-10 h-10 border rounded"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1 mb-1">
+                            <Badge variant="outline" className="text-xs px-1 py-0">
+                              {product.sku}
+                            </Badge>
+                            {isLowStock && (
+                              <Badge variant="destructive" className="text-xs px-1 py-0">
+                                <AlertTriangle className="w-2 h-2 mr-1" />
+                                Menipis
                               </Badge>
-                              {isLowStock && (
-                                <Badge variant="destructive" className="text-xs">
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Stok Menipis
-                                </Badge>
-                              )}
+                            )}
+                          </div>
+                          <h4 className="text-sm font-semibold line-clamp-2 mb-1">
+                            {product.name}
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            Total: <span className="font-semibold text-gray-900">{totalStock} unit</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Stock Info Mobile */}
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        {Array.isArray(branches) && branches.map((branch) => {
+                          const branchStock = getBranchStock(product, branch.id);
+                          return (
+                            <div key={branch.id} className="p-2 bg-white border rounded">
+                              <p className="text-xs font-medium text-gray-600 truncate">{branch.name}</p>
+                              <p className="text-sm font-semibold">
+                                {branchStock} unit
+                              </p>
                             </div>
-                            <h4 className="mb-1 text-sm font-semibold line-clamp-2 sm:text-base">
-                              {product.name}
-                            </h4>
-                            <p className="mb-2 text-xs text-muted-foreground sm:text-sm">
-                              Total Stok: <span className="font-semibold">{totalStock} unit</span>
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="link"
-                              className="h-auto p-0 text-sm text-blue-600 hover:text-blue-800"
-                              onClick={() => {
-                                setSelectedProduct(product);
-                                setStockDetailDialogOpen(true);
-                              }}
-                            >
-                              Lihat detail stok →
-                            </Button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Actions Mobile */}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 text-green-700 border-green-200 bg-green-50 hover:bg-green-100 h-8"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setQuickAddDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          <span className="text-xs">Tambah</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 text-red-700 border-red-200 bg-red-50 hover:bg-red-100 h-8"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setQuickReduceDialogOpen(true);
+                          }}
+                        >
+                          <Minus className="w-3 h-3 mr-1" />
+                          <span className="text-xs">Kurangi</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setStockDetailDialogOpen(true);
+                          }}
+                        >
+                          <MoreHorizontal className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Desktop Layout */}
+                    <div className="hidden lg:block">
+                      <div className="grid grid-cols-12 gap-4">
+                        {/* Product Info */}
+                        <div className="col-span-4">
+                          <div className="flex items-start gap-3">
+                            {product.images && product.images[0] && (
+                              <img
+                                src={product.images[0]}
+                                alt={product.name}
+                                className="object-cover w-16 h-16 border rounded"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {product.sku}
+                                </Badge>
+                                {isLowStock && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    <AlertTriangle className="w-3 h-3 mr-1" />
+                                    Stok Menipis
+                                  </Badge>
+                                )}
+                              </div>
+                              <h4 className="mb-1 text-base font-semibold line-clamp-2">
+                                {product.name}
+                              </h4>
+                              <p className="mb-2 text-sm text-muted-foreground">
+                                Total Stok: <span className="font-semibold">{totalStock} unit</span>
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="link"
+                                className="h-auto p-0 text-sm text-blue-600 hover:text-blue-800"
+                                onClick={() => {
+                                  setSelectedProduct(product);
+                                  setStockDetailDialogOpen(true);
+                                }}
+                              >
+                                Lihat detail stok →
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Stock per Branch */}
-                      <div className="lg:col-span-6">
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {Array.isArray(branches) && branches.map((branch) => {
-                            const branchStock = getBranchStock(product, branch.id);
-                            return (
-                              <div key={branch.id} className="p-3 bg-white border rounded">
-                                <p className="text-sm font-medium text-gray-600">{branch.name}</p>
-                                <p className="text-base font-semibold">
-                                  {branchStock} unit
-                                </p>
-                              </div>
-                            );
-                          })}
+                        {/* Stock per Branch */}
+                        <div className="col-span-6">
+                          <div className="grid grid-cols-2 gap-2">
+                            {Array.isArray(branches) && branches.map((branch) => {
+                              const branchStock = getBranchStock(product, branch.id);
+                              return (
+                                <div key={branch.id} className="p-3 bg-white border rounded">
+                                  <p className="text-sm font-medium text-gray-600">{branch.name}</p>
+                                  <p className="text-base font-semibold">
+                                    {branchStock} unit
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Actions */}
-                      <div className="lg:col-span-2">
-                        <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 sm:flex-1 lg:flex-none"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setQuickAddDialogOpen(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Tambah Stok
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-700 border-red-200 bg-red-50 hover:bg-red-100 sm:flex-1 lg:flex-none"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setQuickReduceDialogOpen(true);
-                            }}
-                          >
-                            <Minus className="w-4 h-4 mr-2" />
-                            Kurangi Stok
-                          </Button>
+                        {/* Actions */}
+                        <div className="col-span-2">
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100"
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setQuickAddDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Tambah Stok
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-700 border-red-200 bg-red-50 hover:bg-red-100"
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setQuickReduceDialogOpen(true);
+                              }}
+                            >
+                              <Minus className="w-4 h-4 mr-2" />
+                              Kurangi Stok
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1004,12 +1097,12 @@ const InventoryManagement = () => {
 
           {filteredProducts.length === 0 && (
             <Card>
-              <CardContent className="pt-12 pb-12 text-center">
-                <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-900">
+              <CardContent className="pt-8 pb-8 text-center">
+                <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                <h3 className="mb-2 text-base font-semibold text-gray-900">
                   Tidak ada produk ditemukan
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Coba ubah filter pencarian atau tambah produk baru
                 </p>
               </CardContent>
@@ -1019,48 +1112,36 @@ const InventoryManagement = () => {
           {/* Pagination */}
           {pagination.totalPages > 1 && (
             <Card>
-              <CardContent className="py-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Menampilkan {((pagination.currentPage - 1) * pagination.perPage) + 1} - {Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)} dari {pagination.totalItems} produk
+              <CardContent className="py-3">
+                <div className="flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-xs sm:text-sm text-muted-foreground">
+                    <span className="block sm:inline">
+                      {((pagination.currentPage - 1) * pagination.perPage) + 1} - {Math.min(pagination.currentPage * pagination.perPage, pagination.totalItems)}
+                    </span>
+                    <span className="hidden sm:inline"> dari </span>
+                    <span className="block sm:inline">
+                      {pagination.totalItems} produk
+                    </span>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-1 sm:gap-2">
                     {/* Previous Button */}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={loadPreviousPage}
                       disabled={!pagination.hasPrevPage || loading}
-                      className="h-8"
+                      className="h-8 px-2 sm:px-3"
                     >
-                      <ChevronLeft className="w-4 h-4" />
-                      <span className="hidden ml-1 sm:inline">Previous</span>
+                      <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden ml-1 sm:inline">Prev</span>
                     </Button>
                     
-                    {/* Page Numbers */}
+                    {/* Page Numbers - Simplified for mobile */}
                     <div className="flex items-center gap-1">
-                      {/* First Page */}
-                      {pagination.currentPage > 3 && (
-                        <>
-                          <Button
-                            variant={1 === pagination.currentPage ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => loadPage(1)}
-                            disabled={loading}
-                            className="w-8 h-8"
-                          >
-                            1
-                          </Button>
-                          {pagination.currentPage > 4 && (
-                            <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                          )}
-                        </>
-                      )}
-                      
-                      {/* Current Page and Neighbors */}
-                      {Array.from({ length: 5 }, (_, i) => {
-                        const pageNum = pagination.currentPage - 2 + i;
+                      {/* Show fewer pages on mobile */}
+                      {Array.from({ length: 3 }, (_, i) => {
+                        const pageNum = pagination.currentPage - 1 + i;
                         if (pageNum >= 1 && pageNum <= pagination.totalPages) {
                           return (
                             <Button
@@ -1069,7 +1150,7 @@ const InventoryManagement = () => {
                               size="sm"
                               onClick={() => loadPage(pageNum)}
                               disabled={loading}
-                              className="w-8 h-8"
+                              className="w-8 h-8 text-xs"
                             >
                               {pageNum}
                             </Button>
@@ -1078,10 +1159,10 @@ const InventoryManagement = () => {
                         return null;
                       }).filter(Boolean)}
                       
-                      {/* Last Page */}
-                      {pagination.currentPage < pagination.totalPages - 2 && (
-                        <>
-                          {pagination.currentPage < pagination.totalPages - 3 && (
+                      {/* Show dots and last page only on desktop */}
+                      {pagination.currentPage < pagination.totalPages - 1 && (
+                        <div className="hidden sm:flex items-center gap-1">
+                          {pagination.currentPage < pagination.totalPages - 2 && (
                             <MoreHorizontal className="w-4 h-4 text-gray-400" />
                           )}
                           <Button
@@ -1093,7 +1174,7 @@ const InventoryManagement = () => {
                           >
                             {pagination.totalPages}
                           </Button>
-                        </>
+                        </div>
                       )}
                     </div>
                     
@@ -1103,10 +1184,10 @@ const InventoryManagement = () => {
                       size="sm"
                       onClick={() => loadPage(pagination.currentPage + 1)}
                       disabled={!pagination.hasNextPage || loading}
-                      className="h-8"
+                      className="h-8 px-2 sm:px-3"
                     >
                       <span className="hidden mr-1 sm:inline">Next</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                 </div>
@@ -1201,12 +1282,12 @@ const InventoryManagement = () => {
 
         <TabsContent value="movements">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ArrowLeftRight className="w-5 h-5 text-blue-500" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <ArrowLeftRight className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                 Riwayat Pergerakan Stock
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 History pergerakan stock per cabang - {selectedBranch === 'all' ? 'Semua Cabang' : branches.find(b => b.id === selectedBranch)?.name}
               </CardDescription>
             </CardHeader>
@@ -1220,65 +1301,114 @@ const InventoryManagement = () => {
                 ) : stockMovements.length > 0 ? (
                   <div className="space-y-3">
                     {stockMovements.map((movement, index) => (
-                      <div key={movement.id || index} className="p-4 transition-shadow duration-200 bg-white border rounded-lg shadow-sm hover:shadow-md">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className={`w-3 h-3 rounded-full ${
-                                movement.type === 'IN' ? 'bg-green-500' : 
-                                movement.type === 'OUT' ? 'bg-red-500' : 'bg-blue-500'
-                              }`}></div>
-                              <h4 className="font-semibold text-gray-900">
+                      <div key={movement.id || index} className="p-3 transition-shadow duration-200 bg-white border rounded-lg shadow-sm hover:shadow-md">
+                        {/* Mobile Layout */}
+                        <div className="block sm:hidden">
+                          <div className="flex items-start gap-3 mb-2">
+                            <div className={`w-3 h-3 rounded-full mt-1 ${
+                              movement.type === 'IN' ? 'bg-green-500' : 
+                              movement.type === 'OUT' ? 'bg-red-500' : 'bg-blue-500'
+                            }`}></div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold text-gray-900 line-clamp-2">
                                 {movement.product?.name || 'Unknown Product'}
                               </h4>
-                            </div>
-                            
-                            <div className="pl-6 space-y-2">
-                              <p className="text-sm font-medium">
-                                <span className={`${
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-sm font-medium ${
                                   movement.type === 'IN' ? 'text-green-600' : 
                                   movement.type === 'OUT' ? 'text-red-600' : 'text-blue-600'
                                 }`}>
                                   {movement.type === 'IN' ? '+' : movement.type === 'OUT' ? '-' : '↔'}
                                   {Math.abs(movement.quantity)} unit
                                 </span>
-                              </p>
-                              <p className="text-sm text-gray-600">
+                                <Badge variant={
+                                  movement.type === 'IN' ? 'default' : 
+                                  movement.type === 'OUT' ? 'destructive' : 
+                                  'secondary'
+                                } className="text-xs px-2 py-0">
+                                  {movement.type === 'IN' ? 'Masuk' : 
+                                   movement.type === 'OUT' ? 'Keluar' : 
+                                   movement.type}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">
                                 {movement.branch?.name || 'Cabang'} • {movement.reason || 'Penyesuaian stok'}
                               </p>
+                              {movement.created_at && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {new Date(movement.created_at).toLocaleDateString('id-ID')}
+                                </p>
+                              )}
                               {movement.notes && (
-                                <p className="p-2 text-xs italic text-gray-500 rounded bg-gray-50">
+                                <p className="p-2 text-xs italic text-gray-500 rounded bg-gray-50 mt-2">
                                   <span className="font-medium">Catatan:</span> {movement.notes}
                                 </p>
                               )}
                             </div>
                           </div>
-                          
-                          <div className="ml-4 text-right">
-                            <Badge variant={
-                              movement.type === 'IN' ? 'default' : 
-                              movement.type === 'OUT' ? 'destructive' : 
-                              'secondary'
-                            } className="mb-2">
-                              {movement.type === 'IN' ? 'Barang Masuk' : 
-                               movement.type === 'OUT' ? 'Barang Keluar' : 
-                               movement.type}
-                            </Badge>
-                            {movement.created_at && (
-                              <p className="text-xs text-gray-500">
-                                {new Date(movement.created_at).toLocaleDateString('id-ID')}
-                              </p>
-                            )}
+                        </div>
+
+                        {/* Desktop Layout */}
+                        <div className="hidden sm:block">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className={`w-3 h-3 rounded-full ${
+                                  movement.type === 'IN' ? 'bg-green-500' : 
+                                  movement.type === 'OUT' ? 'bg-red-500' : 'bg-blue-500'
+                                }`}></div>
+                                <h4 className="font-semibold text-gray-900">
+                                  {movement.product?.name || 'Unknown Product'}
+                                </h4>
+                              </div>
+                              
+                              <div className="pl-6 space-y-2">
+                                <p className="text-sm font-medium">
+                                  <span className={`${
+                                    movement.type === 'IN' ? 'text-green-600' : 
+                                    movement.type === 'OUT' ? 'text-red-600' : 'text-blue-600'
+                                  }`}>
+                                    {movement.type === 'IN' ? '+' : movement.type === 'OUT' ? '-' : '↔'}
+                                    {Math.abs(movement.quantity)} unit
+                                  </span>
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {movement.branch?.name || 'Cabang'} • {movement.reason || 'Penyesuaian stok'}
+                                </p>
+                                {movement.notes && (
+                                  <p className="p-2 text-xs italic text-gray-500 rounded bg-gray-50">
+                                    <span className="font-medium">Catatan:</span> {movement.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="ml-4 text-right">
+                              <Badge variant={
+                                movement.type === 'IN' ? 'default' : 
+                                movement.type === 'OUT' ? 'destructive' : 
+                                'secondary'
+                              } className="mb-2">
+                                {movement.type === 'IN' ? 'Barang Masuk' : 
+                                 movement.type === 'OUT' ? 'Barang Keluar' : 
+                                 movement.type}
+                              </Badge>
+                              {movement.created_at && (
+                                <p className="text-xs text-gray-500">
+                                  {new Date(movement.created_at).toLocaleDateString('id-ID')}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="py-8 text-center">
-                    <ArrowLeftRight className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-muted-foreground">Belum ada riwayat pergerakan stock</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                  <div className="py-6 sm:py-8 text-center">
+                    <ArrowLeftRight className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-sm sm:text-base text-muted-foreground">Belum ada riwayat pergerakan stock</p>
+                    <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
                       Lakukan transfer atau penyesuaian stock untuk melihat history
                     </p>
                   </div>

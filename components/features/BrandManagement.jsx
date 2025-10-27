@@ -241,7 +241,7 @@ const BrandManagement = () => {
       {/* Mobile-responsive header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Kelola Merk</h3>
+          <h3 className="text-base font-semibold text-gray-900 sm:text-lg">Kelola Merk</h3>
           <p className="text-sm text-muted-foreground">Total: {brands.length} brand</p>
         </div>
         <Button
@@ -261,7 +261,7 @@ const BrandManagement = () => {
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Package className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="mb-2 text-lg font-semibold text-gray-900">Belum ada brand</h3>
+            <h3 className="mb-2 text-base font-semibold text-gray-900">Belum ada brand</h3>
             <p className="mb-6 text-muted-foreground">Mulai dengan menambahkan brand pertama Anda</p>
             <Button
               onClick={() => handleOpenDialog()}
@@ -288,7 +288,7 @@ const BrandManagement = () => {
                     {(brand.isActive ?? brand.is_active) ? 'Aktif' : 'Nonaktif'}
                   </Badge>
                 </div>
-                <h3 className="mb-2 text-base font-bold text-gray-900 sm:text-lg line-clamp-2">{brand.name}</h3>
+                <h3 className="mb-2 text-sm font-semibold text-gray-900 sm:text-base line-clamp-2">{brand.name}</h3>
                 {brand.description && (
                   <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{brand.description}</p>
                 )}
@@ -334,7 +334,7 @@ const BrandManagement = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md mx-4 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl sm:text-2xl">
+            <DialogTitle className="text-lg sm:text-xl">
               {editingBrand ? 'Ubah Brand' : 'Tambah Brand Baru'}
             </DialogTitle>
             <DialogDescription className="text-sm">

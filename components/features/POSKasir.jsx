@@ -1463,7 +1463,7 @@ export default function POSKasir() {
                 onClick={() => setShowCashierDialog(true)}
                 size="sm"
                 variant="ghost"
-                className="p-1 h-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                className="h-8 p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                 title="Edit Nama Kasir"
               >
                 <Settings className="w-4 h-4" />
@@ -1472,12 +1472,12 @@ export default function POSKasir() {
             <div className="flex items-center gap-2 mt-1">
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-600 font-medium">
+                <span className="text-sm font-medium text-green-600">
                   Halo, {cashierName}
                 </span>
               </div>
-              <span className="hidden sm:block text-sm text-gray-400">•</span>
-              <span className="hidden sm:block text-sm text-gray-600">HD Motopart (CASHIER)</span>
+              <span className="hidden text-sm text-gray-400 sm:block">•</span>
+              <span className="hidden text-sm text-gray-600 sm:block">HD Motopart (CASHIER)</span>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -1518,8 +1518,8 @@ export default function POSKasir() {
               </div>
               {/* Mobile RawBT Badge */}
               {/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
-                <div className="ml-2 px-2 py-1 bg-blue-100 rounded-full">
-                  <span className="text-xs text-blue-700 font-medium">RawBT Ready</span>
+                <div className="px-2 py-1 ml-2 bg-blue-100 rounded-full">
+                  <span className="text-xs font-medium text-blue-700">RawBT Ready</span>
                 </div>
               )}
               <div className="flex gap-1 ml-2 sm:ml-3">
@@ -1527,7 +1527,7 @@ export default function POSKasir() {
                   onClick={() => setShowRawBTSettings(true)}
                   size="sm"
                   variant="outline"
-                  className="p-1 w-8 h-8 text-gray-600 hover:bg-gray-50"
+                  className="w-8 h-8 p-1 text-gray-600 hover:bg-gray-50"
                   title="RawBT Settings"
                 >
                   <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1758,7 +1758,7 @@ export default function POSKasir() {
                               {product.wholesalePrice &&
                                 (product.minOrderWholesale > 0 || product.minStock > 0) &&
                                 !isOutOfStock && (
-                                  <p className="hidden text-xs font-medium text-orange-600 md:block">
+                                  <p className="text-xs font-medium text-orange-600">
                                     Grosir:{" "}
                                     {formatCurrency(product.wholesalePrice)} (≥
                                     {product.minOrderWholesale || product.minStock || 1} {product.unit || "Pcs"})
@@ -1843,7 +1843,7 @@ export default function POSKasir() {
                     )}
                   </Badge>
                 </div>
-                <div className="hidden md:flex md:justify-end gap-2 lg:justify-start">
+                <div className="hidden gap-2 md:flex md:justify-end lg:justify-start">
                   {/* Printer Connection Button with Detailed Status - Hidden on mobile */}
                   <div className="relative">
                     <Button 
@@ -2201,12 +2201,12 @@ export default function POSKasir() {
                           
                           {/* Transfer info */}
                           {paymentMethod === 'TRANSFER' && (
-                            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+                            <div className="p-2 text-sm text-green-700 border border-green-200 rounded bg-green-50">
                               <div className="flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3" />
                                 <span className="font-medium">Transfer Bank</span>
                               </div>
-                              <p className="text-xs mt-1">
+                              <p className="mt-1 text-xs">
                                 Pastikan customer sudah transfer sebelum konfirmasi
                               </p>
                             </div>
@@ -2441,7 +2441,7 @@ export default function POSKasir() {
               Edit Nama Kasir
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
+          <div className="pt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="cashierName">Nama Kasir</Label>
               <Input
@@ -2452,8 +2452,8 @@ export default function POSKasir() {
                 className="w-full"
               />
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-700 mb-1">
+            <div className="p-3 rounded-lg bg-blue-50">
+              <div className="flex items-center gap-2 mb-1 text-blue-700">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-sm font-medium">Info</span>
               </div>

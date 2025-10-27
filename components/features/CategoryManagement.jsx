@@ -337,7 +337,7 @@ const CategoryManagement = () => {
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <ShoppingBag className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="mb-2 text-lg font-semibold text-gray-900">
+            <h3 className="mb-2 text-base font-semibold text-gray-900">
               Belum ada kategori
             </h3>
             <p className="mb-6 text-muted-foreground">
@@ -375,7 +375,7 @@ const CategoryManagement = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-                          <h3 className="text-base font-bold text-gray-900 sm:text-lg">
+                          <h3 className="text-sm font-semibold text-gray-900 sm:text-base">
                             {parent.name}
                           </h3>
                           <div className="flex gap-2">
@@ -534,7 +534,7 @@ const CategoryManagement = () => {
       {/* Mobile-responsive header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">
+          <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
             Kelola Kategori Produk
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -587,7 +587,7 @@ const CategoryManagement = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="mx-4 max-w-md sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl sm:text-2xl">
+            <DialogTitle className="text-lg sm:text-xl">
               {editingCategory ? "Ubah Kategori" : "Tambah Kategori Baru"}
             </DialogTitle>
             <DialogDescription className="text-sm">
