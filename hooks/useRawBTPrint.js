@@ -14,17 +14,18 @@ const formatForThermalPrint = (text) => {
     line = line.trim()
     if (!line) return
     
-    // Format header toko - pastikan tidak ada // prefix
+    // Format header toko - center dengan perhitungan tepat
     if (line.includes('HD MOTOPART')) {
       // Remove any // prefix dari HD MOTOPART
       const cleanLine = line.replace(/^\/+/, '').replace(/\/\/HD MOTOPART/g, 'HD MOTOPART')
-      formattedLines.push('        HD MOTOPART        ')
+      formattedLines.push('          HD MOTOPART          ')
       return
     }
     
     // Format alamat
     if (line.includes('Jl Maulana hasanudin')) {
-      formattedLines.push('  Jl Maulana hasanudin RT 02 RW 02  ')
+      formattedLines.push('  Jl Maulana hasanudin RT 02 RW  ')
+      formattedLines.push('               02                ')
       formattedLines.push('================================')
       return
     }
