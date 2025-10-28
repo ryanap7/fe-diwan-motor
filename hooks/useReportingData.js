@@ -267,15 +267,39 @@ const useReportingData = () => {
   const fetchInventory = useCallback(async () => {
     try {
       const headers = getHeaders();
-      console.log('🌐 Fetching inventory from API');
-      const response = await axios.get('/api/inventory', { headers });
-      
-      const data = response.data?.data || response.data || [];
-      const processedData = Array.isArray(data) ? data : [];
-      setInventory(processedData);
-      return processedData;
+      console.log('🌐 Fetching inventory/stocks from API (/api/stocks)');
+
+      // Use stocks endpoint with proper parameters
+      const params = { page: 1, limit: 1000, include_stock: true };
+      const response = await axios.get('/api/stocks', { headers, params });
+
+      console.log('📦 Raw stocks API response:', response.data);
+
+      // Handle specific stocks API response structure: { success: true, data: { products: [...] } }
+      let stocksData = [];
+      if (response.data?.success && response.data?.data?.products) {
+        stocksData = response.data.data.products;
+        console.log('✅ Extracted products from stocks API:', stocksData.length, 'items');
+      } else {
+        console.log('⚠️ Unexpected stocks API response structure:', response.data);
+      }
+
+      // Store the complete response structure for compatibility
+      const inventoryData = {
+        success: response.data?.success || false,
+        data: {
+          products: stocksData,
+          pagination: response.data?.data?.pagination || null
+        },
+        meta: response.data?.meta || null
+      };
+
+      setInventory(inventoryData);
+      console.log('💾 Stored inventory data:', inventoryData);
+      return inventoryData;
     } catch (error) {
-      console.error('❌ Failed to fetch inventory:', error);
+      console.error('❌ Failed to fetch inventory/stocks:', error);
+      // Keep existing inventory (don't override with null) but set to empty array to be safe
       setInventory([]);
       return [];
     }

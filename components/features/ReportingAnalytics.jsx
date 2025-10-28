@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import useReportingData from '@/hooks/useReportingData';
+import useStockData from '@/hooks/useStockData';
 import axios from 'axios';
 
 const ReportingAnalytics = () => {
@@ -36,6 +37,16 @@ const ReportingAnalytics = () => {
     clearCache,
     isCached
   } = useReportingData();
+
+  // Use dedicated stock data hook for stock valuation
+  const {
+    stocksResponse,
+    stockItems,
+    loading: stockLoading,
+    error: stockError,
+    fetchStocks,
+    stockSummary
+  } = useStockData();
   
   const [activeTab, setActiveTab] = useState('sales');
   
@@ -291,6 +302,7 @@ const ReportingAnalytics = () => {
       params.endDate = filters.date_to;
     }
 
+    // Fetch main reports data
     fetchAllData(params).catch(error => {
       console.error('❌ Failed to fetch initial data:', error);
       toast({
@@ -299,7 +311,24 @@ const ReportingAnalytics = () => {
         variant: "destructive"
       });
     });
-  }, []); // Remove fetchAllData from dependency to prevent infinite loop
+
+    // Fetch stock data for stock valuation table
+    fetchStocks(params).catch(error => {
+      console.error('❌ Failed to fetch stock data:', error);
+    });
+  }, []); // Remove dependencies to prevent infinite loop
+
+  // Fetch stocks when filters change
+  useEffect(() => {
+    const params = {};
+    if (filters.branch_id && filters.branch_id !== 'all') {
+      params.branchId = filters.branch_id;
+    }
+    
+    fetchStocks(params).catch(error => {
+      console.error('❌ Failed to fetch updated stock data:', error);
+    });
+  }, [filters.branch_id, fetchStocks]);
 
   // State untuk mencegah multiple report generation
   const [isGeneratingReports, setIsGeneratingReports] = useState(false);
@@ -1543,84 +1572,101 @@ const ReportingAnalytics = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {loading && (!inventory || inventory.length === 0) && (!products || products.length === 0) ? (
-                        <TableRow>
-                          <TableCell colSpan="5" className="text-center text-muted-foreground">
-                            Memuat data stock levels...
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        (() => {
-                          // Generate stock levels from actual API data
-                          let stockData = [];
-                          
-                          if (Array.isArray(inventory) && inventory.length > 0) {
-                            // Use inventory data if available
-                            stockData = inventory.map(inv => {
-                              const product = products.find(p => p.id === (inv.productId || inv.product_id));
-                              const branch = branches.find(b => b.id === (inv.branchId || inv.branch_id));
-                              const purchasePrice = parseFloat(product?.purchasePrice || product?.purchase_price || product?.price || 0);
-                              const quantity = parseInt(inv.quantity || inv.stock || 0);
-                              
-                              return {
-                                product_name: product?.name || inv.productName || 'Unknown Product',
-                                sku: product?.sku || inv.sku || '-',
-                                branch_name: branch?.name || inv.branchName || 'Unknown Branch',
-                                quantity: quantity,
-                                purchase_price: purchasePrice,
-                                stock_value: purchasePrice * quantity
-                              };
-                            }).filter(item => item.quantity > 0); // Only show items with stock
-                          } else if (Array.isArray(products) && products.length > 0) {
-                            // Fallback: use products data with estimated stock
-                            stockData = products.map(product => {
-                              const purchasePrice = parseFloat(product.purchasePrice || product.purchase_price || product.price || 0);
-                              const quantity = parseInt(product.stock || product.quantity || product.currentStock || 0);
-                              
-                              return {
-                                product_name: product.name || 'Unknown Product',
-                                sku: product.sku || '-',
-                                branch_name: 'Default Branch',
-                                quantity: quantity,
-                                purchase_price: purchasePrice,
-                                stock_value: purchasePrice * quantity
-                              };
-                            }).filter(item => item.quantity > 0);
-                          }
-                          
-                          // Sort by stock value (highest first) and limit to 20 items
-                          stockData = stockData
-                            .sort((a, b) => b.stock_value - a.stock_value)
-                            .slice(0, 20);
-                          
-                          return stockData.length > 0 ? (
-                            stockData.map((item, index) => (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  <div>
-                                    <p className="font-medium">{item.product_name}</p>
-                                    <p className="text-xs text-muted-foreground">{item.sku}</p>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-sm">{item.branch_name}</TableCell>
-                                <TableCell className="font-semibold text-right">{item.quantity}</TableCell>
-                                <TableCell className="text-right">
-                                  {formatCurrency(item.purchase_price || 0)}
-                                </TableCell>
-                                <TableCell className="font-semibold text-right text-blue-600">
-                                  {formatCurrency(item.stock_value || 0)}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
+                      {(() => {
+                        // Use dedicated stock hook data
+                        if (stockLoading || (loading && !stockItems)) {
+                          return (
                             <TableRow>
                               <TableCell colSpan="5" className="text-center text-muted-foreground">
-                                Tidak ada data stock levels
+                                Memuat data stok...
                               </TableCell>
                             </TableRow>
                           );
-                        })()
-                      )}
+                        }
+
+                        if (stockError) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan="5" className="text-center text-red-500">
+                                Error: {stockError}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        console.log('📊 Using stock data from useStockData hook:', {
+                          stockItems: stockItems?.length || 0,
+                          stockSummary,
+                          sampleStockItem: stockItems?.[0] || null,
+                          lowStockItems: stockItems?.filter(item => item.isLowStock).length || 0
+                        });
+
+                        // Use processed stock items from hook (limit to 30 for display)
+                        const displayStockItems = stockItems?.slice(0, 30) || [];
+                        
+                        // Display stock data rows using processed data from hook
+                        if (displayStockItems && displayStockItems.length > 0) {
+                          console.log('📈 Displaying stock items:', displayStockItems.length);
+                          
+                          return displayStockItems.map((item, index) => (
+                            <TableRow key={`stock-${item.product_id}-${item.branch_code || index}`} 
+                                      className={item.isLowStock ? 'bg-orange-50' : ''}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{item.product_name || 'Unknown Product'}</p>
+                                  <p className="text-xs text-muted-foreground">SKU: {item.sku || '-'}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {item.category} - {item.brand} {item.unit && `(${item.unit})`}
+                                  </p>
+                                  {item.isLowStock && (
+                                    <span className="inline-flex items-center px-2 py-1 mt-1 text-xs font-medium text-orange-800 bg-orange-100 rounded-full">
+                                      ⚠️ Low Stock
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{item.branch_name}</p>
+                                  <p className="text-xs text-muted-foreground">{item.branch_code}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div>
+                                  <span className={item.isLowStock ? 'text-orange-600 font-medium' : ''}>
+                                    {item.quantity?.toLocaleString() || 0}
+                                  </span>
+                                  {item.minStock > 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Min: {item.minStock}
+                                    </p>
+                                  )}
+                                  {item.isLowStock && (
+                                    <p className="text-xs text-orange-600 font-medium">
+                                      ⚠️ Below minimum
+                                    </p>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency ? formatCurrency(item.purchase_price || 0) : `Rp ${(item.purchase_price || 0).toLocaleString()}`}
+                              </TableCell>
+                              <TableCell className="font-medium text-right">
+                                {formatCurrency ? formatCurrency(item.stock_value || 0) : `Rp ${(item.stock_value || 0).toLocaleString()}`}
+                              </TableCell>
+                            </TableRow>
+                          ));
+                        } else {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan="5" className="text-center text-muted-foreground">
+                                {stockItems?.length === 0 ? 'Tidak ada data stok tersedia' : 'Memuat data stok...'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        })()}
                     </TableBody>
                   </Table>
                 </CardContent>

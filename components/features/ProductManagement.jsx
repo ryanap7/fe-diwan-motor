@@ -162,10 +162,11 @@ const ProductManagement = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching products with limit: 1000');
 
       // Fetch all data with individual error handling
       const results = await Promise.allSettled([
-        productsAPI.getAll(),
+        productsAPI.getAll({ limit: 1000 }),
         categoriesAPI.getAll(),
         brandsAPI.getAll(),
         branchesAPI.getAll(),
@@ -241,6 +242,13 @@ const ProductManagement = () => {
       setCategories(extractedCategories.sort((a, b) => a.name?.localeCompare(b.name) || 0));
       setBrands(extractedBrands.sort((a, b) => a.name?.localeCompare(b.name) || 0));
       setBranches(extractedBranches);
+
+      console.log('✅ Data loaded successfully:', {
+        products: extractedProducts.length,
+        categories: extractedCategories.length,
+        brands: extractedBrands.length,
+        branches: extractedBranches.length
+      });
     } catch (error) {
       toast.error(
         "Gagal memuat data: " + (error.response?.data?.message || error.message)
