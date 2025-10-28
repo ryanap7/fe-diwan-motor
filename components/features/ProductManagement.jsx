@@ -163,7 +163,6 @@ const ProductManagement = () => {
     try {
       setLoading(true);
       console.log('🔄 Fetching products with limit: 1000');
-
       // Fetch all data with individual error handling
       const results = await Promise.allSettled([
         productsAPI.getAll({ limit: 1000 }),
