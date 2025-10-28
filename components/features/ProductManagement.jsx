@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Package,
@@ -144,6 +145,9 @@ const ProductManagement = () => {
     notes: '',
     reason: ''
   });
+
+  // Wholesale Price Form Control State
+  const [showWholesaleForm, setShowWholesaleForm] = useState(false);
 
   useEffect(() => {
     // Verifikasi token tersedia sebelum fetch data
@@ -287,12 +291,18 @@ const ProductManagement = () => {
       
       // Set autoGenerateBarcode based on existing barcode
       setAutoGenerateBarcode(!product.barcode || product.barcode === "");
+      
+      // Set showWholesaleForm based on existing wholesale price
+      setShowWholesaleForm(!!(product.wholesalePrice && product.wholesalePrice !== product.sellingPrice));
     } else {
       setEditingProduct(null);
       // Auto-generate values for new product
       
       // Default to auto-generate barcode for new products
       setAutoGenerateBarcode(true);
+      
+      // Default to hide wholesale form for new products
+      setShowWholesaleForm(false);
       
       setFormData({
         sku: generateSKU(), // Auto-generate SKU
@@ -375,6 +385,26 @@ const ProductManagement = () => {
         finalBarcode = generateBarcode();
       }
       
+      // Handle harga grosir logic berdasarkan radio button
+      let finalWholesalePrice;
+      let finalMinOrderWholesale;
+      
+      if (showWholesaleForm) {
+        // Jika form grosir diaktifkan, gunakan nilai dari form
+        finalWholesalePrice = parseFloat(formData.wholesalePrice) || 0;
+        finalMinOrderWholesale = parseInt(formData.minOrderWholesale) || 100;
+        
+        // Jika harga grosir tidak diisi padahal form diaktifkan, samakan dengan harga jual
+        if (!formData.wholesalePrice || parseFloat(formData.wholesalePrice) === 0) {
+          finalWholesalePrice = parseFloat(formData.sellingPrice) || 0;
+          finalMinOrderWholesale = 100;
+        }
+      } else {
+        // Jika form grosir tidak diaktifkan, samakan dengan harga jual dan set min order ke 100
+        finalWholesalePrice = parseFloat(formData.sellingPrice) || 0;
+        finalMinOrderWholesale = 100;
+      }
+      
       // Struktur data sesuai API3_productcustomer.md
       const dataToSend = {
         sku: formData.sku,
@@ -387,9 +417,9 @@ const ProductManagement = () => {
         compatibleModels: formData.compatibleModels,
         purchasePrice: parseFloat(formData.purchasePrice) || 0,
         sellingPrice: parseFloat(formData.sellingPrice) || 0,
-        wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
+        wholesalePrice: finalWholesalePrice,
         minStock: parseInt(formData.minStock) || 0,
-        minOrderWholesale: parseInt(formData.minOrderWholesale) || 0,
+        minOrderWholesale: finalMinOrderWholesale,
         specifications:
           typeof formData.specifications === "string"
             ? { description: formData.specifications }
@@ -931,15 +961,16 @@ const ProductManagement = () => {
                         Rp {product.sellingPrice?.toLocaleString("id-ID") || "0"}
                       </span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        Harga Grosir:
-                      </span>
-                      <span className="text-right">
-                        Rp{" "}
-                        {product.wholesalePrice?.toLocaleString("id-ID") || "0"}
-                      </span>
-                    </div>
+                    {/* Tampilkan harga grosir hanya jika berbeda dengan harga jual */}
+                    {product.wholesalePrice && 
+                     product.sellingPrice && 
+                     product.wholesalePrice !== product.sellingPrice && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">
+                          Harga grosir Rp {product.wholesalePrice?.toLocaleString("id-ID")} minimal pembelian {product.minOrderWholesale || 100}
+                        </span>
+                      </div>
+                    )}
                     {product.promo &&
                       product.promo.is_active &&
                       product.promo.discount_percentage > 0 && (
@@ -1338,6 +1369,14 @@ const ProductManagement = () => {
             </div> */}
 
             <div className="grid grid-cols-1 gap-4 p-4 rounded-lg bg-gray-50 sm:grid-cols-2">
+              <div className="mb-2 col-span-full">
+                <div className="p-3 border border-blue-200 rounded bg-blue-50">
+                  <p className="mb-1 text-sm font-medium text-blue-800">💰 Pengaturan Harga</p>
+                  <p className="text-xs text-blue-600">
+                    Gunakan radio button untuk mengatur apakah produk ini memiliki harga grosir khusus atau tidak. Jika tidak ada harga grosir, sistem akan menggunakan harga jual dengan minimum pembelian 100 unit.
+                  </p>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   Harga Beli <span className="text-red-500">*</span>
@@ -1376,64 +1415,97 @@ const ProductManagement = () => {
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Harga Grosir <span className="text-red-500">*</span>
+              {/* Radio Button untuk Harga Grosir */}
+              <div className="col-span-full">
+                <Label className="block mb-3 text-sm font-medium">
+                  Pengaturan Harga Grosir
                 </Label>
-                <Input
-                  type="number"
-                  value={formData.wholesalePrice}
-                  onChange={(e) => {
-                    handleChange("wholesalePrice", e.target.value);
-                    // Auto-set minimum 1 untuk minOrderWholesale jika harga grosir diisi
-                    if (e.target.value && !formData.minOrderWholesale) {
-                      handleChange("minOrderWholesale", "1");
+                <RadioGroup
+                  value={showWholesaleForm ? "yes" : "no"}
+                  onValueChange={(value) => {
+                    const showForm = value === "yes";
+                    setShowWholesaleForm(showForm);
+                    
+                    // Reset wholesale fields when hiding form
+                    if (!showForm) {
+                      handleChange("wholesalePrice", "");
+                      handleChange("minOrderWholesale", "");
                     }
                   }}
-                  placeholder="0"
-                  required
-                  className="h-10 text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Harga khusus untuk pembelian grosir
-                </p>
+                  className="flex space-x-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="no-wholesale" />
+                    <Label htmlFor="no-wholesale" className="text-sm">
+                      Tidak ada harga grosir
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="yes-wholesale" />
+                    <Label htmlFor="yes-wholesale" className="text-sm">
+                      Ada harga grosir
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Min Transaksi Grosir <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  type="number"
-                  value={formData.minOrderWholesale}
-                  onChange={(e) => {
-                    handleChange("minOrderWholesale", e.target.value);
-                  }}
-                  placeholder="0"
-                  required
-                  min="1"
-                  step="1"
-                  disabled={!formData.wholesalePrice}
-                  className={`h-10 text-sm ${!formData.wholesalePrice ? "bg-gray-50 opacity-50" : ""}`}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Jumlah minimum untuk mendapat harga grosir
-                </p>
-                {formData.minOrderWholesale && formData.wholesalePrice && (
-                  <div className="p-2 mt-2 border border-green-200 rounded bg-green-50">
-                    <p className="text-xs font-medium text-green-700">
-                      ✅ Pembelian {formData.minOrderWholesale}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
-                    </p>
-                    <p className="text-xs text-green-600">
-                      Hemat Rp {(parseInt(formData.sellingPrice || 0) - parseInt(formData.wholesalePrice || 0)).toLocaleString('id-ID')}/unit
+              
+              {/* Form Harga Grosir - hanya muncul jika radio button "Ada harga grosir" dipilih */}
+              {showWholesaleForm && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Harga Grosir <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.wholesalePrice}
+                      onChange={(e) => {
+                        handleChange("wholesalePrice", e.target.value);
+                        // Auto-set minimum 100 untuk minOrderWholesale jika harga grosir diisi
+                        if (e.target.value && !formData.minOrderWholesale) {
+                          handleChange("minOrderWholesale", "100");
+                        }
+                      }}
+                      placeholder="0"
+                      required
+                      className="h-10 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Harga khusus untuk pembelian grosir
                     </p>
                   </div>
-                )}
-                {!formData.wholesalePrice && (
-                  <p className="text-xs text-orange-500">
-                    ⚠️ Isi harga grosir terlebih dahulu
-                  </p>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Min Transaksi Grosir <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      value={formData.minOrderWholesale}
+                      onChange={(e) => {
+                        handleChange("minOrderWholesale", e.target.value);
+                      }}
+                      placeholder="100"
+                      min="1"
+                      step="1"
+                      required
+                      className="h-10 text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Jumlah minimum untuk mendapat harga grosir
+                    </p>
+                    {formData.wholesalePrice && (
+                      <div className="p-2 mt-2 border border-green-200 rounded bg-green-50">
+                        <p className="text-xs font-medium text-green-700">
+                          ✅ Pembelian {formData.minOrderWholesale || "100"}+ unit = Rp {parseInt(formData.wholesalePrice).toLocaleString('id-ID')}/unit
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Hemat Rp {(parseInt(formData.sellingPrice || 0) - parseInt(formData.wholesalePrice || 0)).toLocaleString('id-ID')}/unit
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Minimal Stock Section */}

@@ -1755,13 +1755,14 @@ export default function POSKasir() {
                               <p className="text-sm font-bold text-blue-600">
                                 {formatCurrency(getProductPrice(product, 1))}
                               </p>
+                              {/* Tampilkan harga grosir hanya jika berbeda dengan harga jual */}
                               {product.wholesalePrice &&
+                                product.sellingPrice &&
+                                product.wholesalePrice !== product.sellingPrice &&
                                 (product.minOrderWholesale > 0 || product.minStock > 0) &&
                                 !isOutOfStock && (
                                   <p className="text-xs font-medium text-orange-600">
-                                    Grosir:{" "}
-                                    {formatCurrency(product.wholesalePrice)} (≥
-                                    {product.minOrderWholesale || product.minStock || 1} {product.unit || "Pcs"})
+                                    Harga grosir Rp {product.wholesalePrice?.toLocaleString("id-ID")} minimal pembelian {product.minOrderWholesale || product.minStock || 100}
                                   </p>
                                 )}
                               <p
