@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,15 +14,10 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import useReportingData from '@/hooks/useReportingData';
-import axios from 'axios';
 
 const ReportingAnalytics = () => {
   // Use custom hook for all data management
   const {
-    dashboardData,
-    reportsData,
-    salesChartData,
-    inventoryAlerts,
     transactions,
     products,
     inventory,
@@ -30,9 +25,7 @@ const ReportingAnalytics = () => {
     categories,
     loading,
     error,
-    isFetching,
     fetchAllData,
-    generateReports,
     clearCache,
     isCached
   } = useReportingData();
@@ -57,317 +50,259 @@ const ReportingAnalytics = () => {
     categories: [],
     trend: 'stable'
   });
-  const [financialReport, setFinancialReport] = useState({
-    profitLoss: {
-      revenue: 0,
-      cogs: 0,
-      grossProfit: 0,
-      grossMargin: 0,
-      netProfit: 0,
-      netMargin: 0
-    },
-    cashFlow: {
-      inflow: 0,
-      outflow: 0,
-      net: 0
-    }
-  });
+  const [financialReport, setFinancialReport] = useState(null);
 
-  // Generate reports function using proper API endpoints
-  const generateLocalReports = async () => {
-    console.log('🔄 Generating reports with filters:', filters);
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
-    try {
-      // Call the generateReports function from the hook with proper parameters
-      const reportsResult = await generateReports(
-        filters.date_from,
-        filters.date_to,
-        filters.branch_id || null,
-        'all'
-      );
-
-      if (reportsResult) {
-        // Update local states with the reports data
-        if (reportsResult.sales) {
-          setSalesReport({
-            summary: reportsResult.sales.summary,
-            topProducts: reportsResult.sales.topProducts,
-            slowMovingProducts: reportsResult.sales.slowMovingProducts,
-            salesByCategory: reportsResult.sales.salesByCategory,
-            cashierPerformance: reportsResult.sales.cashierPerformance
-          });
-        }
-
-        if (reportsResult.inventory) {
-          setInventoryReport({
-            summary: reportsResult.inventory.summary,
-            alerts: reportsResult.inventory.alerts,
-            stockLevels: reportsResult.inventory.alerts || []
-          });
-        }
-
-        // For financial report, we'll use the sales summary data
-        if (reportsResult.sales?.summary) {
-          const summary = reportsResult.sales.summary;
-          const totalRevenue = summary.totalRevenue || 0;
-          const totalCOGS = (totalRevenue * 0.7) || 0; // Estimate COGS as 70% of revenue
-          const grossProfit = totalRevenue - totalCOGS;
-          const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
-          const netProfit = grossProfit; // Simplified, no other expenses calculated
-          const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-          setFinancialReport({
-            profitLoss: {
-              revenue: totalRevenue,
-              cogs: totalCOGS,
-              grossProfit,
-              grossMargin,
-              netProfit,
-              netMargin
-            },
-            cashFlow: {
-              inflow: totalRevenue,
-              outflow: totalCOGS,
-              net: totalRevenue - totalCOGS
-            }
-          });
-        }
-
-        console.log('✅ Local reports updated successfully');
-      }
-    } catch (error) {
-      console.error('❌ Error in generateLocalReports:', error);
-      
-      // Fallback to legacy method if new API fails
-      console.log('🔄 Falling back to legacy report generation...');
-      await generateLegacyReports();
-    }
-  };
-
-  // Legacy report generation as fallback
-  const generateLegacyReports = async () => {
-    // Use dashboard data as primary source
-    if (dashboardData && dashboardData.salesPerformance) {
-      console.log('📊 Using dashboard data for legacy reports');
-      await generateSalesReportFromDashboard();
-      await generateInventoryReportFromDashboard();
-      generateFinancialReportFromDashboard();
+  useEffect(() => {
+    console.log('🔄 useEffect triggered:', {
+      transactionsCount: transactions.length,
+      productsCount: products.length,
+      loading: loading,
+      filtersDateFrom: filters.date_from,
+      filtersDateTo: filters.date_to,
+      isCached: isCached
+    });
+    
+    // Generate reports if we have transactions data (products are optional for basic report)
+    if (transactions.length > 0 && !loading) {
+      console.log('✅ Generating reports with', transactions.length, 'transactions');
+      generateReports().catch(error => {
+        console.error('Error generating reports:', error);
+        toast({
+          title: "Error",
+          description: 'Failed to generate reports: ' + error.message,
+          variant: "destructive"
+        });
+      });
+    } else if (transactions.length === 0 && !loading) {
+      console.log('⚠️ No transactions available, setting empty reports');
+      // Set empty reports when no transaction data is available
+      setSalesReport(null);
+      setInventoryReport(null);  
+      setFinancialReport(null);
     } else {
-      // Fallback to transaction filtering for legacy mode
-      const filteredTransactions = transactions.filter((t, index) => {
-        try {
-          const tDate = new Date(t.transactionDate || t.transaction_date || t.createdAt || t.created_at);
-          const fromDate = new Date(filters.date_from);
-          const toDate = new Date(filters.date_to);
-          toDate.setHours(23, 59, 59, 999);
+      console.log('⏳ Still loading or no data yet');
+    }
+  }, [transactions, products, inventory, filters, loading, isCached, generateReports]);
 
-          if (isNaN(tDate.getTime())) return false;
+      
+      const [transactionsRes, productsRes, inventoryRes, branchesRes, categoriesRes] = await Promise.all([
+        axios.get('https://api.diwanmotor.com/api/transactions?limit=1000', { 
+          headers,
+          metadata: { endpoint: 'transactions' }
+        }),
+        axios.get('https://api.diwanmotor.com/api/products?limit=1000', { 
+          headers,
+          metadata: { endpoint: 'products' }
+        }),
+        axios.get('https://api.diwanmotor.com/api/reports/inventory/summary', { 
+          headers,
+          metadata: { endpoint: 'inventory' }
+        }),
+        axios.get('https://api.diwanmotor.com/api/branches?limit=1000', { 
+          headers,
+          metadata: { endpoint: 'branches' }
+        }),
+        axios.get('https://api.diwanmotor.com/api/categories?limit=1000', { 
+          headers,
+          metadata: { endpoint: 'categories' }
+        })
+      ]);
 
-          const dateMatch = tDate >= fromDate && tDate <= toDate;
-          const branchMatch = !filters.branch_id || 
-                            t.branchId === filters.branch_id || 
-                            t.branch_id === filters.branch_id ||
-                            filters.branch_id === 'all';
-          
-          return dateMatch && branchMatch;
-        } catch (error) {
-          return false;
+      // Set data with proper fallbacks - trying multiple possible response structures
+      
+      // Handle Transactions - check multiple possible structures
+      let transactionsData = [];
+      
+      console.log('📊 Transaction Response Structure:', {
+        hasSuccess: !!transactionsRes.data?.success,
+        dataType: typeof transactionsRes.data?.data,
+        isDataArray: Array.isArray(transactionsRes.data?.data),
+        hasTransactions: !!transactionsRes.data?.data?.transactions,
+        isTransactionsArray: Array.isArray(transactionsRes.data?.data?.transactions),
+        fullResponse: transactionsRes.data,
+        statusCode: transactionsRes.status
+      });
+      
+      // Try multiple parsing strategies based on different API response formats
+      if (transactionsRes.data?.success && transactionsRes.data.data) {
+        if (Array.isArray(transactionsRes.data.data.transactions)) {
+          transactionsData = transactionsRes.data.data.transactions;
+        } else if (Array.isArray(transactionsRes.data.data)) {
+          transactionsData = transactionsRes.data.data;
+        } else if (typeof transactionsRes.data.data === 'object' && transactionsRes.data.data.transactions) {
+          transactionsData = Array.isArray(transactionsRes.data.data.transactions) 
+            ? transactionsRes.data.data.transactions 
+            : [transactionsRes.data.data.transactions];
         }
-      });
-
-      // Generate Reports from filtered transactions
-      await generateSalesReport(filteredTransactions);
-      await generateInventoryReport();
-      generateFinancialReport(filteredTransactions);
-    }
-  };
-
-  // Generate sales report from dashboard data
-  const generateSalesReportFromDashboard = async () => {
-    try {
-      console.log('📊 Generating sales report from dashboard data');
+      } else if (Array.isArray(transactionsRes.data?.data)) {
+        transactionsData = transactionsRes.data.data;
+      } else if (Array.isArray(transactionsRes.data)) {
+        transactionsData = transactionsRes.data;
+      } else if (transactionsRes.data && typeof transactionsRes.data === 'object') {
+        // Handle case where response is direct object without success wrapper
+        if (Array.isArray(transactionsRes.data.transactions)) {
+          transactionsData = transactionsRes.data.transactions;
+        } else if (transactionsRes.data.data && Array.isArray(transactionsRes.data.data)) {
+          transactionsData = transactionsRes.data.data;
+        }
+      }
       
-      const { salesPerformance, topSellingProducts, recentTransactions } = dashboardData;
-
-      setSalesReport({
-        summary: {
-          totalRevenue: salesPerformance?.thisMonth?.revenue || 0,
-          totalTransactions: salesPerformance?.totalTransactions || 0,
-          totalItems: salesPerformance?.totalItemsSold || 0,
-          averageTransaction: salesPerformance?.thisMonth?.revenue && salesPerformance?.totalTransactions 
-            ? salesPerformance.thisMonth.revenue / salesPerformance.totalTransactions 
-            : 0
-        },
-        dailySales: [],
-        productSales: [],
-        categorySales: [],
-        cashierSales: [],
-        bestSelling: (topSellingProducts || []).map(p => ({
-          product_id: p.productId || p.id,
-          product_name: p.productName || p.name,
-          sku: p.productSku || p.sku,
-          quantity: p.totalQuantity || p.quantity,
-          revenue: p.totalRevenue || p.revenue
-        })),
-        slowMoving: []
-      });
-    } catch (error) {
-      console.error('❌ Error generating sales report from dashboard:', error);
-    }
-  };
-
-  // Generate inventory report from dashboard data
-  const generateInventoryReportFromDashboard = async () => {
-    try {
-      console.log('📦 Generating inventory report from dashboard data');
-      
-      const { inventoryStats, lowStockAlerts } = dashboardData;
-
-      setInventoryReport({
-        summary: {
-          totalStockValue: inventoryStats?.totalStockValue || 0,
-          totalItems: inventoryStats?.totalItems || 0,
-          lowStockCount: inventoryStats?.lowStockCount || 0,
-          uniqueProducts: inventoryStats?.uniqueProducts || 0,
-          deadStockCount: inventoryStats?.deadStockCount || 0
-        },
-        stockLevels: [],
-        lowStock: lowStockAlerts || [],
-        lowStockProducts: lowStockAlerts || [],
-        categories: [],
-        trend: 'stable'
-      });
-    } catch (error) {
-      console.error('❌ Error generating inventory report from dashboard:', error);
-    }
-  };
-
-  // Generate financial report from dashboard data
-  const generateFinancialReportFromDashboard = () => {
-    try {
-      console.log('💰 Generating financial report from dashboard data');
-      
-      const { salesPerformance } = dashboardData;
-
-      if (salesPerformance) {
-        const totalRevenue = salesPerformance.thisMonth?.revenue || 0;
-        // Simplified financial calculation
-        const totalCOGS = totalRevenue * 0.7; // Assume 70% COGS
-        const grossProfit = totalRevenue - totalCOGS;
-        const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
-
-        setFinancialReport({
-          profitLoss: {
-            revenue: totalRevenue,
-            cogs: totalCOGS,
-            grossProfit,
-            grossMargin,
-            netProfit: grossProfit,
-            netMargin: grossMargin
-          },
-          cashFlow: {
-            inflow: totalRevenue,
-            outflow: totalCOGS,
-            net: grossProfit
-          }
+      console.log('✅ Transactions parsed:', transactionsData.length, 'items');
+      if (transactionsData.length > 0) {
+        console.log('📝 Sample transaction:', transactionsData[0]);
+        console.log('📝 Transaction date fields check:', {
+          transactionDate: transactionsData[0]?.transactionDate,
+          transaction_date: transactionsData[0]?.transaction_date,
+          createdAt: transactionsData[0]?.createdAt,
+          created_at: transactionsData[0]?.created_at
         });
       }
-    } catch (error) {
-      console.error('❌ Error generating financial report from dashboard:', error);
-    }
+      setTransactions(transactionsData);
+
+      // Handle Products - check multiple possible structures
+      let productsData = [];
+
+      
+      if (productsRes.data?.success && Array.isArray(productsRes.data.data)) {
+        productsData = productsRes.data.data;
+
+      } else if (Array.isArray(productsRes.data?.data)) {
+        productsData = productsRes.data.data;
+
+      } else if (Array.isArray(productsRes.data)) {
+        productsData = productsRes.data;
+
+      }
+      
+      setProducts(productsData);
+
+      // Handle Inventory - summary object
+      let inventoryData = [];
+
+      
+      if (inventoryRes.data?.success && inventoryRes.data.data) {
+        inventoryData = [inventoryRes.data.data]; // Wrap object in array
+
+      } else if (inventoryRes.data?.data) {
+        inventoryData = Array.isArray(inventoryRes.data.data) ? inventoryRes.data.data : [inventoryRes.data.data];
+
+      }
+      
+      setInventory(inventoryData);
+
+      // Handle Branches - check multiple possible structures
+      let branchesData = [];
+      if (branchesRes.data?.success && Array.isArray(branchesRes.data.data)) {
+        branchesData = branchesRes.data.data;
+      } else if (Array.isArray(branchesRes.data?.data)) {
+        branchesData = branchesRes.data.data;
+      } else if (Array.isArray(branchesRes.data)) {
+        branchesData = branchesRes.data;
+      }
+      setBranches(branchesData);
+
+
+      // Handle Categories - check multiple possible structures
+      let categoriesData = [];
+      if (categoriesRes.data?.success && Array.isArray(categoriesRes.data.data)) {
+        categoriesData = categoriesRes.data.data;
+      } else if (Array.isArray(categoriesRes.data?.data)) {
+        categoriesData = categoriesRes.data.data;
+      } else if (Array.isArray(categoriesRes.data)) {
+        categoriesData = categoriesRes.data;
+      }
+      setCategories(categoriesData);
+
+  const generateReports = async () => {
+    console.log('🔄 Generating reports with data:', {
+      transactions: transactions.length,
+      products: products.length,
+      inventory: inventory.length,
+      filters: filters
+    });
+
+    // Filter transactions based on date range and branch
+    console.log('🔍 Filtering transactions:', {
+      totalTransactions: transactions.length,
+      dateFrom: filters.date_from,
+      dateTo: filters.date_to,
+      branchId: filters.branch_id,
+      sampleTransaction: transactions[0]
+    });
+
+    const filteredTransactions = transactions.filter((t, index) => {
+      try {
+        const tDate = new Date(t.transactionDate || t.transaction_date || t.createdAt || t.created_at);
+        const fromDate = new Date(filters.date_from);
+        const toDate = new Date(filters.date_to);
+        toDate.setHours(23, 59, 59, 999);
+
+        // Debug first few transactions
+        if (index < 3) {
+          console.log(`📅 Transaction ${index} date check:`, {
+            originalDate: t.transactionDate || t.transaction_date || t.createdAt || t.created_at,
+            parsedDate: tDate.toISOString(),
+            fromDate: fromDate.toISOString(),
+            toDate: toDate.toISOString(),
+            isValidDate: !isNaN(tDate.getTime())
+          });
+        }
+
+        // Check if date is valid
+        if (isNaN(tDate.getTime())) {
+          console.warn('Invalid transaction date:', t);
+          return false;
+        }
+
+        const dateMatch = tDate >= fromDate && tDate <= toDate;
+        const branchMatch = !filters.branch_id || 
+                          t.branchId === filters.branch_id || 
+                          t.branch_id === filters.branch_id ||
+                          filters.branch_id === 'all';
+        
+        if (index < 3) {
+          console.log(`✅ Transaction ${index} filter result:`, {
+            dateMatch,
+            branchMatch,
+            finalResult: dateMatch && branchMatch
+          });
+        }
+        
+        return dateMatch && branchMatch;
+      } catch (error) {
+        console.warn('Error filtering transaction:', t, error);
+        return false;
+      }
+    });
+
+    console.log('📊 Filter results:', {
+      originalCount: transactions.length,
+      filteredCount: filteredTransactions.length,
+      filteredOut: transactions.length - filteredTransactions.length
+    });
+
+
+
+    // Generate Reports (now with API integration)
+    await generateSalesReport(filteredTransactions);
+    await generateInventoryReport();
+    generateFinancialReport(filteredTransactions);
   };
 
-  // Effects
-  useEffect(() => {
-    console.log('🚀 Component mounted, fetching data...');
-    
-    // Build params from filters
-    const params = {};
-    if (filters.branch_id && filters.branch_id !== 'all') {
-      params.branchId = filters.branch_id;
-    }
-    if (filters.date_from && filters.date_to) {
-      params.startDate = filters.date_from;
-      params.endDate = filters.date_to;
-    }
-
-    fetchAllData(params).catch(error => {
-      console.error('❌ Failed to fetch initial data:', error);
-      toast({
-        title: "Error",
-        description: 'Failed to load initial data: ' + error.message,
-        variant: "destructive"
-      });
-    });
-  }, []); // Remove fetchAllData from dependency to prevent infinite loop
-
-  // State untuk mencegah multiple report generation
-  const [isGeneratingReports, setIsGeneratingReports] = useState(false);
-  const [lastDataHash, setLastDataHash] = useState('');
-
-  useEffect(() => {
-    // Create a hash of current data to prevent unnecessary re-generations
-    const dataHash = JSON.stringify({
-      dashboardData: !!dashboardData,
-      transactionsCount: transactions.length,
-      productsCount: products.length,
-      inventoryCount: inventory.length,
-      loading,
-      error: !!error
-    });
-
-    console.log('📊 Data state:', {
-      dashboardData: !!dashboardData,
-      transactionsCount: transactions.length,
-      productsCount: products.length,
-      inventoryCount: inventory.length,
-      loading,
-      error: !!error,
-      isGeneratingReports,
-      dataChanged: dataHash !== lastDataHash
-    });
-
-    // Only generate reports if:
-    // 1. Not currently loading or generating reports
-    // 2. Data has actually changed
-    // 3. We have some data available
-    if (!loading && !error && !isGeneratingReports && dataHash !== lastDataHash) {
-      if (dashboardData || transactions.length > 0) {
-        console.log('✅ Generating reports from data');
-        setIsGeneratingReports(true);
-        setLastDataHash(dataHash);
-        
-        generateLocalReports()
-          .catch(error => {
-            console.error('❌ Error generating reports:', error);
-            toast({
-              title: "Error",
-              description: 'Failed to generate reports: ' + error.message,
-              variant: "destructive"
-            });
-          })
-          .finally(() => {
-            setIsGeneratingReports(false);
-          });
-      } else if (!loading && !error) {
-        console.log('⚠️ No data available, setting empty reports');
-        setLastDataHash(dataHash);
-        setSalesReport(null);
-        setInventoryReport({
-          summary: { totalStockValue: 0, totalItems: 0, lowStockCount: 0, uniqueProducts: 0, deadStockCount: 0 },
-          stockLevels: [],
-          lowStock: [],
-          lowStockProducts: [],
-          categories: [],
-          trend: 'stable'
-        });  
-        setFinancialReport(null);
-      }
-    }
-  }, [dashboardData, transactions, products, inventory, loading, error, isGeneratingReports, lastDataHash]); // Minimal dependencies
-
   const generateSalesReport = async (filteredTransactions) => {
+
+    
     try {
+      const token = localStorage.getItem('token');
+      const headers = { 
+        Authorization: `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      };
+
       // Build query params based on filters
       const params = {};
       if (filters.branch_id && filters.branch_id !== 'all') {
@@ -378,29 +313,32 @@ const ReportingAnalytics = () => {
         params.endDate = filters.date_to;
       }
 
-      // Simple API calls
-      const token = localStorage.getItem('token');
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
-      const [salesSummaryRes, topProductsRes, categoryRes] = await Promise.allSettled([
-        axios.get('https://api.diwanmotor.com/api/reports/sales/summary', { params, headers }),
-        axios.get('https://api.diwanmotor.com/api/reports/sales/top-products', { params, headers }),
-        axios.get('https://api.diwanmotor.com/api/reports/sales/by-category', { params, headers })
+
+      // Fetch sales data using Postman collection endpoints
+      const [salesSummaryRes, topProductsRes, categoryRes] = await Promise.all([
+        axios.get('https://api.diwanmotor.com/api/reports/sales/summary', { headers, params }).catch(e => {
+          console.warn('Sales summary API failed:', e.message);
+          return { data: null };
+        }),
+        axios.get('https://api.diwanmotor.com/api/reports/sales/top-products', { headers, params }).catch(e => {
+          console.warn('Top products API failed:', e.message);
+          return { data: null };
+        }),
+        axios.get('https://api.diwanmotor.com/api/reports/sales/by-category', { headers, params }).catch(e => {
+          console.warn('Sales by category API failed:', e.message);
+          return { data: null };
+        })
       ]);
 
 
+
       // Use API data if available, otherwise fallback to local calculation
-      if (salesSummaryRes.status === 'fulfilled' && salesSummaryRes.value?.data?.success) {
-        const apiSalesData = salesSummaryRes.value.data.data;
-        const topProducts = topProductsRes.status === 'fulfilled' && topProductsRes.value?.data?.success 
-          ? topProductsRes.value.data.data.products || [] 
-          : [];
-        const categoryData = categoryRes.status === 'fulfilled' && categoryRes.value?.data?.success 
-          ? categoryRes.value.data.data || [] 
-          : [];
+      if (salesSummaryRes.data?.success) {
+        // Process API data
+        const apiSalesData = salesSummaryRes.data.data;
+        const topProducts = topProductsRes.data?.success ? topProductsRes.data.data.products || [] : [];
+        const categoryData = categoryRes.data?.success ? categoryRes.data.data || [] : [];
 
         setSalesReport({
           summary: {
@@ -417,9 +355,11 @@ const ReportingAnalytics = () => {
             revenue: p.totalRevenue
           })),
           categoryBreakdown: Array.isArray(categoryData) ? categoryData : [],
-          dailySales: [],
-          trend: 'stable'
+          dailySales: [], // This would need a separate API endpoint
+          trend: 'stable' // Calculate based on comparison
         });
+
+
         return;
       }
     } catch (error) {
@@ -427,7 +367,11 @@ const ReportingAnalytics = () => {
     }
 
     // Fallback: Generate from local transaction data
+
+    
+    // Basic validation
     if (!Array.isArray(filteredTransactions) || filteredTransactions.length === 0) {
+
       setSalesReport({
         summary: { totalRevenue: 0, totalTransactions: 0, totalItems: 0, averageTransaction: 0 },
         dailySales: [],
@@ -592,6 +536,8 @@ const ReportingAnalytics = () => {
   };
 
   const generateInventoryReport = async () => {
+
+    
     // Initialize with safe defaults first
     const defaultInventoryReport = {
       summary: { totalStockValue: 0, totalItems: 0, lowStockCount: 0, uniqueProducts: 0, deadStockCount: 0 },
@@ -602,112 +548,69 @@ const ReportingAnalytics = () => {
       trend: 'stable'
     };
     
+    // Set default first to prevent undefined errors
     setInventoryReport(defaultInventoryReport);
     
     try {
+      const token = localStorage.getItem('token');
+      const headers = { 
+        Authorization: `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      };
+
       // Build query params based on filters
       const params = {};
       if (filters.branch_id && filters.branch_id !== 'all') {
         params.branchId = filters.branch_id;
       }
 
-      // Simple API calls
-      const token = localStorage.getItem('token');
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
-      // Try multiple inventory endpoints to get comprehensive data
-      const [inventorySummaryRes, lowStockRes, stockValuationRes, inventoryListRes] = await Promise.allSettled([
-        axios.get('https://api.diwanmotor.com/api/reports/inventory/summary', { params, headers }),
-        axios.get('https://api.diwanmotor.com/api/reports/inventory/low-stock', { params, headers }),
-        axios.get('https://api.diwanmotor.com/api/reports/inventory/stock-valuation', { params, headers }),
-        axios.get('https://api.diwanmotor.com/api/inventory', { params: { ...params, limit: 1000 }, headers })
+
+      // Fetch inventory data using Postman collection endpoints
+      const [inventorySummaryRes, lowStockRes, stockValuationRes] = await Promise.all([
+        axios.get('https://api.diwanmotor.com/api/reports/inventory/summary', { headers, params }).catch(e => {
+          console.warn('Inventory summary API failed:', e.message);
+          return { data: null };
+        }),
+        axios.get('https://api.diwanmotor.com/api/reports/inventory/low-stock', { headers, params }).catch(e => {
+          console.warn('Low stock API failed:', e.message);
+          return { data: null };
+        }),
+        axios.get('https://api.diwanmotor.com/api/reports/inventory/stock-valuation', { headers, params }).catch(e => {
+          console.warn('Stock valuation API failed:', e.message);
+          return { data: null };
+        })
       ]);
 
-      // Process API responses to get comprehensive inventory data
-      let inventoryApiData = null;
-      let summaryData = null;
-      let lowStockData = [];
-      let stockLevels = [];
 
-      // Get summary data
-      if (inventorySummaryRes.status === 'fulfilled' && inventorySummaryRes.value?.data?.success) {
-        summaryData = inventorySummaryRes.value.data.data;
-      }
 
-      // Get low stock data
-      if (lowStockRes.status === 'fulfilled' && lowStockRes.value?.data?.success) {
-        lowStockData = lowStockRes.value.data.data || [];
-      }
-
-      // Get detailed inventory list if available
-      if (inventoryListRes.status === 'fulfilled' && inventoryListRes.value?.data?.success) {
-        inventoryApiData = inventoryListRes.value.data.data || [];
-        console.log('📦 Got inventory list from API:', inventoryApiData.length);
-        
-        // Process inventory list to create stock levels
-        stockLevels = inventoryApiData.map(inv => {
-          const product = products.find(p => p.id === (inv.productId || inv.product_id));
-          const branch = branches.find(b => b.id === (inv.branchId || inv.branch_id));
-          const purchasePrice = parseFloat(product?.purchasePrice || product?.purchase_price || inv.purchasePrice || 0);
-          const quantity = parseInt(inv.quantity || inv.stock || 0);
-          
-          return {
-            productId: inv.productId || inv.product_id,
-            product_name: product?.name || inv.productName || 'Unknown',
-            sku: product?.sku || inv.sku || '-',
-            branch_name: branch?.name || inv.branchName || 'Unknown',
-            branchId: inv.branchId || inv.branch_id,
-            quantity: quantity,
-            purchase_price: purchasePrice,
-            stock_value: purchasePrice * quantity
-          };
-        });
-      } else if (stockValuationRes.status === 'fulfilled' && stockValuationRes.value?.data?.success) {
-        // Fallback to stock valuation data
-        const valuationData = stockValuationRes.value.data.data || { stocks: [] };
-        stockLevels = Array.isArray(valuationData.stocks) ? valuationData.stocks.map(stock => ({
-          product_name: stock.product?.name || 'Unknown',
-          sku: stock.product?.sku || '-',
-          branch_name: stock.branch?.name || 'Unknown',
-          quantity: stock.quantity || 0,
-          stock_value: stock.totalValue || 0,
-          purchase_price: stock.product?.price || 0
-        })) : [];
-      }
-
-      // If we have any API data, use it
-      if (summaryData || stockLevels.length > 0) {
-        // Calculate summary if not provided
-        if (!summaryData && stockLevels.length > 0) {
-          const totalStockValue = stockLevels.reduce((sum, item) => sum + item.stock_value, 0);
-          const totalItems = stockLevels.reduce((sum, item) => sum + item.quantity, 0);
-          const lowStockCount = stockLevels.filter(item => item.quantity < 10).length;
-          
-          summaryData = {
-            totalStockValue,
-            totalItems,
-            lowStockCount,
-            uniqueProducts: stockLevels.length
-          };
-        }
+      // Use API data if available
+      if (inventorySummaryRes.data?.success) {
+        const summaryData = inventorySummaryRes.data.data;
+        const lowStockData = lowStockRes.data?.success ? lowStockRes.data.data : [];
+        const valuationData = stockValuationRes.data?.success ? stockValuationRes.data.data : { stocks: [], totalValue: 0 };
 
         setInventoryReport({
           summary: {
-            totalStockValue: summaryData?.totalStockValue || 0,
-            totalItems: summaryData?.totalItems || 0,
-            lowStockCount: summaryData?.lowStockCount || 0,
-            uniqueProducts: summaryData?.uniqueProducts || stockLevels.length,
-            deadStockCount: stockLevels.filter(item => item.quantity === 0).length
+            totalStockValue: summaryData.totalStockValue || 0,
+            totalItems: summaryData.totalItems || 0,
+            lowStockCount: summaryData.lowStockCount || 0,
+            uniqueProducts: summaryData.uniqueProducts || 0
           },
-          stockLevels: stockLevels.sort((a, b) => b.stock_value - a.stock_value),
-          lowStock: stockLevels.filter(item => item.quantity < 10),
-          lowStockProducts: Array.isArray(lowStockData) ? lowStockData : stockLevels.filter(item => item.quantity < 10),
-          categories: [],
+          stockLevels: Array.isArray(valuationData.stocks) ? valuationData.stocks.map(stock => ({
+            product_name: stock.product?.name || 'Unknown',
+            sku: stock.product?.sku || '-',
+            branch_name: stock.branch?.name || 'Unknown',
+            quantity: stock.quantity || 0,
+            stock_value: stock.totalValue || 0,
+            purchase_price: stock.product?.price || 0
+          })) : [],
+          lowStockProducts: Array.isArray(lowStockData) ? lowStockData : [],
+          categories: [], // Would need category breakdown endpoint
           trend: 'stable'
         });
+
+
         return;
       }
     } catch (error) {
@@ -717,92 +620,30 @@ const ReportingAnalytics = () => {
     // Fallback: Generate from local inventory data
 
 
-    // Process inventory data by combining with products data
-    console.log('📦 Processing inventory data locally:', {
-      inventory: inventory.length || 'not array',
-      products: products.length,
-      branches: branches.length,
-      inventoryType: typeof inventory,
-      isInventoryArray: Array.isArray(inventory),
-      sampleInventory: Array.isArray(inventory) ? inventory[0] : inventory
-    });
-
-    // If inventory is not array but we have products, generate stock levels from products
-    if (!Array.isArray(inventory) && Array.isArray(products) && products.length > 0) {
-      console.log('⚠️ Inventory is not array, generating from products data');
+    // Ensure arrays are valid before processing
+    if (!Array.isArray(inventory)) {
+      console.warn('Inventory data is not an array:', inventory);
+      // Use the inventory summary data we fetched during initial load
+      if (inventory && typeof inventory === 'object' && inventory.totalStockValue) {
+        setInventoryReport({
+          summary: {
+            totalStockValue: inventory.totalStockValue,
+            totalItems: inventory.totalItems,
+            lowStockCount: inventory.lowStockCount,
+            uniqueProducts: inventory.uniqueProducts
+          },
+          stockLevels: [],
+          lowStockProducts: [],
+          categories: [],
+          trend: 'stable'
+        });
+        return;
+      }
       
-      // Create stock levels from products data
-      const stockLevels = products.map(product => {
-        const purchasePrice = parseFloat(product.purchasePrice || product.purchase_price || product.price || 0);
-        const quantity = parseInt(product.stock || product.quantity || product.currentStock || 0);
-        
-        return {
-          productId: product.id,
-          product_id: product.id,
-          product_name: product.name || 'Unknown Product',
-          sku: product.sku || '-',
-          branch_name: 'Default Branch',
-          branchId: 'default',
-          quantity: quantity,
-          purchase_price: purchasePrice,
-          stock_value: purchasePrice * quantity,
-          categoryId: product.categoryId || product.category_id,
-          category_name: categories.find(c => c.id === (product.categoryId || product.category_id))?.name || 'Uncategorized'
-        };
-      });
-
-      console.log('📊 Generated stock levels from products:', stockLevels.length, stockLevels[0]);
-
-      // Calculate summary
-      const totalStockValue = stockLevels.reduce((sum, item) => sum + item.stock_value, 0);
-      const totalItems = stockLevels.reduce((sum, item) => sum + item.quantity, 0);
-      const lowStock = stockLevels.filter(item => item.quantity < 10);
-      const deadStock = stockLevels.filter(item => item.quantity === 0);
-
-      setInventoryReport({
-        summary: {
-          totalStockValue,
-          totalItems,
-          lowStockCount: lowStock.length,
-          uniqueProducts: stockLevels.length,
-          deadStockCount: deadStock.length
-        },
-        stockLevels: stockLevels.sort((a, b) => b.stock_value - a.stock_value),
-        lowStock,
-        lowStockProducts: lowStock,
-        categories: [],
-        trend: 'stable'
-      });
-      return;
-    }
-
-    // If inventory is summary object, use it directly
-    if (!Array.isArray(inventory) && inventory && typeof inventory === 'object' && inventory.totalStockValue !== undefined) {
-      console.log('📋 Using inventory summary object:', inventory);
-      setInventoryReport({
-        summary: {
-          totalStockValue: inventory.totalStockValue || 0,
-          totalItems: inventory.totalItems || 0,
-          lowStockCount: inventory.lowStockCount || 0,
-          uniqueProducts: inventory.uniqueProducts || 0,
-          deadStockCount: inventory.deadStockCount || 0
-        },
-        stockLevels: [],
-        lowStock: [],
-        lowStockProducts: [],
-        categories: [],
-        trend: 'stable'
-      });
-      return;
-    }
-
-    // If no usable data available
-    if (!Array.isArray(inventory) && (!Array.isArray(products) || products.length === 0)) {
-      console.log('❌ No inventory or products data available');
       setInventoryReport({
         summary: { totalStockValue: 0, totalItems: 0, lowStockCount: 0, uniqueProducts: 0, deadStockCount: 0 },
         stockLevels: [],
-        lowStock: [],
+        lowStock: [], // Add missing property
         lowStockProducts: [],
         categories: [],
         trend: 'stable'
@@ -916,43 +757,9 @@ const ReportingAnalytics = () => {
     });
   };
 
-  // Debounce filter changes to prevent excessive API calls
-  const filterTimeoutRef = useRef(null);
-  
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
-    
-    // Clear existing timeout
-    if (filterTimeoutRef.current) {
-      clearTimeout(filterTimeoutRef.current);
-    }
-    
-    // Debounce API call by 1 second
-    filterTimeoutRef.current = setTimeout(() => {
-      const params = {};
-      const newFilters = { ...filters, [field]: value };
-      
-      if (newFilters.branch_id && newFilters.branch_id !== 'all') {
-        params.branchId = newFilters.branch_id;
-      }
-      if (newFilters.date_from && newFilters.date_to) {
-        params.startDate = newFilters.date_from;
-        params.endDate = newFilters.date_to;
-      }
-      
-      console.log('🔄 Filter changed, refreshing data with params:', params);
-      fetchAllData(params);
-    }, 1000); // 1 second debounce
   };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (filterTimeoutRef.current) {
-        clearTimeout(filterTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleExport = (reportType, format) => {
     toast({
@@ -962,17 +769,11 @@ const ReportingAnalytics = () => {
   };
 
   const formatCurrency = (amount) => {
-    // Handle invalid values (NaN, null, undefined, etc.)
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || !isFinite(numericAmount)) {
-      return 'Rp 0';
-    }
-    
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0
-    }).format(numericAmount);
+    }).format(amount);
   };
 
   const formatDate = (dateString) => {
@@ -983,38 +784,12 @@ const ReportingAnalytics = () => {
     });
   };
 
-  if (loading && !dashboardData && transactions.length === 0) {
+  if (loading) {
     return (
       <Card className="border-0 shadow-lg">
         <CardContent className="pt-12 pb-12 text-center">
           <div className="w-12 h-12 mx-auto border-b-2 border-blue-600 rounded-full animate-spin"></div>
           <p className="mt-4 text-muted-foreground">Memuat data laporan...</p>
-          {isFetching && (
-            <p className="mt-2 text-xs text-muted-foreground">Mengambil data dari server...</p>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="border-0 shadow-lg">
-        <CardContent className="pt-12 pb-12 text-center">
-          <div className="w-12 h-12 mx-auto mb-4 text-red-500">
-            <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3 className="mb-2 text-lg font-semibold text-red-600">Error Loading Data</h3>
-          <p className="mb-4 text-muted-foreground">{error}</p>
-          <Button 
-            onClick={() => { clearCache(); fetchAllData(); }} 
-            variant="outline"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Try Again
-          </Button>
         </CardContent>
       </Card>
     );
@@ -1028,22 +803,9 @@ const ReportingAnalytics = () => {
           <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Reporting & Analytics</h3>
           <p className="text-xs text-muted-foreground sm:text-sm">Laporan penjualan, inventory, dan keuangan</p>
         </div>
-        <Button onClick={() => { 
-          clearCache(); 
-          const params = {};
-          if (filters.branch_id && filters.branch_id !== 'all') {
-            params.branchId = filters.branch_id;
-          }
-          if (filters.date_from && filters.date_to) {
-            params.startDate = filters.date_from;
-            params.endDate = filters.date_to;
-          }
-          fetchAllData(params); 
-        }} variant="outline" size="sm" disabled={loading || isFetching}>
-          <RefreshCw className={`w-4 h-4 sm:mr-2 ${(loading || isFetching) ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">
-            {loading || isFetching ? 'Loading...' : 'Muat Ulang'}
-          </span>
+        <Button onClick={() => { clearCache(); fetchAllData(); }} variant="outline" size="sm" disabled={loading}>
+          <RefreshCw className={`w-4 h-4 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">{loading ? 'Loading...' : 'Muat Ulang'}</span>
         </Button>
       </div>
 
@@ -1657,14 +1419,14 @@ const ReportingAnalytics = () => {
                     <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
                       <span className="font-medium">Total Pendapatan</span>
                       <span className="text-xl font-bold text-green-600">
-                        {formatCurrency(financialReport?.profitLoss?.revenue || 0)}
+                        {formatCurrency(financialReport.profitLoss.revenue)}
                       </span>
                     </div>
                     
                     <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
                       <span className="font-medium">Harga Pokok Penjualan (HPP)</span>
                       <span className="text-xl font-bold text-red-600">
-                        {formatCurrency(financialReport?.profitLoss?.cogs || 0)}
+                        {formatCurrency(financialReport.profitLoss.cogs)}
                       </span>
                     </div>
                     
@@ -1674,11 +1436,11 @@ const ReportingAnalytics = () => {
                       <div>
                         <p className="font-medium">Laba Kotor</p>
                         <p className="text-sm text-muted-foreground">
-                          Margin: {(financialReport?.profitLoss?.grossMargin || 0).toFixed(1)}%
+                          Margin: {financialReport.profitLoss.grossMargin.toFixed(1)}%
                         </p>
                       </div>
                       <span className="text-2xl font-bold text-green-600">
-                        {formatCurrency(financialReport?.profitLoss?.grossProfit || 0)}
+                        {formatCurrency(financialReport.profitLoss.grossProfit)}
                       </span>
                     </div>
                     
@@ -1686,11 +1448,11 @@ const ReportingAnalytics = () => {
                       <div>
                         <p className="font-medium">Laba Bersih</p>
                         <p className="text-sm text-muted-foreground">
-                          Margin: {(financialReport?.profitLoss?.netMargin || 0).toFixed(1)}%
+                          Margin: {financialReport.profitLoss.netMargin.toFixed(1)}%
                         </p>
                       </div>
                       <span className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(financialReport?.profitLoss?.netProfit || 0)}
+                        {formatCurrency(financialReport.profitLoss.netProfit)}
                       </span>
                     </div>
                   </div>
@@ -1722,7 +1484,7 @@ const ReportingAnalytics = () => {
                         <p className="text-sm text-muted-foreground">Dari penjualan</p>
                       </div>
                       <span className="text-xl font-bold text-green-600">
-                        {formatCurrency(financialReport?.cashFlow?.inflow || 0)}
+                        {formatCurrency(financialReport.cashFlow.inflow)}
                       </span>
                     </div>
                     
@@ -1732,7 +1494,7 @@ const ReportingAnalytics = () => {
                         <p className="text-sm text-muted-foreground">Pembelian barang</p>
                       </div>
                       <span className="text-xl font-bold text-red-600">
-                        {formatCurrency(financialReport?.cashFlow?.outflow || 0)}
+                        {formatCurrency(financialReport.cashFlow.outflow)}
                       </span>
                     </div>
                     
@@ -1744,7 +1506,7 @@ const ReportingAnalytics = () => {
                         <p className="text-sm text-muted-foreground">Kas Masuk - Kas Keluar</p>
                       </div>
                       <span className="text-3xl font-bold text-blue-600">
-                        {formatCurrency(financialReport?.cashFlow?.net || 0)}
+                        {formatCurrency(financialReport.cashFlow.net)}
                       </span>
                     </div>
                   </div>
