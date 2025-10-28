@@ -768,7 +768,23 @@ const ProductManagement = () => {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 md:space-y-6">
+        {/* Loading Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-left sm:text-left">
+            <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
+            <p className="text-xs text-blue-600 animate-pulse sm:text-sm">
+              📦 Memuat produk (limit 1000)...
+            </p>
+          </div>
+          <div className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg bg-blue-50 sm:w-auto animate-pulse">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+              Mengambil data produk...
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="border-0 shadow-md animate-pulse rounded-xl">
