@@ -352,7 +352,18 @@ const ReportingAnalytics = () => {
       } else if (!loading && !error) {
         console.log('⚠️ No data available, setting empty reports');
         setLastDataHash(dataHash);
-        setSalesReport(null);
+        setSalesReport({
+          summary: { 
+            totalRevenue: 0, 
+            totalTransactions: 0, 
+            totalItems: 0, 
+            averageTransaction: 0 
+          },
+          bestSelling: [],
+          slowMoving: [],
+          categorySales: [],
+          cashierSales: []
+        });
         setInventoryReport({
           summary: { totalStockValue: 0, totalItems: 0, lowStockCount: 0, uniqueProducts: 0, deadStockCount: 0 },
           stockLevels: [],
@@ -361,7 +372,21 @@ const ReportingAnalytics = () => {
           categories: [],
           trend: 'stable'
         });  
-        setFinancialReport(null);
+        setFinancialReport({
+          profitLoss: {
+            revenue: 0,
+            cogs: 0,
+            grossProfit: 0,
+            grossMargin: 0,
+            netProfit: 0,
+            netMargin: 0
+          },
+          cashFlow: {
+            inflow: 0,
+            outflow: 0,
+            net: 0
+          }
+        });
       }
     }
   }, [dashboardData, transactions, products, inventory, loading, error, isGeneratingReports, lastDataHash]); // Minimal dependencies
@@ -1048,7 +1073,7 @@ const ReportingAnalytics = () => {
       </div>
 
       {/* Filters */}
-      <Card className="border-0 shadow-lg">
+      <Card className="border-0 shadow-lg" style={{ display: 'none' }}>
         <CardHeader className="pb-3 sm:pb-4">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-blue-600 sm:w-5 sm:h-5" />
@@ -1147,7 +1172,7 @@ const ReportingAnalytics = () => {
                       <div>
                         <p className="text-xs text-muted-foreground sm:text-sm">Total Pendapatan</p>
                         <p className="text-lg font-bold text-green-600 sm:text-2xl">
-                          {formatCurrency(salesReport.summary.totalRevenue)}
+                          {formatCurrency(salesReport.summary.totalRevenue || 0)}
                         </p>
                       </div>
                       <DollarSign className="w-6 h-6 text-green-500 sm:w-8 sm:h-8" />
@@ -1160,7 +1185,7 @@ const ReportingAnalytics = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs text-muted-foreground sm:text-sm">Total Transaksi</p>
-                        <p className="text-lg font-bold sm:text-2xl">{salesReport.summary.totalTransactions}</p>
+                        <p className="text-lg font-bold sm:text-2xl">{salesReport.summary.totalTransactions || 0}</p>
                       </div>
                       <FileText className="w-6 h-6 text-blue-500 sm:w-8 sm:h-8" />
                     </div>
@@ -1172,7 +1197,7 @@ const ReportingAnalytics = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Total Item Terjual</p>
-                        <p className="text-2xl font-bold">{salesReport.summary.totalItems}</p>
+                        <p className="text-2xl font-bold">{salesReport.summary.totalItems || 0}</p>
                       </div>
                       <Package className="w-8 h-8 text-purple-500" />
                     </div>
@@ -1185,7 +1210,7 @@ const ReportingAnalytics = () => {
                       <div>
                         <p className="text-sm text-muted-foreground">Rata-rata Transaksi</p>
                         <p className="text-xl font-bold text-blue-600">
-                          {formatCurrency(salesReport.summary.averageTransaction)}
+                          {formatCurrency(salesReport.summary.averageTransaction || 0)}
                         </p>
                       </div>
                       <TrendingUp className="w-8 h-8 text-blue-500" />
@@ -1387,7 +1412,7 @@ const ReportingAnalytics = () => {
                               {formatCurrency(item.revenue)}
                             </TableCell>
                             <TableCell className="text-right text-blue-600">
-                              {formatCurrency(item.revenue / item.transactions)}
+                              {formatCurrency(item.transactions > 0 ? item.revenue / item.transactions : 0)}
                             </TableCell>
                           </TableRow>
                         ))
@@ -1518,31 +1543,83 @@ const ReportingAnalytics = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {inventoryReport && Array.isArray(inventoryReport.stockLevels) && inventoryReport.stockLevels.length > 0 ? (
-                        inventoryReport.stockLevels.slice(0, 10).map((item, index) => (
-                          <TableRow key={index}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.product_name}</p>
-                              <p className="text-xs text-muted-foreground">{item.sku}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{item.branch_name}</TableCell>
-                          <TableCell className="font-semibold text-right">{item.quantity}</TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(item.purchase_price)}
-                          </TableCell>
-                          <TableCell className="font-semibold text-right text-blue-600">
-                            {formatCurrency(item.stock_value)}
-                          </TableCell>
-                        </TableRow>
-                        ))
-                      ) : (
+                      {loading && (!inventory || inventory.length === 0) && (!products || products.length === 0) ? (
                         <TableRow>
                           <TableCell colSpan="5" className="text-center text-muted-foreground">
-                            Tidak ada data stock levels
+                            Memuat data stock levels...
                           </TableCell>
                         </TableRow>
+                      ) : (
+                        (() => {
+                          // Generate stock levels from actual API data
+                          let stockData = [];
+                          
+                          if (Array.isArray(inventory) && inventory.length > 0) {
+                            // Use inventory data if available
+                            stockData = inventory.map(inv => {
+                              const product = products.find(p => p.id === (inv.productId || inv.product_id));
+                              const branch = branches.find(b => b.id === (inv.branchId || inv.branch_id));
+                              const purchasePrice = parseFloat(product?.purchasePrice || product?.purchase_price || product?.price || 0);
+                              const quantity = parseInt(inv.quantity || inv.stock || 0);
+                              
+                              return {
+                                product_name: product?.name || inv.productName || 'Unknown Product',
+                                sku: product?.sku || inv.sku || '-',
+                                branch_name: branch?.name || inv.branchName || 'Unknown Branch',
+                                quantity: quantity,
+                                purchase_price: purchasePrice,
+                                stock_value: purchasePrice * quantity
+                              };
+                            }).filter(item => item.quantity > 0); // Only show items with stock
+                          } else if (Array.isArray(products) && products.length > 0) {
+                            // Fallback: use products data with estimated stock
+                            stockData = products.map(product => {
+                              const purchasePrice = parseFloat(product.purchasePrice || product.purchase_price || product.price || 0);
+                              const quantity = parseInt(product.stock || product.quantity || product.currentStock || 0);
+                              
+                              return {
+                                product_name: product.name || 'Unknown Product',
+                                sku: product.sku || '-',
+                                branch_name: 'Default Branch',
+                                quantity: quantity,
+                                purchase_price: purchasePrice,
+                                stock_value: purchasePrice * quantity
+                              };
+                            }).filter(item => item.quantity > 0);
+                          }
+                          
+                          // Sort by stock value (highest first) and limit to 20 items
+                          stockData = stockData
+                            .sort((a, b) => b.stock_value - a.stock_value)
+                            .slice(0, 20);
+                          
+                          return stockData.length > 0 ? (
+                            stockData.map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium">{item.product_name}</p>
+                                    <p className="text-xs text-muted-foreground">{item.sku}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm">{item.branch_name}</TableCell>
+                                <TableCell className="font-semibold text-right">{item.quantity}</TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.purchase_price || 0)}
+                                </TableCell>
+                                <TableCell className="font-semibold text-right text-blue-600">
+                                  {formatCurrency(item.stock_value || 0)}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan="5" className="text-center text-muted-foreground">
+                                Tidak ada data stock levels
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })()
                       )}
                     </TableBody>
                   </Table>
@@ -1564,11 +1641,11 @@ const ReportingAnalytics = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {!inventoryReport || !inventoryReport.lowStock ? (
+                  {loading && !inventoryReport ? (
                     <div className="py-8 text-center">
                       <p className="text-muted-foreground">Memuat data low stock...</p>
                     </div>
-                  ) : inventoryReport.lowStock.length === 0 ? (
+                  ) : !inventoryReport || !inventoryReport.lowStock || inventoryReport.lowStock.length === 0 ? (
                     <div className="py-8 text-center">
                       <p className="font-medium text-green-600">✓ Semua stok aman</p>
                     </div>
