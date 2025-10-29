@@ -86,8 +86,13 @@ const BrandManagement = () => {
       const brandData = extractArrayData(response);
       console.log('BrandManagement - Raw API Response:', response);
       console.log('BrandManagement - Extracted Data:', brandData);
-      
-      setBrands(brandData);
+      // Sort brands A -> Z by name before setting state
+      const safeName = (item) => (item?.name || item?.title || '').toString();
+      const sortedBrands = Array.isArray(brandData)
+        ? brandData.slice().sort((a, b) => safeName(a).localeCompare(safeName(b)))
+        : [];
+
+      setBrands(sortedBrands);
     } catch (error) {
       console.error('Failed to load brands:', error);
       console.error('Error details:', {
@@ -224,11 +229,11 @@ const BrandManagement = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5].map((i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="pt-6">
-              <div className="h-20 bg-gray-200 rounded"></div>
+            <CardContent className="pt-3">
+              <div className="bg-gray-200 rounded h-14"></div>
             </CardContent>
           </Card>
         ))}
@@ -273,57 +278,64 @@ const BrandManagement = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {brands.map((brand) => (
-            <Card
-              key={brand.id}
-              className="transition-all duration-300 transform border-0 shadow-lg hover:shadow-xl hover:-translate-y-1"
-            >
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg shadow-md bg-gradient-to-r from-blue-500 to-purple-500 sm:w-12 sm:h-12">
-                    <Package className="w-5 h-5 text-white sm:w-6 sm:h-6" />
+            <Card key={brand.id} className="border-0 rounded-md shadow-sm hover:shadow-md">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-white" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">{brand.name}</h3>
+                      {brand.description && (
+                        <p className="text-[12px] text-muted-foreground truncate hidden lg:block">{brand.description}</p>
+                      )}
+
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenDialog(brand)}
+                          className="p-1 w-9 h-9 rounded-md flex items-center justify-center"
+                          title="Ubah"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleActive(brand)}
+                          className={`${(brand.isActive ?? brand.is_active) ? 'hover:bg-orange-50' : 'hover:bg-green-50'} p-1 w-9 h-9 rounded-md flex items-center justify-center`}
+                          title={(brand.isActive ?? brand.is_active) ? 'Nonaktifkan' : 'Aktifkan'}
+                        >
+                          <Power className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setBrandToDelete(brand);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="p-1 w-9 h-9 rounded-md flex items-center justify-center text-red-600 hover:bg-red-50"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <Badge variant={(brand.isActive ?? brand.is_active) ? 'default' : 'secondary'} className={(brand.isActive ?? brand.is_active) ? 'bg-green-500 text-xs' : 'text-xs'}>
-                    {(brand.isActive ?? brand.is_active) ? 'Aktif' : 'Nonaktif'}
-                  </Badge>
-                </div>
-                <h3 className="mb-2 text-sm font-semibold text-gray-900 sm:text-base line-clamp-2">{brand.name}</h3>
-                {brand.description && (
-                  <p className="mb-4 text-sm text-muted-foreground line-clamp-2">{brand.description}</p>
-                )}
-                <div className="grid grid-cols-2 gap-2 mt-4 sm:flex">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenDialog(brand)}
-                    className="hover:bg-blue-50 sm:flex-1"
-                  >
-                    <Edit className="w-3 h-3 sm:mr-1" />
-                    <span className="hidden sm:inline">Ubah</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleActive(brand)}
-                    className={(brand.isActive ?? brand.is_active) ? 'hover:bg-orange-50 sm:flex-1' : 'hover:bg-green-50 sm:flex-1'}
-                  >
-                    <Power className="w-3 h-3 sm:mr-1" />
-                    <span className="hidden sm:inline">
-                      {(brand.isActive ?? brand.is_active) ? 'Nonaktifkan' : 'Aktifkan'}
-                    </span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setBrandToDelete(brand);
-                      setDeleteDialogOpen(true);
-                    }}
-                    className="col-span-2 hover:bg-red-50 hover:text-red-600 sm:col-span-1 sm:flex-none"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+
+                  <div className="flex-shrink-0 ml-3">
+                    <Badge variant={(brand.isActive ?? brand.is_active) ? 'default' : 'secondary'} className={(brand.isActive ?? brand.is_active) ? 'bg-green-500 text-[12px] px-3 py-1 rounded-full' : 'text-[12px] px-3 py-1 rounded-full'}>
+                      {(brand.isActive ?? brand.is_active) ? 'Aktif' : 'Nonaktif'}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>

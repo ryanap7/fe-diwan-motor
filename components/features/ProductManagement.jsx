@@ -237,9 +237,13 @@ const ProductManagement = () => {
 
 
 
-      setProducts(extractedProducts);
-      setCategories(extractedCategories.sort((a, b) => a.name?.localeCompare(b.name) || 0));
-      setBrands(extractedBrands.sort((a, b) => a.name?.localeCompare(b.name) || 0));
+  // Sort products, categories and brands alphabetically (A -> Z) by name
+  const safeName = (item) => (item?.name || item?.title || "").toString();
+  const sortAZ = (arr) => Array.isArray(arr) ? arr.slice().sort((a, b) => safeName(a).localeCompare(safeName(b))) : [];
+
+  setProducts(sortAZ(extractedProducts));
+  setCategories(sortAZ(extractedCategories));
+  setBrands(sortAZ(extractedBrands));
       setBranches(extractedBranches);
 
       console.log('✅ Data loaded successfully:', {

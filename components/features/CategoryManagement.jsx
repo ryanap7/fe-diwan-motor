@@ -96,10 +96,13 @@ const CategoryManagement = () => {
         return [];
       };
 
-      let categoryData = extractArrayData(response);
+  let categoryData = extractArrayData(response);
 
-      // Filter out soft-deleted categories (those with deletedAt not null)
-      categoryData = categoryData.filter((cat) => !cat.deletedAt);
+  // Filter out soft-deleted categories (those with deletedAt not null)
+  categoryData = (Array.isArray(categoryData) ? categoryData : []).filter((cat) => !cat.deletedAt);
+
+  // Sort parent categories A -> Z by name
+  categoryData = categoryData.slice().sort((a, b) => (a?.name || '').toString().localeCompare((b?.name || '').toString()));
 
       // Flatten the structure - convert children array to parent-child relationships
       const flattenCategories = (categories) => {
@@ -111,16 +114,18 @@ const CategoryManagement = () => {
           delete parentCategory.children; // Remove children array
           flattened.push(parentCategory);
 
-          // Add all children as separate entries with parentId
+          // Add all children as separate entries with parentId (children sorted A -> Z)
           if (category.children && category.children.length > 0) {
-            category.children.forEach((child) => {
-              if (!child.deletedAt) {
-                // Only include non-deleted children
-                flattened.push({
-                  ...child,
-                  parentId: category.id,
-                });
-              }
+            const childrenSorted = category.children
+              .filter((c) => !c.deletedAt)
+              .slice()
+              .sort((a, b) => (a?.name || '').toString().localeCompare((b?.name || '').toString()));
+
+            childrenSorted.forEach((child) => {
+              flattened.push({
+                ...child,
+                parentId: category.id,
+              });
             });
           }
         });
@@ -356,150 +361,77 @@ const CategoryManagement = () => {
     }
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {parentCategories.map((parent) => {
           const children = getChildCategories(parent.id);
           const childCount = children.length;
 
           return (
-            <Card
-              key={parent.id}
-              className="overflow-hidden border-0 shadow-lg"
-            >
-              <CardContent className="p-0">
-                <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3 sm:items-center">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-lg shadow-md bg-gradient-to-r from-blue-600 to-purple-600">
-                        <ShoppingBag className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-                          <h3 className="text-sm font-semibold text-gray-900 sm:text-base">
-                            {parent.name}
-                          </h3>
-                          <div className="flex gap-2">
-                            <Badge
-                              variant={parent.isActive ? "default" : "secondary"}
-                              className={parent.isActive ? "bg-green-500" : ""}
-                            >
-                              {parent.isActive ? "Aktif" : "Nonaktif"}
-                            </Badge>
-                            {childCount > 0 && (
-                              <Badge variant="outline" className="text-xs">
-                                {childCount} Sub
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        {parent.description && (
-                          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                            {parent.description}
-                          </p>
-                        )}
+            <Card key={parent.id} className="border-0 rounded-lg shadow-sm">
+              <CardContent className="p-3">
+                <div className="relative">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg shadow-sm bg-gradient-to-r from-blue-500 to-purple-500">
+                      <ShoppingBag className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="mb-1 text-sm font-semibold text-gray-900 line-clamp-2">{parent.name}</h3>
+                      {/* compact: hide description on small screens, show on lg */}
+                      {parent.description && (
+                        <p className="hidden text-xs text-muted-foreground line-clamp-2 lg:block">{parent.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenDialog(parent)}
+                          className="px-3 rounded-lg h-9"
+                          title="Ubah"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleActive(parent)}
+                          className={`h-9 px-3 rounded-lg ${parent.isActive ? 'hover:bg-orange-50' : 'hover:bg-green-50'}`}
+                          title={parent.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                        >
+                          <Power className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setCategoryToDelete(parent); setDeleteDialogOpen(true); }}
+                          className="px-3 text-red-600 rounded-lg h-9 hover:bg-red-50"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenDialog(parent)}
-                        className="flex-1 hover:bg-blue-50 sm:flex-none"
-                      >
-                        <Edit className="w-3 h-3 sm:mr-1" />
-                        <span className="hidden sm:inline">Ubah</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleActive(parent)}
-                        className={`flex-1 sm:flex-none ${
-                          parent.isActive
-                            ? "hover:bg-orange-50"
-                            : "hover:bg-green-50"
-                        }`}
-                      >
-                        <Power className="w-3 h-3 sm:mr-1" />
-                        <span className="hidden sm:inline">
-                          {parent.isActive ? "Nonaktifkan" : "Aktifkan"}
-                        </span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setCategoryToDelete(parent);
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="flex-1 hover:bg-red-50 hover:text-red-600 sm:flex-none"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                    <div className="absolute top-3 right-3">
+                      <Badge variant={(parent.isActive ?? parent.is_active) ? 'default' : 'secondary'} className={(parent.isActive ?? parent.is_active) ? 'bg-green-500 text-[11px] px-2 py-1 rounded' : 'text-[11px] px-2 py-1 rounded'}>
+                        {(parent.isActive ?? parent.is_active) ? 'Aktif' : 'Nonaktif'}
+                      </Badge>
                     </div>
                   </div>
                 </div>
 
                 {childCount > 0 && (
-                  <div className="p-3 space-y-2 sm:p-4">
+                  <div className="p-2 space-y-2 sm:p-2">
                     {children.map((child) => (
-                      <div
-                        key={child.id}
-                        className="flex flex-col gap-3 p-3 transition-colors rounded-lg bg-gray-50 hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex items-start gap-3 sm:items-center">
-                          <ChevronRight className="w-4 h-4 mt-1 text-gray-400 sm:mt-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                              <span className="font-medium text-gray-900 truncate">
-                                {child.name}
-                              </span>
-                              <Badge
-                                variant={
-                                  child.isActive ? "default" : "secondary"
-                                }
-                                className={
-                                  child.isActive
-                                    ? "text-xs bg-green-500 w-fit"
-                                    : "text-xs w-fit"
-                                }
-                              >
-                                {child.isActive ? "Aktif" : "Nonaktif"}
-                              </Badge>
-                            </div>
-                            {child.description && (
-                              <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                                {child.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-1 ml-7 sm:ml-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenDialog(child)}
-                            className="h-8 px-3 hover:bg-blue-50 sm:px-2"
-                          >
-                            <Edit className="w-3 h-3 sm:mr-0" />
-                            <span className="ml-1 sm:hidden">Ubah</span>
+                      <div key={child.id} className="flex items-center gap-3 p-2 transition-colors rounded-md bg-gray-50 hover:bg-gray-100">
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                        <span className="flex-1 font-medium text-gray-900 truncate">{child.name}</span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(child)} className="h-8 px-2 rounded-lg hover:bg-blue-50" title="Ubah">
+                            <Edit className="w-3 h-3" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleActive(child)}
-                            className="h-8 px-3 hover:bg-orange-50 sm:px-2"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => handleToggleActive(child)} className="h-8 px-2 rounded-lg hover:bg-orange-50" title="Toggle">
                             <Power className="w-3 h-3" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setCategoryToDelete(child);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="h-8 px-2 hover:bg-red-50 hover:text-red-600"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => { setCategoryToDelete(child); setDeleteDialogOpen(true); }} className="h-8 px-2 rounded-lg hover:bg-red-50 hover:text-red-600" title="Hapus">
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
@@ -533,7 +465,7 @@ const CategoryManagement = () => {
     <div className="px-4 space-y-6 sm:px-6 lg:px-8">
       {/* Mobile-responsive header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
+        <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
             Kelola Kategori Produk
           </h3>
@@ -585,7 +517,7 @@ const CategoryManagement = () => {
       {renderCategoryTree()}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="mx-4 max-w-md sm:mx-auto">
+        <DialogContent className="max-w-md mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">
               {editingCategory ? "Ubah Kategori" : "Tambah Kategori Baru"}
