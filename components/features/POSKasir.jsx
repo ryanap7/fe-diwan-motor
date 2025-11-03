@@ -1469,7 +1469,7 @@ export default function POSKasir() {
                 <Settings className="w-4 h-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            {/* <div className="flex items-center gap-2 mt-1">
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4 text-green-600" />
                 <span className="text-sm font-medium text-green-600">
@@ -1478,7 +1478,7 @@ export default function POSKasir() {
               </div>
               <span className="hidden text-sm text-gray-400 sm:block">•</span>
               <span className="hidden text-sm text-gray-600 sm:block">HD Motopart (CASHIER)</span>
-            </div>
+            </div> */}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             {/* Bluetooth Printer Status Indicator */}
@@ -1555,7 +1555,7 @@ export default function POSKasir() {
             </div>
             
             {/* User Info with Cashier Welcome */}
-            <div className="flex-1 sm:flex-none">
+            {/* <div className="flex-1 sm:flex-none">
               {(() => {
                 try {
                   const userData = JSON.parse(
@@ -1566,7 +1566,7 @@ export default function POSKasir() {
                   
                   return (
                     <div className={`px-3 sm:px-4 py-2 rounded-lg ${isCashier ? 'bg-green-50 border border-green-200' : 'bg-blue-50'}`}>
-                      {/* <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1">
                         {isCashier && <CreditCard className="w-3 h-3 text-green-600 sm:w-4 sm:h-4" />}
                         <p className={`text-xs sm:text-sm font-medium ${isCashier ? 'text-green-900' : 'text-blue-900'} truncate`}>
                           {window.innerWidth < 640 && isCashier ? 'Halo, ' : isCashier ? 'Selamat bekerja, ' : ''}
@@ -1574,7 +1574,7 @@ export default function POSKasir() {
                             userData.fullName ||
                             userData.username}
                         </p>
-                      </div> */}
+                      </div>
                       <p className={`text-xs ${isCashier ? 'text-green-600' : 'text-blue-600'} truncate`}>
                         {userData.branch?.name} ({userData.role})
                         {isCashier && window.innerWidth >= 640 && ' - Kasir'}
@@ -1594,7 +1594,7 @@ export default function POSKasir() {
                   );
                 }
               })()}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
