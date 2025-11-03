@@ -1469,7 +1469,7 @@ export default function POSKasir() {
                 <Settings className="w-4 h-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            {/* <div className="flex items-center gap-2 mt-1">
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4 text-green-600" />
                 <span className="text-sm font-medium text-green-600">
@@ -1478,7 +1478,7 @@ export default function POSKasir() {
               </div>
               <span className="hidden text-sm text-gray-400 sm:block">•</span>
               <span className="hidden text-sm text-gray-600 sm:block">HD Motopart (CASHIER)</span>
-            </div>
+            </div> */}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             {/* Bluetooth Printer Status Indicator */}
