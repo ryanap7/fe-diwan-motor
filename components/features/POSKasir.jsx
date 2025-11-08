@@ -37,10 +37,42 @@ const getProductStock = (product) => {
 // API functions untuk POS - mengambil produk dari endpoint transactions/products/pos
 const fetchProducts = async (params = { limit: 1000 }) => {
   try {
-    console.log('POS - Fetching products from POS endpoint...');
+    console.log('POS - Fetching products with server-side filters:', params);
+    
+    // Build server-side filter parameters
+    const serverParams = {
+      limit: params.limit || 1000,
+      page: params.page || 1,
+      isActive: params.isActive !== false, // Default true
+      hasStock: params.hasStock !== false, // Default true  
+      sortBy: params.sortBy || 'name',
+      sortOrder: params.sortOrder || 'asc'
+    };
+
+    // Only add parameters if they have valid values (avoid empty strings for UUIDs)
+    if (params.search && params.search.trim() !== '') {
+      serverParams.search = params.search.trim();
+    }
+    
+    if (params.categoryId && params.categoryId !== 'all') {
+      serverParams.categoryId = params.categoryId;
+    }
+    
+    if (params.storageLocation && params.storageLocation !== 'all') {
+      serverParams.storageLocation = params.storageLocation;
+    }
+    
+    // Clean empty parameters
+    Object.keys(serverParams).forEach(key => {
+      if (serverParams[key] === '' || serverParams[key] === null || serverParams[key] === undefined) {
+        delete serverParams[key];
+      }
+    });
+    
+    console.log('Server filter params:', serverParams);
     
     // Ambil data produk dari endpoint POS yang sudah termasuk stock dan harga
-    const posResponse = await transactionsAPI.getProductsForPOS(params);
+    const posResponse = await transactionsAPI.getProductsForPOS(serverParams);
     console.log('POS Products API Response:', posResponse);
     
     // Handle API response structure
@@ -265,6 +297,7 @@ export default function POSKasir() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStorageLocation, setSelectedStorageLocation] = useState("all");
+  const [filterLoading, setFilterLoading] = useState(false); // Loading state for server-side filtering
   const [cartItems, setCartItems] = useState([]);
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
@@ -300,6 +333,11 @@ export default function POSKasir() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Server-side filtering states
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(50); // Products per page for better performance
 
   const getProductPrice = (product, quantity = 1) => {
     // Auto wholesale: if quantity >= minOrderWholesale, use wholesalePrice
@@ -345,6 +383,50 @@ export default function POSKasir() {
       setCashierName('Admin');
     }
   }, []);
+
+  // Debounced server-side filtering effect
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (!loading) { // Only apply filters after initial load
+        applyServerSideFilters();
+      }
+    }, 500); // 500ms debounce untuk search
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, selectedCategory, selectedStorageLocation, currentPage]);
+
+  // Apply server-side filters
+  const applyServerSideFilters = async () => {
+    try {
+      setFilterLoading(true);
+      console.log('Applying server-side filters...');
+      
+      const filterParams = {
+        limit: pageSize,
+        page: currentPage,
+        search: searchTerm,
+        categoryId: selectedCategory,
+        storageLocation: selectedStorageLocation,
+        sortBy: 'name',
+        sortOrder: 'asc'
+      };
+      
+      const filteredProducts = await fetchProducts(filterParams);
+      setProducts(filteredProducts);
+      
+      console.log(`Server-side filtered: ${filteredProducts.length} products loaded`);
+      
+    } catch (error) {
+      console.error('Error applying server-side filters:', error);
+      toast({
+        title: "Filter Error",
+        description: "Gagal menerapkan filter. " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setFilterLoading(false);
+    }
+  };
 
   // Load initial data with optimization for cashier role
   useEffect(() => {
@@ -646,60 +728,18 @@ export default function POSKasir() {
     }
   };
 
-  // Filter products
+  // Server-side filtering replaces client-side filtering
+  // Products are already filtered by server, so we use them directly
   const filteredProducts = useMemo(() => {
     if (!Array.isArray(products)) {
       console.log("Products is not array, returning empty");
       return [];
     }
-
-    const filtered = products.filter((product) => {
-      const searchFields = [
-        product.name || "",
-        product.sku || "",
-        product.compatibleModels || "",
-        product.brand?.name || product.brand || "",
-        product.storageLocation || "",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      const matchesSearch = searchFields.includes(searchTerm.toLowerCase());
-      const matchesCategory =
-        selectedCategory === "all" ||
-        product.category?.id === selectedCategory ||
-        product.category?.name === selectedCategory;
-
-      const matchesStorageLocation =
-        selectedStorageLocation === "all" ||
-        product.storageLocation === selectedStorageLocation;
-
-      // Check if product has stock (assume stock comes from inventory)
-      const productStock = getProductStock(product);
-      const hasStock = productStock > 0; // Remove fallback untuk debugging stock issues
-      
-      console.log(`Product ${product.name}: stock=${productStock}, hasStock=${hasStock}`);
-      
-      const result = matchesSearch && matchesCategory && matchesStorageLocation && product.isActive !== false
-      
-      console.log(`Product ${product.name}: search=${matchesSearch}, category=${matchesCategory}, hasStock=${hasStock}, result=${result}`);
-      console.log(`  - Prices: selling=${product.sellingPrice}, purchase=${product.purchasePrice}, wholesale=${product.wholesalePrice}`);
-      console.log(`  - Stock: ${productStock}`);
-      
-      if (!result) {
-        console.log("Product filtered out:", product.name, {
-          matchesSearch,
-          matchesCategory,
-          hasStock,
-          isActive: product.isActive,
-        });
-      }
-
-      return result;
-    });
-
-    return filtered;
-  }, [products, searchTerm, selectedCategory, selectedStorageLocation]);
+    
+    // Server sudah melakukan filtering, jadi kita hanya perlu return products
+    console.log(`Server-filtered products: ${products.length} items`);
+    return products;
+  }, [products]);
 
   // Available category options for filter
   const categoryOptions = useMemo(() => {
@@ -1704,7 +1744,15 @@ export default function POSKasir() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-96">
-                <div className="flex flex-col gap-2 md:grid md:grid-cols-2 md:gap-4">
+                {filterLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm text-gray-600">Memuat produk...</span>
+                    </div>
+                  </div>
+                )}
+                <div className={`flex flex-col gap-2 md:grid md:grid-cols-2 md:gap-4 ${filterLoading ? 'opacity-50' : ''}`}>
                   {filteredProducts.map(product => {
                     const availableStock = getProductStock(product);
                     const isOutOfStock = availableStock <= 0;
@@ -1794,11 +1842,43 @@ export default function POSKasir() {
                     );
                   })}
                 </div>
-                {filteredProducts.length === 0 && (
+                {filteredProducts.length === 0 && !filterLoading && (
                   <div className="py-8 text-center">
                     <p className="text-gray-500">
                       Tidak ada produk yang ditemukan
                     </p>
+                    {searchTerm && (
+                      <p className="mt-2 text-sm text-gray-400">
+                        Coba kata kunci lain atau ubah filter
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Pagination Controls */}
+                {totalProducts > pageSize && (
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                      Menampilkan {Math.min((currentPage - 1) * pageSize + 1, totalProducts)} - {Math.min(currentPage * pageSize, totalProducts)} dari {totalProducts} produk
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1 || filterLoading}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        disabled={currentPage * pageSize >= totalProducts || filterLoading}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 )}
               </ScrollArea>

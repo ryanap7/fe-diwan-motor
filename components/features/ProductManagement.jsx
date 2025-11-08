@@ -98,6 +98,29 @@ const ProductManagement = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterBrand, setFilterBrand] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  
+  // Server-side pagination states
+  const [totalServerProducts, setTotalServerProducts] = useState(0);
+  const [serverLoading, setServerLoading] = useState(false);
+  const [isServerPagination, setIsServerPagination] = useState(false);
+  
+  // Cache management states
+  const [cache, setCache] = useState({
+    products: { data: [], timestamp: null, filters: {} },
+    categories: { data: [], timestamp: null },
+    brands: { data: [], timestamp: null },
+    branches: { data: [], timestamp: null }
+  });
+  const [cacheExpiry] = useState(5 * 60 * 1000); // 5 minutes cache
+  const [lastModified, setLastModified] = useState({
+    products: null,
+    categories: null,
+    brands: null
+  });
   const [promoDialogOpen, setPromoDialogOpen] = useState(false);
   const [selectedProductForPromo, setSelectedProductForPromo] = useState(null);
   const [promoFormData, setPromoFormData] = useState({
@@ -149,6 +172,68 @@ const ProductManagement = () => {
   // Wholesale Price Form Control State
   const [showWholesaleForm, setShowWholesaleForm] = useState(false);
 
+  // Cache utility functions
+  const isCacheValid = (cacheItem) => {
+    if (!cacheItem.timestamp) return false;
+    return Date.now() - cacheItem.timestamp < cacheExpiry;
+  };
+
+  const getCacheKey = (type, filters = {}) => {
+    if (type === 'products') {
+      return JSON.stringify({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchQuery,
+        category: filterCategory,
+        brand: filterBrand,
+        stock: filterStock,
+        isServerPagination
+      });
+    }
+    return type;
+  };
+
+  const updateCache = (type, data, filters = {}) => {
+    setCache(prev => ({
+      ...prev,
+      [type]: {
+        data: Array.isArray(data) ? data : [],
+        timestamp: Date.now(),
+        filters: type === 'products' ? filters : prev[type].filters
+      }
+    }));
+  };
+
+  const getCachedData = (type, filters = {}) => {
+    const cacheItem = cache[type];
+    if (!isCacheValid(cacheItem)) return null;
+    
+    if (type === 'products') {
+      const cacheKey = getCacheKey(type, filters);
+      const currentFilters = getCacheKey(type, cacheItem.filters);
+      return cacheKey === currentFilters ? cacheItem.data : null;
+    }
+    
+    return cacheItem.data;
+  };
+
+  const invalidateCache = (type = null) => {
+    if (type) {
+      setCache(prev => ({
+        ...prev,
+        [type]: { data: [], timestamp: null, filters: {} }
+      }));
+    } else {
+      // Invalidate all cache
+      setCache({
+        products: { data: [], timestamp: null, filters: {} },
+        categories: { data: [], timestamp: null },
+        brands: { data: [], timestamp: null },
+        branches: { data: [], timestamp: null }
+      });
+    }
+  };
+
   useEffect(() => {
     // Verifikasi token tersedia sebelum fetch data
     const token = localStorage.getItem('token');
@@ -159,41 +244,200 @@ const ProductManagement = () => {
     fetchData();
   }, []);
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterCategory, filterBrand, filterStock]);
+
+  // Debounced server-side filtering effect (for search)
+  useEffect(() => {
+    if (!isServerPagination) return;
+    
+    const debounceTimer = setTimeout(() => {
+      fetchServerData();
+    }, searchQuery ? 500 : 0); // 500ms debounce for search, immediate for other filters
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery, filterCategory, filterBrand, filterStock, isServerPagination]);
+
+  // Server-side pagination effect - fetch when page changes (no debounce needed)
+  useEffect(() => {
+    if (isServerPagination && currentPage > 1) {
+      fetchServerData();
+    }
+  }, [currentPage, isServerPagination]);
+
+  // Server-side pagination fetch
+  const fetchServerData = async () => {
+    try {
+      setServerLoading(true);
+      console.log('🔄 Fetching server-side paginated products...');
+      
+      // Build server parameters for pagination and filtering
+      const serverParams = {
+        page: currentPage,
+        limit: itemsPerPage,
+        sortBy: 'name',
+        sortOrder: 'asc'
+      };
+
+      // Only add parameters if they have valid values
+      if (searchQuery && searchQuery.trim() !== '') {
+        serverParams.search = searchQuery.trim();
+      }
+      
+      if (filterCategory && filterCategory !== 'all') {
+        serverParams.categoryId = filterCategory;
+      }
+      
+      if (filterBrand && filterBrand !== 'all') {
+        serverParams.brandId = filterBrand;
+      }
+      
+      if (filterStock && filterStock !== 'all') {
+        serverParams.stockFilter = filterStock;
+      }
+
+      console.log('Server pagination params:', serverParams);
+
+      // Check cache first
+      const cacheKey = getCacheKey(serverParams, 'products');
+      const cachedData = getCachedData('products', cacheKey);
+      
+      if (cachedData && Array.isArray(cachedData.products)) {
+        console.log('📦 Using cached server-side products data');
+        setProducts(cachedData.products);
+        setTotalServerProducts(cachedData.total || 0);
+        setServerLoading(false);
+        return;
+      }
+
+      // Fetch products with server-side pagination
+      const response = await productsAPI.getAll(serverParams);
+      
+      // Extract products and pagination info from response
+      let productsData = [];
+      let totalCount = 0;
+      
+      if (response?.data?.products && Array.isArray(response.data.products)) {
+        productsData = response.data.products;
+        totalCount = response.data.pagination?.total || response.data.total || productsData.length;
+      } else if (Array.isArray(response?.data)) {
+        productsData = response.data;
+        totalCount = response.pagination?.total || response.total || productsData.length;
+      } else if (Array.isArray(response)) {
+        productsData = response;
+        totalCount = productsData.length;
+      } else {
+        // Fallback untuk response yang tidak dikenali
+        console.warn('Unexpected response format:', response);
+        productsData = [];
+        totalCount = 0;
+      }
+
+      console.log(`Server pagination: ${productsData?.length || 0} products, total: ${totalCount}`);
+      
+      // Cache the response data only if we have valid products data
+      if (Array.isArray(productsData)) {
+        updateCache('products', cacheKey, {
+          products: productsData,
+          total: totalCount
+        });
+      }
+      
+      setProducts(Array.isArray(productsData) ? productsData : []);
+      setTotalServerProducts(totalCount);
+      
+    } catch (error) {
+      console.error('Error fetching server-side paginated data:', error);
+      toast.error('Gagal memuat data produk: ' + error.message);
+      
+      // Fallback to client-side pagination
+      console.log('Falling back to client-side pagination...');
+      setIsServerPagination(false);
+      fetchData();
+    } finally {
+      setServerLoading(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching products with limit: 1000');
+      console.log('🔄 Fetching products with limit: 1000 (client-side)');
+      
+      // Check cache for each data type
+      const cachedCategories = getCachedData('categories');
+      const cachedBrands = getCachedData('brands');
+      const cachedBranches = getCachedData('branches');
+      
+      // Prepare API calls only for non-cached data
+      const apiCalls = [];
+      const apiTypes = [];
+      
+      // Always fetch products for client-side (no cache for large product lists)
+      apiCalls.push(productsAPI.getAll({ limit: 1000 }));
+      apiTypes.push('products');
+      
+      if (!cachedCategories) {
+        apiCalls.push(categoriesAPI.getAll());
+        apiTypes.push('categories');
+      } else {
+        console.log('📦 Using cached categories data');
+      }
+      
+      if (!cachedBrands) {
+        apiCalls.push(brandsAPI.getAll());
+        apiTypes.push('brands');
+      } else {
+        console.log('📦 Using cached brands data');
+      }
+      
+      if (!cachedBranches) {
+        apiCalls.push(branchesAPI.getAll());
+        apiTypes.push('branches');
+      } else {
+        console.log('📦 Using cached branches data');
+      }
+      
       // Fetch all data with individual error handling
-      const results = await Promise.allSettled([
-        productsAPI.getAll({ limit: 1000 }),
-        categoriesAPI.getAll(),
-        brandsAPI.getAll(),
-        branchesAPI.getAll(),
-      ]);
+      const results = await Promise.allSettled(apiCalls);
 
-      const [productsRes, categoriesRes, brandsRes, branchesRes] = results;
-
-      // Handle individual API failures
-      if (productsRes.status === 'rejected') {
-        console.error("Products API failed:", productsRes.reason);
+      // Map results back to original data types
+      let productsData = null;
+      let categoriesData = cachedCategories;
+      let brandsData = cachedBrands;
+      let branchesData = cachedBranches;
+      
+      let resultIndex = 0;
+      for (let i = 0; i < apiTypes.length; i++) {
+        const apiType = apiTypes[i];
+        const result = results[resultIndex];
+        
+        if (result.status === 'rejected') {
+          console.error(`${apiType} API failed:`, result.reason);
+          if (apiType === 'categories') {
+            toast.error("Gagal memuat data kategori: " + result.reason.message);
+          } else if (apiType === 'brands') {
+            toast.error("Gagal memuat data brand: " + result.reason.message);
+          }
+        } else {
+          // Extract successful responses
+          if (apiType === 'products') {
+            productsData = result.value;
+          } else if (apiType === 'categories') {
+            categoriesData = result.value;
+            updateCache('categories', null, categoriesData);
+          } else if (apiType === 'brands') {
+            brandsData = result.value;
+            updateCache('brands', null, brandsData);
+          } else if (apiType === 'branches') {
+            branchesData = result.value;
+            updateCache('branches', null, branchesData);
+          }
+        }
+        resultIndex++;
       }
-      if (categoriesRes.status === 'rejected') {
-        console.error("Categories API failed:", categoriesRes.reason);
-        toast.error("Gagal memuat data kategori: " + categoriesRes.reason.message);
-      }
-      if (brandsRes.status === 'rejected') {
-        console.error("Brands API failed:", brandsRes.reason);
-        toast.error("Gagal memuat data brand: " + brandsRes.reason.message);
-      }
-      if (branchesRes.status === 'rejected') {
-        console.error("Branches API failed:", branchesRes.reason);
-      }
-
-      // Extract successful responses
-      const productsData = productsRes.status === 'fulfilled' ? productsRes.value : null;
-      const categoriesData = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null;
-      const brandsData = brandsRes.status === 'fulfilled' ? brandsRes.value : null;
-      const branchesData = branchesRes.status === 'fulfilled' ? branchesRes.value : null;
 
       // Handle API response - correct structure based on API testing
 
@@ -252,6 +496,20 @@ const ProductManagement = () => {
         brands: extractedBrands.length,
         branches: extractedBranches.length
       });
+
+      // Check if we need server-side pagination (if products >= 1000 or if API suggests pagination)
+      const needsServerPagination = 
+        extractedProducts.length >= 1000 || 
+        productsData?.data?.pagination || 
+        productsData?.pagination ||
+        (productsData?.data?.total && productsData.data.total > extractedProducts.length);
+
+      if (needsServerPagination && !isServerPagination) {
+        console.log('🔄 Switching to server-side pagination due to large dataset...');
+        setIsServerPagination(true);
+        // Server pagination will be triggered by useEffect
+        return;
+      }
     } catch (error) {
       toast.error(
         "Gagal memuat data: " + (error.response?.data?.message || error.message)
@@ -492,6 +750,9 @@ const ProductManagement = () => {
         }
       }
 
+      // Invalidate product cache after create/update
+      invalidateCache('products');
+      
       fetchData();
       handleCloseDialog();
     } catch (error) {
@@ -560,6 +821,10 @@ const ProductManagement = () => {
       await productsAPI.updateStatus(product.id, newActiveStatus);
       const message = newActiveStatus ? "diaktifkan" : "dinonaktifkan";
       toast.success("Produk berhasil " + message + "!");
+      
+      // Invalidate product cache after status update
+      invalidateCache('products');
+      
       fetchData();
     } catch (error) {
       toast.error(
@@ -575,6 +840,10 @@ const ProductManagement = () => {
     try {
       await productsAPI.delete(productToDelete.id);
       toast.success("Produk berhasil dihapus!");
+      
+      // Invalidate product cache after delete
+      invalidateCache('products');
+      
       fetchData();
     } catch (error) {
       toast.error(
@@ -742,6 +1011,7 @@ const ProductManagement = () => {
     return currentStock <= minStockThreshold;
   };
 
+  // Filter products first
   const filteredProducts = Array.isArray(products)
     ? products.filter((product) => {
         const matchSearch =
@@ -770,6 +1040,30 @@ const ProductManagement = () => {
       })
     : [];
 
+  // Apply pagination logic based on server or client mode
+  let totalProducts, totalPages, startIndex, endIndex, paginatedProducts;
+
+  if (isServerPagination) {
+    // Server-side pagination - products are already paginated from server
+    totalProducts = totalServerProducts;
+    totalPages = Math.ceil(totalProducts / itemsPerPage);
+    startIndex = (currentPage - 1) * itemsPerPage;
+    endIndex = Math.min(startIndex + itemsPerPage, totalProducts);
+    paginatedProducts = products; // Products from server are already paginated
+  } else {
+    // Client-side pagination - paginate filtered results
+    totalProducts = filteredProducts.length;
+    totalPages = Math.ceil(totalProducts / itemsPerPage);
+    startIndex = (currentPage - 1) * itemsPerPage;
+    endIndex = startIndex + itemsPerPage;
+    paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  }
+
+  // Reset to page 1 when filters change
+  const resetPagination = () => {
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 md:space-y-6">
@@ -778,7 +1072,7 @@ const ProductManagement = () => {
           <div className="text-left sm:text-left">
             <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
             <p className="text-xs text-blue-600 animate-pulse sm:text-sm">
-              📦 Memuat produk (limit 1000)...
+              📦 Memuat produk {isServerPagination ? '(server pagination)' : '(limit 1000)'}...
             </p>
           </div>
           <div className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg bg-blue-50 sm:w-auto animate-pulse">
@@ -817,9 +1111,25 @@ const ProductManagement = () => {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-left sm:text-left">
           <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Total: {filteredProducts.length} produk
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+            <span>Total: {totalProducts} produk</span>
+            {totalPages > 1 && (
+              <span className="hidden sm:inline"> • Halaman {currentPage} dari {totalPages}</span>
+            )}
+            {isServerPagination && (
+              <span className="px-2 py-1 text-xs text-green-700 bg-green-100 rounded-md">Server Pagination</span>
+            )}
+            {/* Cache indicators */}
+            {cache.categories.timestamp && isCacheValid('categories') && (
+              <span className="px-2 py-1 text-xs text-blue-700 bg-blue-100 rounded-md" title="Kategori dari cache">📦 Cat</span>
+            )}
+            {cache.brands.timestamp && isCacheValid('brands') && (
+              <span className="px-2 py-1 text-xs text-purple-700 bg-purple-100 rounded-md" title="Brand dari cache">📦 Brand</span>
+            )}
+            {cache.branches.timestamp && isCacheValid('branches') && (
+              <span className="px-2 py-1 text-xs text-orange-700 bg-orange-100 rounded-md" title="Cabang dari cache">📦 Branch</span>
+            )}
+          </div>
         </div>
         <Button
           onClick={() => handleOpenDialog()}
@@ -893,23 +1203,23 @@ const ProductManagement = () => {
         </CardContent>
       </Card>
 
-      {filteredProducts.length === 0 ? (
+      {(!filteredProducts || filteredProducts.length === 0) ? (
         <Card className="border-0 shadow-md rounded-xl">
           <CardContent className="py-8 text-center sm:pt-12 sm:pb-12">
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-100 to-purple-100">
               <Package className="w-8 h-8 text-blue-600" />
             </div>
             <h3 className="mb-2 text-lg font-semibold text-gray-900">
-              {products.length === 0
+              {!products || products.length === 0
                 ? "Belum ada produk"
                 : "Tidak ada produk yang cocok"}
             </h3>
             <p className="mb-6 text-muted-foreground">
-              {products.length === 0
+              {!products || products.length === 0
                 ? "Mulai dengan menambahkan produk pertama Anda"
                 : "Coba ubah filter atau kata kunci pencarian"}
             </p>
-            {products.length === 0 && (
+            {(!products || products.length === 0) && (
               <Button
                 onClick={() => handleOpenDialog()}
                 className="text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -922,8 +1232,17 @@ const ProductManagement = () => {
         </Card>
       ) : (
         // Product Grid - Mobile Responsive
-        <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredProducts.map((product) => {
+        <div className={`relative ${serverLoading ? 'opacity-50' : ''}`}>
+          {serverLoading && isServerPagination && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white bg-opacity-75 rounded-xl">
+              <div className="flex items-center gap-2 px-4 py-2 border border-blue-200 rounded-lg bg-blue-50">
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                <span className="text-sm text-blue-700">Memuat halaman {currentPage}...</span>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {paginatedProducts.map((product) => {
             const margin = calculateMargin(
               product.purchase_price,
               product.price_levels?.normal
@@ -1188,6 +1507,70 @@ const ProductManagement = () => {
               </Card>
             );
           })}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalProducts > itemsPerPage && (
+        <div className="flex flex-col items-center justify-between gap-4 p-4 mt-6 border-t rounded-lg bg-gray-50 sm:flex-row">
+          <div className="text-sm text-gray-600">
+            Menampilkan {startIndex + 1} - {Math.min(endIndex, totalProducts)} dari {totalProducts} produk
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm"
+            >
+              ← Sebelumnya
+            </Button>
+            
+            <div className="flex items-center gap-1">
+              {/* Show page numbers */}
+              {[...Array(totalPages)].map((_, index) => {
+                const pageNum = index + 1;
+                // Only show current page, first page, last page, and pages around current
+                const showPage = 
+                  pageNum === 1 || 
+                  pageNum === totalPages || 
+                  (pageNum >= currentPage - 1 && pageNum <= currentPage + 1);
+                  
+                if (!showPage) {
+                  // Show ellipsis for skipped pages
+                  if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                    return <span key={pageNum} className="px-2 text-gray-400">...</span>;
+                  }
+                  return null;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="w-8 h-8 p-0 text-sm"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm"
+            >
+              Selanjutnya →
+            </Button>
+          </div>
         </div>
       )}
 
