@@ -101,12 +101,17 @@ const ProductManagement = () => {
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  const [itemsPerPage] = useState(50);
   
   // Server-side pagination states
   const [totalServerProducts, setTotalServerProducts] = useState(0);
   const [serverLoading, setServerLoading] = useState(false);
   const [isServerPagination, setIsServerPagination] = useState(false);
+  
+  // Infinite scroll states
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreData, setHasMoreData] = useState(true);
+  const [allLoadedProducts, setAllLoadedProducts] = useState([]);
   
   // Cache management states
   const [cache, setCache] = useState({
@@ -249,28 +254,30 @@ const ProductManagement = () => {
     setCurrentPage(1);
   }, [searchQuery, filterCategory, filterBrand, filterStock]);
 
-  // Debounced server-side filtering effect (for search)
+  // Debounced server-side filtering effect for infinite scroll
   useEffect(() => {
     if (!isServerPagination) return;
     
     const debounceTimer = setTimeout(() => {
-      fetchServerData();
+      setCurrentPage(1);
+      setAllLoadedProducts([]);
+      setHasMoreData(true);
+      fetchServerData(false);
     }, searchQuery ? 500 : 0); // 500ms debounce for search, immediate for other filters
 
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, filterCategory, filterBrand, filterStock, isServerPagination]);
 
-  // Server-side pagination effect - fetch when page changes (no debounce needed)
-  useEffect(() => {
-    if (isServerPagination && currentPage > 1) {
-      fetchServerData();
-    }
-  }, [currentPage, isServerPagination]);
-
-  // Server-side pagination fetch
-  const fetchServerData = async () => {
+  // Server-side infinite scroll fetch
+  const fetchServerData = async (loadMore = false) => {
     try {
-      setServerLoading(true);
+      if (loadMore) {
+        setLoadingMore(true);
+      } else {
+        setServerLoading(true);
+        setAllLoadedProducts([]);
+        setCurrentPage(1);
+      }
       console.log('🔄 Fetching server-side paginated products...');
       
       // Build server parameters for pagination and filtering
@@ -304,10 +311,12 @@ const ProductManagement = () => {
       const cacheKey = getCacheKey(serverParams, 'products');
       const cachedData = getCachedData('products', cacheKey);
       
-      if (cachedData && Array.isArray(cachedData.products)) {
+      if (!loadMore && cachedData && Array.isArray(cachedData.products)) {
         console.log('📦 Using cached server-side products data');
+        setAllLoadedProducts(cachedData.products);
         setProducts(cachedData.products);
         setTotalServerProducts(cachedData.total || 0);
+        setHasMoreData(cachedData.products.length < cachedData.total);
         setServerLoading(false);
         return;
       }
@@ -337,16 +346,27 @@ const ProductManagement = () => {
 
       console.log(`Server pagination: ${productsData?.length || 0} products, total: ${totalCount}`);
       
-      // Cache the response data only if we have valid products data
-      if (Array.isArray(productsData)) {
+      // Update products for infinite scroll
+      let updatedProducts = [];
+      if (loadMore) {
+        updatedProducts = [...allLoadedProducts, ...productsData];
+        setAllLoadedProducts(updatedProducts);
+      } else {
+        updatedProducts = productsData;
+        setAllLoadedProducts(productsData);
+      }
+      
+      setProducts(Array.isArray(updatedProducts) ? updatedProducts : []);
+      setTotalServerProducts(totalCount);
+      setHasMoreData(updatedProducts.length < totalCount);
+      
+      // Cache the accumulated data only for first load
+      if (!loadMore && Array.isArray(productsData)) {
         updateCache('products', cacheKey, {
-          products: productsData,
+          products: updatedProducts,
           total: totalCount
         });
       }
-      
-      setProducts(Array.isArray(productsData) ? productsData : []);
-      setTotalServerProducts(totalCount);
       
     } catch (error) {
       console.error('Error fetching server-side paginated data:', error);
@@ -358,8 +378,43 @@ const ProductManagement = () => {
       fetchData();
     } finally {
       setServerLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  // Load more data function untuk infinite scroll
+  const loadMoreData = async () => {
+    if (loadingMore || !hasMoreData || !isServerPagination) return;
+    
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    await fetchServerData(true);
+  };
+
+  // Intersection Observer untuk infinite scroll
+  useEffect(() => {
+    if (!isServerPagination || !hasMoreData || loadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreData && !loadingMore) {
+          loadMoreData();
+        }
+      },
+      { threshold: 1.0, rootMargin: '100px' }
+    );
+
+    const target = document.getElementById('load-more-trigger');
+    if (target) {
+      observer.observe(target);
+    }
+
+    return () => {
+      if (target) {
+        observer.unobserve(target);
+      }
+    };
+  }, [isServerPagination, hasMoreData, loadingMore, currentPage]);
 
   const fetchData = async () => {
     try {
@@ -376,7 +431,7 @@ const ProductManagement = () => {
       const apiTypes = [];
       
       // Always fetch products for client-side (no cache for large product lists)
-      apiCalls.push(productsAPI.getAll({ limit: 1000 }));
+      apiCalls.push(productsAPI.getAll({ limit: 50 }));
       apiTypes.push('products');
       
       if (!cachedCategories) {
@@ -1040,28 +1095,24 @@ const ProductManagement = () => {
       })
     : [];
 
-  // Apply pagination logic based on server or client mode
-  let totalProducts, totalPages, startIndex, endIndex, paginatedProducts;
+  // Apply infinite scroll logic based on server or client mode
+  let totalProducts, paginatedProducts;
 
   if (isServerPagination) {
-    // Server-side pagination - products are already paginated from server
+    // Server-side infinite scroll - show all loaded products
     totalProducts = totalServerProducts;
-    totalPages = Math.ceil(totalProducts / itemsPerPage);
-    startIndex = (currentPage - 1) * itemsPerPage;
-    endIndex = Math.min(startIndex + itemsPerPage, totalProducts);
-    paginatedProducts = products; // Products from server are already paginated
+    paginatedProducts = products; // All loaded products
   } else {
-    // Client-side pagination - paginate filtered results
+    // Client-side - show all filtered results (no pagination)
     totalProducts = filteredProducts.length;
-    totalPages = Math.ceil(totalProducts / itemsPerPage);
-    startIndex = (currentPage - 1) * itemsPerPage;
-    endIndex = startIndex + itemsPerPage;
-    paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+    paginatedProducts = filteredProducts;
   }
 
-  // Reset to page 1 when filters change
-  const resetPagination = () => {
+  // Reset infinite scroll when filters change
+  const resetInfiniteScroll = () => {
     setCurrentPage(1);
+    setAllLoadedProducts([]);
+    setHasMoreData(true);
   };
 
   if (loading) {
@@ -1113,8 +1164,8 @@ const ProductManagement = () => {
           <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
             <span>Total: {totalProducts} produk</span>
-            {totalPages > 1 && (
-              <span className="hidden sm:inline"> • Halaman {currentPage} dari {totalPages}</span>
+            {isServerPagination && (
+              <span className="hidden sm:inline"> • {paginatedProducts?.length || 0} dari {totalProducts}</span>
             )}
             {isServerPagination && (
               <span className="px-2 py-1 text-xs text-green-700 bg-green-100 rounded-md">Server Pagination</span>
@@ -1511,66 +1562,37 @@ const ProductManagement = () => {
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {totalProducts > itemsPerPage && (
-        <div className="flex flex-col items-center justify-between gap-4 p-4 mt-6 border-t rounded-lg bg-gray-50 sm:flex-row">
-          <div className="text-sm text-gray-600">
-            Menampilkan {startIndex + 1} - {Math.min(endIndex, totalProducts)} dari {totalProducts} produk
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm"
-            >
-              ← Sebelumnya
-            </Button>
-            
-            <div className="flex items-center gap-1">
-              {/* Show page numbers */}
-              {[...Array(totalPages)].map((_, index) => {
-                const pageNum = index + 1;
-                // Only show current page, first page, last page, and pages around current
-                const showPage = 
-                  pageNum === 1 || 
-                  pageNum === totalPages || 
-                  (pageNum >= currentPage - 1 && pageNum <= currentPage + 1);
-                  
-                if (!showPage) {
-                  // Show ellipsis for skipped pages
-                  if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
-                    return <span key={pageNum} className="px-2 text-gray-400">...</span>;
-                  }
-                  return null;
-                }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className="w-8 h-8 p-0 text-sm"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
+      {/* Load More / Infinite Scroll Trigger */}
+      {isServerPagination && hasMoreData && (
+        <div 
+          id="load-more-trigger"
+          className="flex items-center justify-center p-6 mt-6"
+        >
+          {loadingMore ? (
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Memuat lebih banyak produk...</span>
             </div>
-            
+          ) : (
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm"
+              onClick={loadMoreData}
+              className="px-6 py-2 text-sm transition-all hover:bg-blue-50 hover:border-blue-300"
             >
-              Selanjutnya →
+              Muat lebih banyak produk
             </Button>
-          </div>
+          )}
+        </div>
+      )}
+      
+      {/* Show total count */}
+      {totalProducts > 0 && (
+        <div className="mt-4 text-sm text-center text-gray-600">
+          {isServerPagination ? (
+            <span>Menampilkan {paginatedProducts?.length || 0} dari {totalProducts} produk</span>
+          ) : (
+            <span>Menampilkan semua {totalProducts} produk</span>
+          )}
         </div>
       )}
 

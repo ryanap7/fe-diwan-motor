@@ -35,13 +35,13 @@ const getProductStock = (product) => {
 };
 
 // API functions untuk POS - mengambil produk dari endpoint transactions/products/pos
-const fetchProducts = async (params = { limit: 1000 }) => {
+const fetchProducts = async (params = { limit: 50 }) => {
   try {
     console.log('POS - Fetching products with server-side filters:', params);
     
     // Build server-side filter parameters
     const serverParams = {
-      limit: params.limit || 1000,
+      limit: params.limit || 50,
       page: params.page || 1,
       isActive: params.isActive !== false, // Default true
       hasStock: params.hasStock !== false, // Default true  

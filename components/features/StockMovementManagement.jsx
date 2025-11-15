@@ -51,7 +51,7 @@ const StockMovementManagement = () => {
 
       const [movementsRes, productsRes, branchesRes] = await Promise.all([
         axios.get('/api/stocks/movements', { headers }),
-        axios.get('/api/products?limit=1000', { headers }),
+        axios.get('/api/products?limit=10', { headers }),
         axios.get('/api/branches', { headers })
       ]);
 
