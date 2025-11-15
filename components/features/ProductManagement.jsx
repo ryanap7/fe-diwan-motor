@@ -1123,7 +1123,7 @@ const ProductManagement = () => {
           <div className="text-left sm:text-left">
             <h3 className="text-lg font-bold text-gray-900 sm:text-xl md:text-2xl">Kelola Produk</h3>
             <p className="text-xs text-blue-600 animate-pulse sm:text-sm">
-              📦 Memuat produk {isServerPagination ? '(server pagination)' : '(limit 1000)'}...
+              📦 Memuat produk...
             </p>
           </div>
           <div className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg bg-blue-50 sm:w-auto animate-pulse">
